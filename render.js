@@ -107,9 +107,11 @@ function makeSameSizeDiv(other, parent) {
 }
 
 var logText = '';
+var logUpsideDown = false;
 
 function addLog(text) {
-  logText = text + '<br/>' + logText;
+  if(logUpsideDown) logText = text + '<br/>' + logText;
+  else logText += '<br/>' + text;
   logEl.innerHTML = logText;
   actionEl.innerHTML = text;
 }
@@ -1365,9 +1367,8 @@ function makeLabeledDropDown(x, y, label, options, parent) {
   return makeDropDown(x, y + 16, options, parent);
 }
 
-function makeCheckbox(x, y, parent) {
+function makeCheckbox(x, y, parent, label, title) {
   //var result = makeAbsElement(x, y, parent, 'input');
-
 
   var result =  document.createElement('input');
   result.style.position = 'absolute';
@@ -1375,6 +1376,12 @@ function makeCheckbox(x, y, parent) {
   result.style.top = '' + y + 'px';
   result.type = 'checkbox'; //must be set before appending it to the DOM, otherwise it breaks in IE7 (and maybe later)
   parent.appendChild(result);
+
+  if(label) {
+    var label = makeText(x + 25, y + 5, label, parent);
+    if(title) label.title = title;
+  }
+  
   return result;
 }
 
@@ -1405,6 +1412,7 @@ each button fun receives the following object containing the dropdown states:
   presetfaction: [humanfaction, ai1faction, ...] --> none means random
   presetround: [round1tile, round2tile, ...] --> none means random
   presetbonus: {preferred bonus tiles} --> those in the set will be chosen first with the random selection
+  newcultistsrule
 }
 */
 function renderPreScreen(px, py, standardButtonFun, presetButtonFun, beginnerButtonFun, observeButtonFun, debugButtonFun) {
@@ -1414,51 +1422,53 @@ function renderPreScreen(px, py, standardButtonFun, presetButtonFun, beginnerBut
       + 'Programmed by Lode Vandevenne.<br/>'
       + 'Drawings by Giordano Segatta.<br/>'
       + 'Based on: <a href="http://boardgamegeek.com/boardgame/120677/terra-mystica">http://boardgamegeek.com/boardgame/120677/terra-mystica</a><br/>'
-      + 'version: v0.6e (20130713)', parent);
+      + 'version: v0.6g (20131012)', parent);
 
-  var numPlayerEl = makeLabeledDropDown(px, py, 'num players', ['5', '4', '3', '2', '1'], parent);
-  var startPlayerEl = makeLabeledDropDown(px + 250, py, 'start player', ['random', 'human', 'ai1', 'ai2', 'ai3', 'ai4'], parent);
-  var worldMapEl = makeLabeledDropDown(px + 400, py, 'world map', ['standard', 'randomized', 'randomized small'], parent);
+  var ppy = py;
+  var numPlayerEl = makeLabeledDropDown(px, ppy, 'num players', ['5', '4', '3', '2', '1'], parent);
+  var startPlayerEl = makeLabeledDropDown(px + 250, ppy, 'start player', ['random', 'human', 'ai1', 'ai2', 'ai3', 'ai4'], parent);
+  var worldMapEl = makeLabeledDropDown(px + 400, ppy, 'world map', ['standard', 'randomized', 'randomized small'], parent);
   /*makeButton(px + 120, py, 'Standard', parent, bind(buttonFun, standardButtonFun), 'Begin a game with standard rules and choice of faction');
   makeButton(px + 240, py, 'Preset', parent, bind(buttonFun, presetButtonFun), 'Begin a game with factions preset below, or random factions by default');
   makeButton(px + 360, py, 'Beginner', parent, bind(buttonFun, beginnerButtonFun), 'Begin a game with beginner setup. No choice of faction, it is based on player start position');
   makeButton(px + 480, py, 'Observe', parent, bind(buttonFun, observeButtonFun), 'Observe a pure AI game');*/
   //makeButton(px + 600, py, 'Debug', parent, bind(buttonFun, debugButtonFun), 'DEBUG');
-  var gameTypeDrowpDown = makeLabeledDropDown(px + 120, py, 'Game Type', ['Standard', 'Preset', 'Beginner', 'Observe'], parent);
+  var gameTypeDrowpDown = makeLabeledDropDown(px + 120, ppy, 'Game Type', ['Standard', 'Preset', 'Beginner', 'Observe'], parent);
   gameTypeDrowpDown.title = 'Standard: choice of faction. Preset: use settings below. Beginner: official beginner setup, faction based on start position. Observe: Watch only AIs play';
 
-  makeText(px, py + 160, 'Preset factions', parent);
+  var newcultistcb = makeCheckbox(px, ppy + 50, parent, 'New cultists rule', 'The official new rule where cultists receive 1 power if everyone refuses to take power');
+  newcultistcb.checked = true;
+
+  ppy = py + 160;
+  makeText(px, ppy, 'Preset factions', parent);
   var factionDropDowns = [];
   for(var i = 0; i < 5; i++) {
-    makeText(px, py + 180 + i * 32 + 5, 'player ' + (i + 1), parent);
+    makeText(px, ppy + 20 + i * 32 + 5, 'player ' + (i + 1), parent);
     var factions = [];
     factions.push('random');
     for(var j = F_START + 1; j < F_END; j++) factions.push(factionNames[j]);
     factions.push(factionNames[F_GENERIC]);
-    factionDropDowns.push(makeDropDown(px + 60, py + 180 + i * 32, factions, parent));
+    factionDropDowns.push(makeDropDown(px + 60, ppy + 20 + i * 32, factions, parent));
   }
 
-  makeText(px + 200, py + 160, 'Preset round tiles', parent);
+  makeText(px + 200, ppy, 'Preset round tiles', parent);
   var roundDropDowns = [];
   for(var i = 0; i < 6; i++) {
-    makeText(px + 200, py + 180 + i * 32 + 5, 'round ' + (i + 1), parent);
+    makeText(px + 200, ppy + 20 + i * 32 + 5, 'round ' + (i + 1), parent);
     var tiles = [];
     tiles.push('random');
     for(var j = T_ROUND_BEGIN + 1; j < T_ROUND_END; j++) tiles.push(tileToStringLong(j, false));
-    roundDropDowns.push(makeDropDown(px + 260, py + 180 + i * 32, tiles, parent));
+    roundDropDowns.push(makeDropDown(px + 260, ppy + 20 + i * 32, tiles, parent));
   }
 
-  var allc = makeCheckbox(px + 450, py + 155, parent);
+  var allc = makeCheckbox(px + 450, ppy - 5, parent, 'Preset bonus tiles', 'check the preferred bonus tiles, those are given precedence during random selection');
   allc.checked = false;
-  var bonustext = makeText(px + 450 + 25, py + 160, 'Preset bonus tiles', parent);
-  bonustext.title = 'check the preferred bonus tiles, those are given precedence during random selection';
   var bonusBoxes = [];
   for(var i = 0; i < (T_BON_END - T_BON_BEGIN - 1); i++) {
     var j = i + T_BON_BEGIN + 1;
-    var c = makeCheckbox(px + 450, py + 190 + i * 25, parent);
+    var c = makeCheckbox(px + 450, ppy + 30 + i * 25, parent, tileToString(j));
     c.checked = false;
     bonusBoxes.push(c);
-    makeText(px + 450 + 25, py + 190 + i * 25 + 3, tileToString(j), parent);
   }
   allc.onclick = function() {
     for(var i = 0; i < bonusBoxes.length; i++) bonusBoxes[i].checked = allc.checked;
@@ -1486,11 +1496,14 @@ function renderPreScreen(px, py, standardButtonFun, presetButtonFun, beginnerBut
     for(var i = 0; i < bonusBoxes.length; i++) {
       if(bonusBoxes[i].checked) params.presetbonus[i + T_BON_BEGIN + 1] = true;
     }
+
+    params.newcultistsrule = newcultistcb.checked;
     
     fun(params);
   }
 
-  makeButton(px, py + 80, 'Start', parent, bind(buttonFun, function(buttonFun) {
+  ppy = py + 90;
+  makeButton(px, ppy, 'Start', parent, bind(buttonFun, function(buttonFun) {
     if(gameTypeDrowpDown.selectedIndex == 0) standardButtonFun(buttonFun);
     if(gameTypeDrowpDown.selectedIndex == 1) presetButtonFun(buttonFun);
     if(gameTypeDrowpDown.selectedIndex == 2) beginnerButtonFun(buttonFun);

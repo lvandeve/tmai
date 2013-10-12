@@ -58,6 +58,8 @@ var State = function() {
 
   this.reset = false; //for restarting a game
 
+  // game rule options
+  this.newcultistsrule = true;
 };
 
 var logPlayerNameFun = getFullName; //alternative is getFullNameColored, but that makes it slower to render
@@ -201,7 +203,7 @@ function roundDigCallback(player, digs) {
 function startNewRound() {
   state.round++;
   addLog('');
-  addLog('ROUND ' + state.round + ' started ^');
+  addLog('ROUND ' + state.round + (logUpsideDown ? ' started ^' : ' started'));
   this.currentPlayer = this.startPlayer - 1; //so that when pre-incrementing, start player begins
   for(var i = 0; i < players.length; i++) {
     var player = players[i];
@@ -263,6 +265,10 @@ function makeNewHumanPlayer(name) {
   return player;
 }
 
+function initParams(params) {
+  state.newcultistsrule = params.newcultistsrule;
+}
+
 function initPlayers(params) {
   players[0] = makeNewHumanPlayer('human');
   players[0].index = 0;
@@ -305,6 +311,7 @@ function initialGameRender() {
 }
 
 function startGameButtonFun(params) {
+  initParams(params);
   if(params.worldmap == 0) initStandardWorld();
   else randomizeWorld(params.worldmap == 2);
   initPlayers(params);
@@ -317,6 +324,7 @@ function startGameButtonFun(params) {
 }
 
 function startBeginnerGameButtonFun(params) {
+  initParams(params);
   initStandardWorld(); // Random world not supported here
   initPlayers(params);
 
@@ -432,6 +440,7 @@ function startBeginnerGameButtonFun(params) {
 }
 
 function startObserveGameButtonFun(params) {
+  initParams(params);
   if(params.worldmap == 0) initStandardWorld();
   else randomizeWorld(params.worldmap == 2);
 
@@ -455,6 +464,7 @@ function startObserveGameButtonFun(params) {
 
 //debug scenario, where you're immediately in the actions, dwelling and such are already placed
 function startDebugGameButtonFun(params) {
+  initParams(params);
   if(params.worldmap == 0) initStandardWorld();
   else randomizeWorld(params.worldmap == 2);
 
@@ -550,7 +560,6 @@ function chooseRoundTiles(params) {
     taken[index] = true;
     roundtiles[i] = index;
   }
-  var taken = {};
   for(var i = 6; i > 0; i--) {
     if(roundtiles[i] != T_NONE) continue;
     while(true) {
@@ -592,6 +601,7 @@ function chooseBonusTiles(params) {
 }
 
 function startPresetGameButtonFun(params) {
+  initParams(params);
   if(params.worldmap == 0) initStandardWorld();
   else randomizeWorld(params.worldmap == 2);
 
@@ -662,7 +672,7 @@ function addEndGameScore() {
 
   //log final scores
   addLog('');
-  addLog('FINAL SCORES ^');
+  addLog(logUpsideDown ? 'FINAL SCORES ^' : 'FINAL SCORES');
   for(var i = 0; i < players.length; i++) {
     addLog(logPlayerNameFun(players[i]) + ': ' + players[i].vp);
   }
@@ -775,15 +785,24 @@ State.prototype.nextState = function() {
   else if(this.type == S_LEECH) {
     this.leechj++;
     if(this.leechi < this.leecharray.length && this.leechj >= this.leecharray[this.leechi].length) {
-      var cultists = players[this.currentPlayer] && players[this.currentPlayer].faction == F_CULTISTS && this.leechtaken > 0;
+      // leeching done. Reset state and handle cultists.
+      var cultists = players[this.currentPlayer] && players[this.currentPlayer].faction == F_CULTISTS;
+      var taken = this.leechtaken > 0;
       this.leechtaken = 0;
       this.leechj = 0;
       this.leechi++;
       if(cultists) {
         var player = players[this.currentPlayer];
-        setHelp('player ' + player.name + ' choose cultists track');
-        nextState(S_CULTISTS);
-        return;
+        if(taken) {
+          setHelp('player ' + player.name + ' choose cultists track');
+          nextState(S_CULTISTS);
+          return;
+        } else {
+          if(state.newcultistsrule) {
+            addPower(player, 1);
+            addLog(logPlayerNameFun(player) + ' receives one extra pw because everyone declined the cultists');
+          }
+        }
       }
     }
     if(this.leechi >= this.leecharray.length) {

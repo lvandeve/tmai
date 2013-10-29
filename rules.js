@@ -200,11 +200,14 @@ var T_FAV_1O_DVP = T_index++; //place dwelling VP
 var T_FAV_1W_PASSTPVP = T_index++;
 var T_FAV_END = T_index++;
 var T_TW_BEGIN = T_index++;
+var T_TW_2VP_2CULT = T_index++; //mini-expansion 2013
+var T_TW_4VP_SHIP = T_index++; //mini-expansion 2013
 var T_TW_5VP_6C = T_index++;
 var T_TW_6VP_8PW = T_index++;
 var T_TW_7VP_2W = T_index++;
 var T_TW_8VP_CULT = T_index++;
 var T_TW_9VP_P = T_index++;
+var T_TW_11VP = T_index++; //mini-expansion 2013
 var T_TW_END = T_index++;
 var T_ROUND_BEGIN = T_index++;
 var T_ROUND_DIG2VP_1O1C = T_index++;
@@ -226,6 +229,15 @@ function isFavorTile(tile) {
 }
 function isTownTile(tile) {
   return tile > T_TW_BEGIN && tile < T_TW_END;
+}
+
+function isMiniExpansion2013Tile(tile) {
+  return tile == T_TW_2VP_2CULT || tile == T_TW_4VP_SHIP || tile == T_TW_11VP;
+}
+function getTileInitialCount(tile) {
+  if(isFavorTile(tile)) return tile <= T_FAV_3W ? 1 : 3;
+  if(isTownTile(tile)) return (tile == T_TW_2VP_2CULT || tile == T_TW_11VP) ? 1 : 2;
+  return 0; //function not relevant for others.
 }
 
 //not yet taken tiles
@@ -845,6 +857,7 @@ function addExtrasForAction(player, action) {
     if(action.type == A_UPGRADE_SH) {
       if(player.faction == F_ALCHEMISTS) addPower(player, 12);
       if(player.faction == F_MERMAIDS) advanceShipping(player);
+      if(player.faction == F_FAKIRS) player.tunnelcarpetdistance++;
     }
   }
 
@@ -865,6 +878,18 @@ function addExtrasForAction(player, action) {
       player.vp_faction += 5;
     }
     if(player.faction == F_SWARMLINGS) player.w += 3;
+
+    if(action.twtiles[i] == T_TW_4VP_SHIP) {
+      if(player.faction == F_DWARVES) {
+        // nothing
+      }
+      else if(player.faction == F_FAKIRS) {
+        player.tunnelcarpetdistance++;
+      }
+      else {
+        advanceShipping(player);
+      }
+    }
   }
 }
 
@@ -1205,23 +1230,7 @@ function tryAction(player, action /*Action object*/) {
     player.passed = true;
 
     //pass bonuses
-    if(player.bonustile == T_BON_PASSDVP_2C) {
-      player.vp += built_d(player) * 1;
-      player.vp_bonus += built_d(player) * 1;
-    }
-    if(player.bonustile == T_BON_PASSTPVP_1W) {
-      player.vp += built_tp(player) * 2;
-      player.vp_bonus += built_tp(player) * 2;
-    }
-    if(player.bonustile == T_BON_PASSSHSAVP_2W) {
-      player.vp += (built_sh(player) + built_sa(player)) * 4;
-      player.vp_bonus += (built_sh(player) + built_sa(player)) * 4;
-    }
-    if(player.favortiles[T_FAV_1W_PASSTPVP]) {
-      var vp = [0,2,3,3,4][built_tp(player)];
-      player.vp += vp;
-      player.vp_favor += vp;
-    }
+    applyPassBonus(player, player);
     
     if(!finalround) error = giveBonusTile(player, action.bontile);
     else error = giveBonusTile(player, T_NONE);
@@ -1243,11 +1252,11 @@ function tryAction(player, action /*Action object*/) {
     if(player.faction != F_FAKIRS && player.faction != F_DWARVES) return 'wrong faction for this action';
     if(player.tunnelcarpet) return 'max 1 tunnel/carpet action per turn';
     if(!action.co) return 'must have one coordinate';
-    if(!canConsume(player, getCostlyCost(player))) return 'not enough resources for ' + getActionName(action.type);
+    if(!canConsume(player, getTunnelCarpetCost(player))) return 'not enough resources for ' + getActionName(action.type);
     if(!onlyReachableThroughFactionSpecialWithBackupWorldBuildings(
         player, action.co[0], action.co[1], backupGameState.buildings)) return 'must be reachable only through tunnel/carpet power';
 
-    consume(player, getCostlyCost(player));
+    consume(player, getTunnelCarpetCost(player));
     player.tunnelcarpet = action.co; //from now on, next dig and build actions may consider this tile reachable until the whole action sequence is done
     player.vp += 4; //this is 4 both for fakirs and dwarves
     player.vp_faction += 4; //this is 4 both for fakirs and dwarves
@@ -1300,7 +1309,7 @@ function tryAction(player, action /*Action object*/) {
   //give town and favor tiles (only after the actual action happened, otherwise you can use resources you don't yet have)
   //first give the town keys, then the tiles (for correct handling of the +cult town tile)
   for(var i = 0; i < action.twtiles.length; i++) {
-    player.keys++;
+    player.keys += action.twtiles[i] == T_TW_2VP_2CULT ? 2 : 1;
   }
   for(var i = 0; i < action.twtiles.length; i++) {
     var error = giveTownTile(player, action.twtiles[i]);
@@ -1508,13 +1517,16 @@ function giveFavorTile(player, tile) {
   }
 }
 
-//For the cult tile, only returns the VP's. TODO: support the cults (not here but in giveTownTile)
+//For the cult or ship tiles, only returns the VP's.
 function getTownTileResources(tile) {
+  if(tile == T_TW_2VP_2CULT) return [0,0,0,0,2];
+  if(tile == T_TW_4VP_SHIP) return [0,0,0,0,4];
   if(tile == T_TW_5VP_6C) return [6,0,0,0,5];
   if(tile == T_TW_6VP_8PW) return [0,0,0,8,6];
   if(tile == T_TW_7VP_2W) return [0,2,0,0,7];
   if(tile == T_TW_8VP_CULT) return [0,0,0,0,8];
   if(tile == T_TW_9VP_P) return [0,0,1,0,9];
+  if(tile == T_TW_11VP) return [0,0,0,0,11];
   throw 'invalid town tile';
 }
 
@@ -1529,23 +1541,27 @@ function giveTownTile(player, tile) {
     addIncome(player, res);
     player.vp_town += res[4];
 
-    if(tile == T_TW_8VP_CULT) {
+    if(tile == T_TW_8VP_CULT || tile == T_TW_2VP_2CULT) {
+      var num = tile == T_TW_2VP_2CULT ? 2 : 1;
+      var nine = 10 - num; //nine refers to the value which would bring it to ten. Usually 9, but for the T_TW_2VP_2CULT tile that happens at 8.
+
+      //TODO: make this hack smarter for T_TW_2VP_2CULT
       //If there are multiple nines and not enough keys to go up all of them, in theory the player should have the choice. That code is not implemented yet, instead automatically choose the most threatened ones.
       //to quickly debug this, type in console: players[1].cult[2] = 5; players[0].cult[0] = 9; players[0].cult[1] = 9; players[0].cult[2] = 9; players[0].cult[3] = 9; 
       var nines = 0;
       for(var i = C_R; i <= C_W; i++) {
-        if(player.cult[i] == 9) nines++;
+        if(player.cult[i] < 10 && player.cult[i] >= nine) nines++;
       }
       while(nines > player.keys && player.keys > 0) {
         var threatened = getMostThreatenedWinningCultTrack(player);
         if(threatened == C_NONE) return ''; //happens when all cults are already at the top
-        giveCult(player, threatened, 1);
+        giveCult(player, threatened, num);
         nines--;
       }
       //End of "most threatened cult track" hack.
       
       for(var i = C_R; i <= C_W; i++) {
-        giveCult(player, i, 1);
+        giveCult(player, i, num);
       }
     }
     
@@ -1796,7 +1812,7 @@ function digDist(player, tileColor) {
 }
 
 //the cost for tunneling or carpets
-function getCostlyCost(player) {
+function getTunnelCarpetCost(player) {
   if(player.faction == F_FAKIRS) return [0,0,1,0,0];
   else if(player.faction == F_DWARVES) return [0,built_sh(player) ? 1 : 2,0,0,0];
   else return [0,0,0,0,0];
@@ -1908,3 +1924,153 @@ function getDistributedPoints(playerIndex, values, scores, minValue) {
   return score;
 }
 
+//returns array of a cult track end score per player
+function getCultEndScores(track) {
+  var result = [];
+  for(var i = 0; i < players.length; i++) result[i] = 0;
+
+  var values = [];
+  for(var j = 0; j < players.length; j++) {
+    values[j] = players[j].cult[track];
+  }
+  var scores = distributePoints(values, [8, 4, 2], 1);
+  for(var j = 0; j < scores.length; j++) {
+    if(scores[j][2] != 0) {
+      result[scores[j][0]] += scores[j][2];
+    }
+  }
+
+  return result;
+}
+
+//returns array of [network end score][network size] per player
+function getNetworkEndScores() {
+  var result = [];
+  for(var i = 0; i < players.length; i++) result[i] = [0, 0];
+
+  calculateNetworkClusters();
+  var values = [];
+  for(var j = 0; j < players.length; j++) {
+    values[j] = getBiggestNetwork(players[j]);
+  }
+  var scores = distributePoints(values, [18, 12, 6], 0);
+  for(var j = 0; j < scores.length; j++) {
+    if(scores[j][2] != 0) {
+      result[scores[j][0]][0] += scores[j][2];
+      result[scores[j][0]][1] += scores[j][1];
+    }
+  }
+
+  return result;
+}
+
+//returns resource score per player
+function getResourceEndScores() {
+  var result = [];
+  for(var i = 0; i < players.length; i++) result[i] = 0;
+
+  for(var i = 0; i < players.length; i++) {
+    result[i] += getResourceEndGameScoring(players[i]);
+  }
+
+  return result;
+}
+
+function applyPassBonus(playerin, playerout) {
+  if(playerin.bonustile == T_BON_PASSDVP_2C) {
+    playerout.vp += built_d(playerin) * 1;
+    playerout.vp_bonus += built_d(playerin) * 1;
+  }
+  if(playerin.bonustile == T_BON_PASSTPVP_1W) {
+    playerout.vp += built_tp(playerin) * 2;
+    playerout.vp_bonus += built_tp(playerin) * 2;
+  }
+  if(playerin.bonustile == T_BON_PASSSHSAVP_2W) {
+    playerout.vp += (built_sh(playerin) + built_sa(playerin)) * 4;
+    playerout.vp_bonus += (built_sh(playerin) + built_sa(playerin)) * 4;
+  }
+  if(playerin.favortiles[T_FAV_1W_PASSTPVP]) {
+    var vp = [0,2,3,3,4][built_tp(playerin)];
+    playerout.vp += vp;
+    playerout.vp_favor += vp;
+  }
+}
+
+function getPassBonusEndScores() {
+  var result = [];
+  for(var i = 0; i < players.length; i++) result[i] = 0;
+
+  for(var i = 0; i < players.length; i++) {
+    var dummy = new Player();
+    dummy.vp = 0;
+    applyPassBonus(players[i], dummy);
+    result[i] += dummy.vp;
+  }
+
+  return result;
+}
+
+
+//returns array of projected end game scores per player. Per player it's an array
+//of: total, cult, network, resource, passing
+function projectEndGameScores() {
+  var cultscores = [];
+  cultscores[0] = getCultEndScores(C_R);
+  cultscores[1] = getCultEndScores(C_B);
+  cultscores[2] = getCultEndScores(C_O);
+  cultscores[3] = getCultEndScores(C_W);
+  var networkscores = getNetworkEndScores();
+  var resourcescores = getResourceEndScores();
+  var passscores = getPassBonusEndScores();
+
+  var result = [];
+  for(var i = 0; i < players.length; i++) result[i] = [players[i].vp, 0, 0, 0, 0];
+  
+  for(var i = 0; i < players.length; i++) {
+    for(var j = C_R; j <= C_W; j++) {
+      result[i][1] += cultscores[j - C_R][i];
+    }
+    result[i][2] = networkscores[i][0];
+    result[i][3] = resourcescores[i];
+    if(!players[i].passed) result[i][4] = passscores[i];
+    for(var j = 1; j < result[i].length; j++) result[i][0] += result[i][j];
+  }
+
+  return result;
+}
+
+function initBoard() {
+  waterDistanceCalculated = [];
+  state.round = 0;
+
+  buildings = [];
+  for(var y = 0; y < BH; y++)
+  for(var x = 0; x < BW; x++)
+  {
+    buildings[arCo(x, y)] = [ B_NONE, N ];
+  }
+
+  bridges = [];
+  for(var y = 0; y < BH; y++)
+  for(var x = 0; x < BW; x++)
+  {
+    bridges[arCo(x, y)] = [ N, N, N ];
+  }
+
+  favortiles = {};
+  for(var i = T_FAV_BEGIN + 1; i < T_FAV_END; i++) favortiles[i] = getTileInitialCount(i);
+  towntiles = {};
+  for(var i = T_TW_BEGIN + 1; i < T_TW_END; i++) {
+    if (state.miniexpansion2013 || !isMiniExpansion2013Tile(i)) {
+      towntiles[i] = getTileInitialCount(i);
+    }
+  }
+  bonustiles = {};
+  for(var i = T_BON_BEGIN + 1; i < T_BON_END; i++) bonustiles[i] = 1;
+  bonustilecoins = [];
+
+  cultp = [[N,N,N,N],[N,N,N,N],[N,N,N,N],[N,N,N,N]];
+  octogons = {};
+
+  calculateTownClusters();
+}

@@ -415,7 +415,7 @@ function addPossibleDigBuildAction(resources, player, restrictions, co, dist, dw
 //destructively alters cost (adds the dwelling cost)
 //resources MAY NOT include costly cost
 function addPossibleDigBuildActions(cost, player, restrictions, co, dist, type, costly, result) {
-  if(costly) sumIncome(cost, getCostlyCost(player));
+  if(costly) sumIncome(cost, getTunnelCarpetCost(player));
   if(dist > 0) addPossibleDigBuildAction(cost, player, restrictions, co, dist, false, type, costly, result);
   if(player.b_d > 0) {
     sumIncome(cost, getBuildingCost(player.faction, B_D, false));
@@ -600,13 +600,13 @@ function getPossibleActions(player, restrictions) {
 
     if(dist > 0) {
       var cost = getDigCost(player, dist);
-      if(costly) sumIncome(cost, getCostlyCost(player));
+      if(costly) sumIncome(cost, getTunnelCarpetCost(player));
       addPossibleDigBuildAction(cost, player, restrictions, tiles[t], dist, false, A_SPADE, costly, result);
     }
     if(player.b_d > 0) {
       var cost = getDigCost(player, dist);
       sumIncome(cost, getBuildingCost(player.faction, B_D, false));
-      if(costly) sumIncome(cost, getCostlyCost(player));
+      if(costly) sumIncome(cost, getTunnelCarpetCost(player));
       addPossibleDigBuildAction(cost, player, restrictions, tiles[t], dist, true, A_SPADE, costly, result);
     }
     //The ones without dwelling are dangerous unless the tile is out of reach of other players. But that is up to the AI to figure out.

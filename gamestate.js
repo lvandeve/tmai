@@ -60,6 +60,7 @@ var State = function() {
 
   // game rule options
   this.newcultistsrule = true;
+  this.miniexpansion2013 = true; // new town tiles
 };
 
 var logPlayerNameFun = getFullName; //alternative is getFullNameColored, but that makes it slower to render
@@ -267,6 +268,9 @@ function makeNewHumanPlayer(name) {
 
 function initParams(params) {
   state.newcultistsrule = params.newcultistsrule;
+  state.miniexpansion2013 = params.miniexpansion2013;
+
+  initBoard();
 }
 
 function initPlayers(params) {
@@ -631,43 +635,34 @@ function addEndGameScore() {
   //cult tracks
   for(var i = C_R; i <= C_W; i++) {
     addLog('');
-    var values = [];
-    for(var j = 0; j < players.length; j++) {
-      values[j] = players[j].cult[i];
-    }
-    var scores = distributePoints(values, [8, 4, 2], 1);
+    var scores = getCultEndScores(i);
     for(var j = 0; j < scores.length; j++) {
-      if(scores[j][2] != 0) {
-        addLog(logPlayerNameFun(players[scores[j][0]]) + ' gets ' + scores[j][2] + ' VP from ' + getCultName(i) + ' cult');
-        players[scores[j][0]].vp += scores[j][2];
-        players[scores[j][0]].vp_cult[i] += scores[j][2];
+      if(scores[j] != 0) {
+        addLog(logPlayerNameFun(players[j]) + ' gets ' + scores[j] + ' VP from ' + getCultName(i) + ' cult');
+        players[j].vp += scores[j];
+        players[j].vp_cult[i] += scores[j];
       }
     }
   }
 
   //network
-  calculateNetworkClusters();
-  var values = [];
-  for(var j = 0; j < players.length; j++) {
-    values[j] = getBiggestNetwork(players[j]);
-  }
-  var scores = distributePoints(values, [18, 12, 6], 0);
+  var scores = getNetworkEndScores();
   addLog('');
   for(var j = 0; j < scores.length; j++) {
-    if(scores[j][2] != 0) {
-      addLog(logPlayerNameFun(players[scores[j][0]]) + ' gets ' + scores[j][2] + ' VP from network size ' + scores[j][1]);
-      players[scores[j][0]].vp += scores[j][2];
-      players[scores[j][0]].vp_network += scores[j][2];
+      if(scores[j][0] != 0) {
+      addLog(logPlayerNameFun(players[j]) + ' gets ' + scores[j][0] + ' VP from network size ' + scores[j][1]);
+      players[j].vp += scores[j][0];
+      players[j].vp_network += scores[j][0];
     }
   }
 
   //resources
+  scores = getResourceEndScores();
   addLog('');
   for(var i = 0; i < players.length; i++) {
-    var resscore = getResourceEndGameScoring(players[i]);
-    addLog(logPlayerNameFun(players[i]) + ' gets ' + resscore + ' VP from resources');
-    players[i].vp += resscore;
-    players[i].vp_resources += resscore;
+    addLog(logPlayerNameFun(players[i]) + ' gets ' + scores[i] + ' VP from resources');
+    players[i].vp += scores[i];
+    players[i].vp_resources += scores[i];
   }
 
   //log final scores

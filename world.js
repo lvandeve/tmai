@@ -822,8 +822,7 @@ function networkConnected(player, x0, y0, x1, y1, costly) {
 function inReach(player, x, y, costly) {
   var color = player.color;
   var extra = getShipping(player);
-  if(player.faction == F_DWARVES) extra = 2;
-  if(player.faction == F_FAKIRS) extra = 3;
+  if(player.faction == F_DWARVES || player.faction == F_FAKIRS) extra = player.tunnelcarpetdistance + 1;
   if(extra < 1) extra = 1; //for bridges
   for(tx = x - extra - 1; tx <= x + extra + 1; tx++)
   for(ty = y - extra - 1; ty <= y + extra + 1; ty++) {
@@ -843,8 +842,7 @@ function getReachableTiles(player, x, y, costly) {
   var result = [];
   var color = player.color;
   var extra = getShipping(player);
-  if(player.faction == F_DWARVES) extra = 2;
-  if(player.faction == F_FAKIRS) extra = 3;
+  if(player.faction == F_DWARVES || player.faction == F_FAKIRS) extra = player.tunnelcarpetdistance + 1;
   if(extra < 1) extra = 1; //for bridges
   for(tx = x - extra - 1; tx <= x + extra + 1; tx++)
   for(ty = y - extra - 1; ty <= y + extra + 1; ty++) {
@@ -859,12 +857,9 @@ function getReachableTiles(player, x, y, costly) {
 //this is for fakirs carpets and dwarves tunneling. Only returns true if it is the exact required distance.
 //does not check for whether it's land and stuff.
 function factionConnected(player, x0, y0, x1, y1) {
-  if(player.faction == F_FAKIRS) {
-    if(built_sh(player) && hexDist(x0, y0, x1, y1) == 3) return true;
-    if(hexDist(x0, y0, x1, y1) == 2) return true;
-  }
-  else if(player.faction == F_DWARVES) {
-    if(hexDist(x0, y0, x1, y1) == 2) return true;
+  if(player.faction == F_DWARVES || player.faction == F_FAKIRS) {
+    var d = hexDist(x0, y0, x1, y1);
+    return d >= 2 && d <= player.tunnelcarpetdistance + 1;
   }
   return false;
 }
@@ -882,27 +877,6 @@ function onlyReachableThroughFactionSpecialWithBackupWorldBuildings(player, x, y
   buildings = backup2;
   return result;
 }
-
-//is a building of anything but your color in reach? requires a shipping array with the color as index
-//function inReachByOpponent(x, y, color, shiparray) {
-  //var shipping = 0;
-  //for(var i = 0; i < shiparray.length; i++) shipping = Math.max(shipping, shiparray[i]);
-  //var extra = shipping;
-  //if(extra < 1) extra = 1; //for bridges
-  //for(tx = x - extra - 1; tx <= x + extra + 1; tx++)
-  //for(ty = y - extra - 1; ty <= y + extra + 1; ty++) {
-    //if(outOfBounds(tx, ty)) continue;
-    //var rcolor = buildings[arCo(tx, ty)][1];
-    //if(rcolor == color) continue; //own buildings don't count
-    //if(landConnected(x, y, tx, ty)) {
-      //return true;
-    //}
-    //if(waterDistance(x, y, tx, ty) <= shiparray[rcolor]) {
-      //return true;
-    //}
-  //}
-  //return false;
-//}
 
 function hexDist(x0, y0, x1, y1) {
   function sign(x) { return x ? x < 0 ? -1 : 1 : 0; }

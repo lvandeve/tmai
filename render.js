@@ -414,6 +414,7 @@ function renderTownTile(px, py, tile, vp, text, onTileClick) {
       onTileClick(tile);
     };
     IEClickHack(elui);
+    elui.title = tileToHelpString(tile, true);
   }
 
   return [46, 46];
@@ -422,11 +423,14 @@ function renderTownTile(px, py, tile, vp, text, onTileClick) {
 function drawTownTile(px, py, tile, onTileClick) {
   var vp = 0;
   var text = '';
-  if(tile == T_TW_5VP_6C) { vp = 5; text = '6c'; }
+  if(tile == T_TW_2VP_2CULT) { vp = 2; text = 'cults2'; }
+  else if(tile == T_TW_4VP_SHIP) { vp = 4; text = 'ship/c'; }
+  else if(tile == T_TW_5VP_6C) { vp = 5; text = '6c'; }
   else if(tile == T_TW_6VP_8PW) { vp = 6; text = '8pw'; }
   else if(tile == T_TW_7VP_2W) { vp = 7; text = '2w'; }
   else if(tile == T_TW_8VP_CULT) { vp = 8; text = 'cults'; }
   else if(tile == T_TW_9VP_P) { vp = 9; text = '1p'; }
+  else if(tile == T_TW_11VP) { vp = 11; text = ''; }
   return renderTownTile(px, py, tile, vp, text, onTileClick);
 }
 
@@ -451,6 +455,7 @@ function renderBonusTile(px, py, tile, text1, text2, text3, onTileClick) {
       onTileClick(tile);
     };
     IEClickHack(elui);
+    elui.title = tileToHelpString(tile, true);
   }
 
   return [48, 63];
@@ -496,6 +501,7 @@ function renderFavorTile(px, py, tile, cult, num, text1, text2, onTileClick) {
       onTileClick(tile);
     };
     IEClickHack(elui);
+    elui.title = tileToHelpString(tile, true);
   }
 
   return [71, 61];
@@ -529,6 +535,8 @@ function renderRoundTile(px, py, tile, cult, num, text1, text2, index) {
   if(index > state.round) el.style.backgroundColor = '#88a';
   else if(index == state.round && state.type != S_GAME_OVER) el.style.backgroundColor = '#88ff88';
   else el.style.backgroundColor = '#444444';
+
+  el.title = tileToHelpString(tile, true);
 
   var text2el = makeDiv(px + 5, py + 5, hudElement);
   text2el.innerHTML = text1;
@@ -684,7 +692,7 @@ function dangerColor(danger, text) {
   return danger ? '<font color="red">' + text + '</font>' : text;
 }
 
-function drawPlayerPanel(px, py, player) {
+function drawPlayerPanel(px, py, player, scoreProjection) {
   var bg = makeSizedDiv(px - 5, py - 5, 1073, 185, hudElement)
   bg.style.border = player == players[0] ? '2px solid black' : '1px solid black';
   bg.style.backgroundColor = '#fff0e0';
@@ -738,11 +746,18 @@ function drawPlayerPanel(px, py, player) {
   else addText(px, py + 120, 'digging: N/A');
   if(player.maxshipping > 0) addText(px, py + 135, 'shipping: <b>' + getShipping(player) + '</b> (' + player.shipping + '/' + player.maxshipping + (player.bonusshipping ? ' + ' + player.bonusshipping : '') + ') advcost: ' + costToString(getAdvanceShipCost(player.faction)));
   else addText(px, py + 135, 'shipping: N/A');
-  var income = getIncome(player, player.passed /*display bonus tile income only when passed*/, state.round);
-  var dangerp = income[2] > player.pp - player.p;
-  var dangerpw = income[3] > player.pw0 * 2 + player.pw1;
-  addText(px, py + 150, 'income: ' + income[0] + ' c, ' + income[1] + ' w, ' +
-      dangerColor(dangerp, income[2] + ' p') + ', ' + dangerColor(dangerpw, income[3] + ' pw'));
+
+  if(state.round == 6 && state.type != S_GAME_OVER) {
+    var p = scoreProjection[player.index];
+    addText(px, py + 150, 'projected end vp: <b>' + p[0] + '</b> (current: ' + player.vp + ', cult: ' + p[1] + ', netw: ' + p[2] + ', res: ' + p[3] + ', pass: ' + p[4] + ')');
+  } else {
+    var income = getIncome(player, player.passed /*display bonus tile income only when passed*/, state.round);
+    var dangerp = income[2] > player.pp - player.p;
+    var dangerpw = income[3] > player.pw0 * 2 + player.pw1;
+
+    addText(px, py + 150, 'income: ' + income[0] + ' c, ' + income[1] + ' w, ' +
+        dangerColor(dangerp, income[2] + ' p') + ', ' + dangerColor(dangerpw, income[3] + ' pw'));
+  }
 
   addText(px, py + 165, 'octogons: ').title = 'the actions with an action token this player has exclusive access to (striked through when already used this round)';
   var actionsText = '';
@@ -787,7 +802,9 @@ function drawPlayerPanel(px, py, player) {
 //if onTileClick not null, added as onclick for the tile elements. Gets the tile as argument.
 function drawHud2(players, onTileClickMain) {
   hudElement.innerHTML = '';
-  for(var i = 0; i < players.length; i++) drawPlayerPanel(10, 900 + 205 * i, players[i]);
+  var scoreProjection;
+  if(state.round == 6) scoreProjection = projectEndGameScores();
+  for(var i = 0; i < players.length; i++) drawPlayerPanel(10, 900 + 205 * i, players[i], scoreProjection);
 
   drawTilesArray(5, 520, roundtiles, 500, 5, onTileClickMain);
   drawTilesMap(5, 595, bonustiles, 500, 5, onTileClickMain);
@@ -888,8 +905,10 @@ function drawSummary(px, py, playerIndex) {
   var income = getIncome(player, player.passed /*display bonus tile income only when passed*/, state.round);
   var dangerp = income[2] > player.pp - player.p;
   var dangerpw = income[3] > player.pw0 * 2 + player.pw1;
-  addText(px, py + 80, 'Income: &nbsp;&nbsp;&nbsp;<b>' + income[0] + ' c, ' + income[1] + ' w, ' +
-      dangerColor(dangerp, income[2] + ' p') + ', ' + dangerColor(dangerpw, income[3] + ' pw') + '</b>');
+  if(state.round != 6) {
+    addText(px, py + 80, 'Income: &nbsp;&nbsp;&nbsp;<b>' + income[0] + ' c, ' + income[1] + ' w, ' +
+        dangerColor(dangerp, income[2] + ' p') + ', ' + dangerColor(dangerpw, income[3] + ' pw') + '</b>');
+  }
 }
 
 function makeExecButton(player, x, y, parent, executButtonFun, title) {
@@ -1413,6 +1432,7 @@ each button fun receives the following object containing the dropdown states:
   presetround: [round1tile, round2tile, ...] --> none means random
   presetbonus: {preferred bonus tiles} --> those in the set will be chosen first with the random selection
   newcultistsrule
+  miniexpansion2013
 }
 */
 function renderPreScreen(px, py, standardButtonFun, presetButtonFun, beginnerButtonFun, observeButtonFun, debugButtonFun) {
@@ -1422,7 +1442,7 @@ function renderPreScreen(px, py, standardButtonFun, presetButtonFun, beginnerBut
       + 'Programmed by Lode Vandevenne.<br/>'
       + 'Drawings by Giordano Segatta.<br/>'
       + 'Based on: <a href="http://boardgamegeek.com/boardgame/120677/terra-mystica">http://boardgamegeek.com/boardgame/120677/terra-mystica</a><br/>'
-      + 'version: v0.6g (20131012)', parent);
+      + 'version: v0.7 (20131029)', parent);
 
   var ppy = py;
   var numPlayerEl = makeLabeledDropDown(px, ppy, 'num players', ['5', '4', '3', '2', '1'], parent);
@@ -1438,6 +1458,8 @@ function renderPreScreen(px, py, standardButtonFun, presetButtonFun, beginnerBut
 
   var newcultistcb = makeCheckbox(px, ppy + 50, parent, 'New cultists rule', 'The official new rule where cultists receive 1 power if everyone refuses to take power');
   newcultistcb.checked = true;
+  var miniexpansion2013cb = makeCheckbox(px + 160, ppy + 50, parent, 'New town tiles from the 2013 mini expansion');
+  miniexpansion2013cb.checked = true;
 
   ppy = py + 160;
   makeText(px, ppy, 'Preset factions', parent);
@@ -1498,6 +1520,7 @@ function renderPreScreen(px, py, standardButtonFun, presetButtonFun, beginnerBut
     }
 
     params.newcultistsrule = newcultistcb.checked;
+    params.miniexpansion2013 = miniexpansion2013cb.checked;
     
     fun(params);
   }
@@ -1629,11 +1652,14 @@ function tileToString(tile) {
   if(tile == T_FAV_1B_TPVP) return 'FAVtpvp';
   if(tile == T_FAV_1O_DVP) return 'FAVdvp';
   if(tile == T_FAV_1W_PASSTPVP) return 'FAVpassvp';
+  if(tile == T_TW_2VP_2CULT) return 'TW2';
+  if(tile == T_TW_4VP_SHIP) return 'TW4';
   if(tile == T_TW_5VP_6C) return 'TW5';
   if(tile == T_TW_6VP_8PW) return 'TW6';
   if(tile == T_TW_7VP_2W) return 'TW7';
   if(tile == T_TW_8VP_CULT) return 'TW8';
   if(tile == T_TW_9VP_P) return 'TW9';
+  if(tile == T_TW_11VP) return 'TW11';
   if(tile == T_ROUND_DIG2VP_1O1C) return 'RNDdigE';
   if(tile == T_ROUND_TW5VP_4O1DIG) return 'RNDtwvpE';
   if(tile == T_ROUND_D2VP_4B1P) return 'RNDdvpW';
@@ -1677,11 +1703,14 @@ function tileToStringLong(tile, prefix) {
   else if(tile == T_FAV_1B_TPVP) result += '1W tpvp';
   else if(tile == T_FAV_1O_DVP) result += '1E dvp';
   else if(tile == T_FAV_1W_PASSTPVP) result += '1A pass: tp [0,2,3,3,4] vp';
+  else if(tile == T_TW_2VP_2CULT) result += '2vp 4cults2 2key';
+  else if(tile == T_TW_4VP_SHIP) result += '4vp +ship/carpet';
   else if(tile == T_TW_5VP_6C) result += '5vp 6c';
   else if(tile == T_TW_6VP_8PW) result += '6vp 8pw';
   else if(tile == T_TW_7VP_2W) result += '7vp 2w';
   else if(tile == T_TW_8VP_CULT) result += '8vp 4cult';
   else if(tile == T_TW_9VP_P) result += '9vp 1p';
+  else if(tile == T_TW_11VP) result += '11vp';
   else if(tile == T_ROUND_DIG2VP_1O1C) result += 'dig2vp 1E=c';
   else if(tile == T_ROUND_TW5VP_4O1DIG) result += 'tw5vp 4E=spd';
   else if(tile == T_ROUND_D2VP_4B1P) result += 'dv2p 4W=p';
@@ -1691,6 +1720,58 @@ function tileToStringLong(tile, prefix) {
   else if(tile == T_ROUND_SHSA5VP_2W1W) result += 's5vp 2A=w';
   else if(tile == T_ROUND_TP3VP_4W1DIG) result += 'tp3vp 4A=spd';
   else result += 'unk';
+  return result;
+}
+
+function tileToHelpString(tile, prefix) {
+  var result = '';
+  if(prefix) {
+    if(tile > T_BON_BEGIN && tile < T_BON_END) prefix += 'passing bonus tile: ';
+    if(tile > T_FAV_BEGIN && tile < T_FAV_END) prefix += 'temple favor tile: ';
+    if(tile > T_TW_BEGIN && tile < T_TW_END) prefix += 'town tile: ';
+    if(tile > T_ROUND_BEGIN && tile < T_ROUND_END) prefix += 'round tile: ';
+  }
+  
+  if(tile == T_NONE) result += 'none';
+  else if(tile == T_DUD) result += 'dummy tile';
+  else if(tile == T_BON_SPADE_2C) result += 'free spade action + 2c income';
+  else if(tile == T_BON_CULT_4C) result += 'free cult action + 4c income';
+  else if(tile == T_BON_6C) result += '6c income';
+  else if(tile == T_BON_3PW_SHIP) result += '3pw income + temporary shiping distance increase';
+  else if(tile == T_BON_3PW_1W) result += '3pw + 2w income';
+  else if(tile == T_BON_PASSDVP_2C) result += '1vp per d when passing + 2c income';
+  else if(tile == T_BON_PASSTPVP_1W) result += 'of 2vp per tp when passing + 1w income';
+  else if(tile == T_BON_PASSSHSAVP_2W) result += 'of 4vp per sh/sa when passing + 2w income';
+  else if(tile == T_BON_1P) result += '1p income';
+  else if(tile == T_FAV_3R) result += '3 fire cult';
+  else if(tile == T_FAV_3B) result += '3 water cult';
+  else if(tile == T_FAV_3O) result += '3 earth cult';
+  else if(tile == T_FAV_3W) result += '3 air cult';
+  else if(tile == T_FAV_2R_6TW) result += '2 fire cult + form towns at 6 instead of 7 power';
+  else if(tile == T_FAV_2B_CULT) result += '3 water cult + free cult action';
+  else if(tile == T_FAV_2O_1PW1W) result += '3 earth cult + 1pw and 1w income';
+  else if(tile == T_FAV_2W_4PW) result += '3 air cult + 4pw income';
+  else if(tile == T_FAV_1R_3C) result += '1 fire cult + 3c income';
+  else if(tile == T_FAV_1B_TPVP) result += '1 water cult + 3vp when building tp';
+  else if(tile == T_FAV_1O_DVP) result += '1 earth cult + 2vp when building d';
+  else if(tile == T_FAV_1W_PASSTPVP) result += '1 air cult + [2,3,3,4] vp for [1,2,3,4] tp when passing';
+  else if(tile == T_TW_2VP_2CULT) result += '2vp + advance each cult twice + 2 instead of 1 town keys';
+  else if(tile == T_TW_4VP_SHIP) result += '4vp + free shiping advance (for fakirs: 1 extra carpet distance)';
+  else if(tile == T_TW_5VP_6C) result += '5vp + 6c';
+  else if(tile == T_TW_6VP_8PW) result += '6vp + 8pw';
+  else if(tile == T_TW_7VP_2W) result += '7vp + 2w';
+  else if(tile == T_TW_8VP_CULT) result += '8vp + advance each cult once';
+  else if(tile == T_TW_9VP_P) result += '9vp + 1p';
+  else if(tile == T_TW_11VP) result += '11vp';
+  else if(tile == T_ROUND_DIG2VP_1O1C) result += '2vp per spade action. End income: 1 coin per earth level';
+  else if(tile == T_ROUND_TW5VP_4O1DIG) result += '5vp when forming town. End income: 1 spade per 4 earth levels';
+  else if(tile == T_ROUND_D2VP_4B1P) result += '2vp when building dwelling. End income: 1 priest per 4 water levels';
+  else if(tile == T_ROUND_SHSA5VP_2R1W) result += '5vp when upgrading to sa/sh. End income: 1 worker per 2 fire levels';
+  else if(tile == T_ROUND_D2VP_4R4PW) result += '2vp when building dwelling. End income: 4 power per 4 fire levels';
+  else if(tile == T_ROUND_TP3VP_4B1DIG) result += '3vp when upgrading to tp. End income: 1 spade per 4 water levels';
+  else if(tile == T_ROUND_SHSA5VP_2W1W) result += '2vp when upgrading to sa/sh. End income: 1 worker per 2 air levels';
+  else if(tile == T_ROUND_TP3VP_4W1DIG) result += '3vp when upgrading to tp. End income: 1 spade per 4 air levels';
+  else result += 'unknown tile';
   return result;
 }
 

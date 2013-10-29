@@ -535,7 +535,14 @@ AI.prototype.getPreferredTownTile_ = function(player, tiles) {
 AI.prototype.scoreTownTile_ = function(player, tile, roundnum) {
   var score = 0;
 
-  if(tile == T_TW_5VP_6C) {
+  if(tile == T_TW_2VP_2CULT) {
+    //TODO: calculate if increasing all cults is benificial and give better score based on that
+    score++;
+  }
+  else if(tile == T_TW_4VP_SHIP) {
+    if(player.faction != F_DWARVES) score += 2;
+  }
+  else if(tile == T_TW_5VP_6C) {
     if(player.c < 10) score += 2;
   }
   else if(tile == T_TW_6VP_8PW) {
@@ -550,6 +557,9 @@ AI.prototype.scoreTownTile_ = function(player, tile, roundnum) {
   }
   else if(tile == T_TW_9VP_P) {
     if(player.p == 0) score += 2;
+  }
+  else if(tile == T_TW_11VP) {
+    if(state.round >= 6) score += 2;
   }
 
   return score;

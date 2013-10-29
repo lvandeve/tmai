@@ -617,5 +617,5 @@ document.onkeydown = function(e) {
   else result = true;
 
   return result; //this overrides shortcuts in e.g. firefox (e.g. / would do quick find in firefox)
-}
+};
 

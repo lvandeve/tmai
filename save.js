@@ -190,6 +190,7 @@ function serializeGameState(game) {
     for(var j = O_NONE + 1; j < O_END; j++) result += undef0(p.octogons[j]) + (j == O_END - 1 ? '\n' : ',');
     result += p.cult[0] + ',' + p.cult[1] + ',' + p.cult[2] + ',' + p.cult[3] + ',' + p.keys + '\n';
     result += p.shipping + ',' + p.maxshipping + ',' + p.bonusshipping + ',' + p.digging + ',' + p.maxdigging + '\n';
+    // player.tunnelcarpetdistance not saved: is instead calculated after loading
     result += p.vp_start + ',' + p.vp_round + ',' + p.vp_bonus + ',' + p.vp_town + ',' + p.vp_favor + ',' +
         p.vp_advance + ',' + p.vp_faction + ',' + p.vp_leech + ',' + p.vp_cult[0] + ',' + p.vp_cult[1] + ',' + p.vp_cult[2] + ',' + p.vp_cult[3] + ',' +
         p.vp_network + ',' + p.vp_resources + ',' + p.vp_other + '\n';
@@ -419,6 +420,17 @@ function deSerializeGameState(text) {
     player.vp_network = parseInt(el[12]);
     player.vp_resources = parseInt(el[13]);
     player.vp_other = parseInt(el[14]);
+
+    // values deduced from the rest:
+    player.tunnelcarpetdistance = 0;
+    if(player.faction = F_DWARVES) {
+      player.tunnelcarpetdistance = 1;
+    }
+    if(player.faction = F_FAKIRS) {
+      player.tunnelcarpetdistance = 1;
+      if(built_sh(player)) player.tunnelcarpetdistance++;
+      player.tunnelcarpetdistance += player.towntiles[T_TW_4VP_SHIP];
+    }
 
     index++;
   }

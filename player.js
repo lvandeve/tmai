@@ -116,6 +116,7 @@ var Player = function() {
   this.bonusshipping = 0; //temporarily while having the shipping bonus tile
   this.digging = 0;
   this.maxdigging = 2;
+  this.tunnelcarpetdistance = 0; // 1 for dwarves, 1-4 for fakirs
 
   //for more detailed VP statistics (these are shown on mouseover over VP in player panel, and some in the end game stats)
   this.vp_start = 20;
@@ -267,7 +268,10 @@ function initPlayerFaction(player) {
   if(player.faction == F_FAKIRS) player.maxdigging = 1;
   else if(player.faction == F_DARKLINGS) player.maxdigging = 0;
   
-  if(player.faction == F_FAKIRS || player.faction == F_DWARVES) player.maxshipping = 0;
+  if(player.faction == F_FAKIRS || player.faction == F_DWARVES) {
+    player.maxshipping = 0;
+    player.tunnelcarpetdistance = 1;
+  }
   else if(player.faction == F_MERMAIDS) {
     player.maxshipping = 5;
     player.shipping = 1;

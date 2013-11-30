@@ -25,6 +25,10 @@ freely, subject to the following restrictions:
 
 //JavaScript utilities
 
+////////////////////////////////////////////////////////////////////////////////
+// Objects and functions
+////////////////////////////////////////////////////////////////////////////////
+
 //bind a single argument to a function
 function bind(f, args) {
   var params = Array.prototype.slice.call(arguments);
@@ -73,12 +77,93 @@ function inherit(subclass, parent) {
   subclass.prototype.constructor = subclass;
 }
 
+// Exists in newer browsers, not in pre-9 IE.
+if(!Array.isArray) {
+  Array.isArray = function(arg) {
+    return Object.prototype.toString.call(arg) === "[object Array]";
+  };
+}
+
+//can encode things like 5, [1,2], [[1,2],3,[4,[5]]], ... as strings
+function encodeNestedArray(array) {
+  var stack = [[[array], 0]];
+  var result = '';
+  for(;;) {
+    var s = stack[stack.length - 1];
+    if(s[1] >= s[0].length) {
+      stack.pop();
+      if (stack.length == 0) break;
+      result += ']';
+    } else {
+      if(s[1] > 0) result += ',';
+      var el = s[0][s[1]];
+      if(Array.isArray(el)) {
+        result += '[';
+        stack.push([el, 0]);
+      } else {
+        result += el;
+      }
+      s[1]++;
+    }
+  }
+  return result;
+}
+
+// Decodes nested array from string in [] notation
+function decodeNestedArray(text) {
+  text = text.trim();
+  var result = [];
+  var stack = [];
+  stack.push(result);
+  var text2 = '';
+  for(var i = 1; i < text.length - 1; i++) {
+    var c = text.charAt(i);
+    if(c == '[') {
+      var a = [];
+      stack[stack.length - 1].push(a);
+      stack.push(a);
+    }
+    else if(c == ']') {
+      if(text2 != '') {
+        stack[stack.length - 1].push(parseInt(text2));
+        text2 = '';
+      }
+      stack.pop();
+    }
+    else if(c == ',') {
+      if(text2 != '') {
+        stack[stack.length - 1].push(parseInt(text2));
+        text2 = '';
+      }
+    }
+    else {
+      text2 += c;
+    }
+  }
+  if(text2 != '') stack[stack.length - 1].push(parseInt(text2));
+  return result;
+}
+
+////////////////////////////////////////////////////////////////////////////////
+// Math and random
+////////////////////////////////////////////////////////////////////////////////
+
 //wrap value in range [start,end - 1]
 function wrap(v, start, end) {
   if(end <= start) throw 'invalid range';
   while(v < start) v += (end - start);
   while(v >= end) v -= (end - start);
   return v;
+}
+
+//returns 0 for anything that is false, the value otherwise
+function undef0(v) {
+  return v || 0;
+}
+
+//x can be undefined and is then treated as 0
+function incrUndef(x, y) {
+  return x ? x + y : y;
 }
 
 //returns a random integer in range [0, limit - 1]
@@ -92,15 +177,90 @@ function randomIndex(array) {
   return randomInt(array.length);
 }
 
-//returns 0 for anything that is false, the value otherwise
-function undef0(v) {
-  return v || 0;
+//helper function for predictable pseudo random numbers
+function randomTwiddle_(key) {
+  key += ~(key << 15);
+  key ^= (key >> 10);
+  key += (key << 3);
+  key ^= (key >> 6);
+  key += ~ (key << 11);
+  key ^= (key >> 16);
+  return key;
 }
 
-//x can be undefined and is then treated as 0
-function incrUndef(x, y) {
-  return x ? x + y : y;
+//returns a predictable pseudo random number. The same key will always return the same number. It's a bit like a fast hash.
+//result is between 0 and 256
+function pseudoRandom(n) {
+  return ((randomTwiddle_(n) + 1) * 7) % 256;
 }
+
+function pseudoRandom2D(x, y) {
+  return pseudoRandom((y << 16) + x);
+}
+
+function pseudoRandom3D(x, y, z) {
+  return pseudoRandom((z << 32) + (y << 16) + x);
+}
+
+////////////////////////////////////////////////////////////////////////////////
+// DOM
+////////////////////////////////////////////////////////////////////////////////
+
+function makeElement(parent, tag) {
+  var el =  document.createElement(tag);
+  parent.appendChild(el);
+  return el;
+}
+
+function makeAbsElement(px, py, parent, tag) {
+  var el =  document.createElement(tag);
+  el.style.position = 'absolute';
+  el.style.left = '' + px + 'px';
+  el.style.top = '' + py + 'px';
+  parent.appendChild(el);
+  return el;
+}
+
+function makeDiv(px, py, parent) {
+  return makeAbsElement(px, py, parent, 'div');
+}
+
+function makeText(px, py, text, parent) {
+  var el = makeAbsElement(px, py, parent, 'div');
+  el.innerHTML = text;
+  return el;
+}
+
+function makeSizedDiv(px, py, sizex, sizey, parent) {
+  var el =  makeDiv(px, py, parent);
+  el.style.width = sizex;
+  el.style.height = sizey;
+  return el;
+}
+
+function makeSameSizeDiv(other, parent) {
+  var el =  document.createElement('div');
+  el.style.position = 'absolute';
+  el.style.left = other.style.left;
+  el.style.top = other.style.top;
+  el.style.width = other.style.width;
+  el.style.height = other.style.height;
+  parent.appendChild(el);
+  return el;
+}
+
+function makeLinkButton(px, py, text, parent) {
+  var el =  makeDiv(px, py, parent);
+  el.style.textDecoration = 'underline';
+  el.style.color = '#0000aa';
+  el.style.cursor = 'pointer';
+  el.innerHTML = text;
+  return el;
+}
+
+////////////////////////////////////////////////////////////////////////////////
+// CSS
+////////////////////////////////////////////////////////////////////////////////
 
 //supports the following formats: #aaa, #aaaaaa, rgb(10,20,30), rgba(10, 20, 30, 0.5). Does NOT support HSL, HSLA, color names.
 //returns the color as an array [r,g,b,a], everything in range 0-255.
@@ -169,7 +329,7 @@ function RGBToCssColor(rgba, format) {
     return 'rgb(' + r + ',' + g + ',' + b + ')';
   }
   else if(format == CSS_FORMAT_RGBA) {
-    // Does not work in IE
+    // Does not work in IE pre 9
     var r = Number(Math.floor(rgba[0])).toString(10);
     var g = Number(Math.floor(rgba[1])).toString(10);
     var b = Number(Math.floor(rgba[2])).toString(10);
@@ -177,10 +337,6 @@ function RGBToCssColor(rgba, format) {
     return 'rgba(' + r + ',' + g + ',' + b + ',' + a + ')';
   }
   return '#000'; //unknown
-}
-
-function trim(text) {
-  return text.replace(/\s/gm, '');
 }
 
 //adds text vertically and horizontally centered, multiline depending on width.
@@ -197,4 +353,53 @@ function makeCenteredText(text, width, x, y, parent) {
   div.innerHTML = text;
   parent.appendChild(div);
   return div;
+}
+
+////////////////////////////////////////////////////////////////////////////////
+// Text
+////////////////////////////////////////////////////////////////////////////////
+
+// Because not in pre-IE9
+if (!String.prototype.trim) {
+  String.prototype.trim = function () {
+    return this.replace(/^\s+|\s+$/g, '');
+  };
+}
+
+////////////////////////////////////////////////////////////////////////////////
+// Keyboard
+////////////////////////////////////////////////////////////////////////////////
+
+var keyHandlers_ = {};
+
+//This one is instead of onkeypress for some non-alphanumeric keys that don't trigger onkeypress in Chrome
+document.onkeydown = function(e) {
+  var k;
+  var ctrl;
+  if (window.event != null) {
+    k = window.event.keyCode;
+    ctrl = window.event.ctrlKey;
+  } else {
+    k = e.charCode;
+    if(k == 0) k = e.keyCode;
+    ctrl = e.ctrlKey;
+  }
+
+  var result = false;
+  if(!ctrl) {
+    if(keyHandlers_[k] != undefined) {
+      keyHandlers_[k]();
+    }
+    else result = true;
+  }
+  else result = true;
+
+  return result; //this overrides shortcuts in e.g. firefox (e.g. / would do quick find in firefox)
+};
+
+//dos_code: e.g. 13 for enter, 88 for X, ...
+//TODO: works in all browsers? e.g. what do the keycodes do on mac?
+function registerKeyHandler(dos_code, fun) {
+  if (dos_code.charCodeAt != undefined) dos_code = dos_code.charCodeAt(0);
+  keyHandlers_[dos_code] = fun;
 }

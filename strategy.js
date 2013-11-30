@@ -543,7 +543,7 @@ var defaultRestrictions = {
 // so it's an array of arrays of actions
 //restrictions is described at defaultRestrictions. It's values of resources, max power burn, extra consequence functions, etc...
 //This will return most possible action sequences, except combinatory explosions:
-// -in case of getting a favor, bonus or town tile, it is filled in with "T_DUD", and still needs to be filled in with a valid value by the user.
+// -in case of getting a favor, bonus or town tile, it is filled in with "T_DUMMY", and still needs to be filled in with a valid value by the user.
 // -in case of a multiple dig action spread over multiple tiles, NOT all combinations of tiles are returned
 /*
 To test this function in Chrome console:
@@ -571,29 +571,29 @@ function getPossibleActions(player, restrictions) {
     //Try digging in different ways
     var resources; //todo: support darklings priests, house of different price
     //TODO: check if power action is not already taken
-    if(!octogons[O_POW_2SPADE] && dist > 1) {
+    if(!octogons[A_POWER_2SPADE] && dist > 1) {
       var cost = getDigCost(player, Math.max(0, dist - 2));
       sumIncome(cost, [0,0,0,6,0]);
       addPossibleDigBuildActions(cost, player, restrictions, tiles[t], dist, A_POWER_2SPADE, costly, result);
     }
 
-    if(player.faction == F_GIANTS && player.b_sh == 0 && !player.octogons[O_FACTION_GIANTS] && dist == 2) {
+    if(player.faction == F_GIANTS && player.b_sh == 0 && !player.octogons[A_GIANTS_2SPADE] && dist == 2) {
       var cost = [0,0,0,0,0];
       addPossibleDigBuildActions(cost, player, restrictions, tiles[t], dist, A_GIANTS_2SPADE, costly, result);
     }
 
-    if(player.faction == F_NOMADS && player.b_sh == 0 && !player.octogons[O_FACTION_NOMADS] && hasOwnNeighborNoBridge(tiles[t][0], tiles[t][1], player.color)) {
+    if(player.faction == F_NOMADS && player.b_sh == 0 && !player.octogons[A_SANDSTORM] && hasOwnNeighborNoBridge(tiles[t][0], tiles[t][1], player.color)) {
       var cost = [0,0,0,0,0];
       addPossibleDigBuildActions(cost, player, restrictions, tiles[t], dist, A_SANDSTORM, costly, result);
     }
 
-    if(!octogons[O_POW_SPADE] && dist > 0) {
+    if(!octogons[A_POWER_SPADE] && dist > 0) {
       var cost = getDigCost(player, Math.max(0, dist - 1));
       sumIncome(cost, [0,0,0,4,0]);
       addPossibleDigBuildActions(cost, player, restrictions, tiles[t], dist, A_POWER_SPADE, costly, result);
     }
 
-    if(!player.octogons[O_BON_SPADE_2C] && player.bonustile == T_BON_SPADE_2C && dist > 0) {
+    if(!player.octogons[A_BONUS_SPADE] && player.bonustile == T_BON_SPADE_2C && dist > 0) {
       var cost = getDigCost(player, Math.max(0, dist - 1));
       addPossibleDigBuildActions(cost, player, restrictions, tiles[t], dist, A_BONUS_SPADE, costly, result);
     }
@@ -619,7 +619,7 @@ function getPossibleActions(player, restrictions) {
     if(b == B_D && player.b_tp > 0) {
       var neighbor = hasNeighbor(tiles[t][0], tiles[t][1], player.color);
       addPossibleUpgradeAction(getBuildingCost(player.faction, B_TP, neighbor), player, restrictions, tiles[t], A_UPGRADE_TP, result);
-      if(player.faction == F_SWARMLINGS && player.b_sh < 1 && !player.octogons[O_FACTION_SWARMLINGS]) addPossibleUpgradeAction([0,0,0,0,0], player, restrictions, tiles[t], A_SWARMLINGS_TP, result);
+      if(player.faction == F_SWARMLINGS && player.b_sh < 1 && !player.octogons[A_SWARMLINGS_TP]) addPossibleUpgradeAction([0,0,0,0,0], player, restrictions, tiles[t], A_SWARMLINGS_TP, result);
     } else if(b == B_TP) {
       if(player.b_te > 0) addPossibleUpgradeAction(getBuildingCost(player.faction, B_TE, false), player, restrictions, tiles[t], A_UPGRADE_TE, result);
       if(player.b_sh > 0) addPossibleUpgradeAction(getBuildingCost(player.faction, B_SH, false), player, restrictions, tiles[t], A_UPGRADE_SH, result);
@@ -631,7 +631,7 @@ function getPossibleActions(player, restrictions) {
   //bridge
   //TODO: the engineers version
   var bactions = [];
-  if(!octogons[O_POW_BRIDGE] && player.bridges > 0 && canGetResources(player, [0,0,0,3,0], restrictions, bactions)) {
+  if(!octogons[A_POWER_BRIDGE] && player.bridges > 0 && canGetResources(player, [0,0,0,3,0], restrictions, bactions)) {
     tiles = getOccupiedTiles(player);
     var dirs = [D_N, D_NE, D_SE, D_S, D_SW, D_NW];
     for(var t = 0; t < tiles.length; t++) {
@@ -653,35 +653,35 @@ function getPossibleActions(player, restrictions) {
   }
 
   //resource power actions
-  if(!octogons[O_POW_1P]) addPossibleSimpleAction([0,0,0,3,0], player, restrictions, A_POWER_1P, result);
-  if(!octogons[O_POW_2W]) addPossibleSimpleAction([0,0,0,4,0], player, restrictions, A_POWER_2W, result);
-  if(!octogons[O_POW_7C]) addPossibleSimpleAction([0,0,0,4,0], player, restrictions, A_POWER_7C, result);
+  if(!octogons[A_POWER_1P]) addPossibleSimpleAction([0,0,0,3,0], player, restrictions, A_POWER_1P, result);
+  if(!octogons[A_POWER_2W]) addPossibleSimpleAction([0,0,0,4,0], player, restrictions, A_POWER_2W, result);
+  if(!octogons[A_POWER_7C]) addPossibleSimpleAction([0,0,0,4,0], player, restrictions, A_POWER_7C, result);
 
   //advance actions
   if(canAdvanceShip(player)) addPossibleSimpleAction(getAdvanceShipCost(player.faction), player, restrictions, A_ADV_SHIP, result);
   if(canAdvanceDig(player)) addPossibleSimpleAction(getAdvanceDigCost(player.faction), player, restrictions, A_ADV_DIG, result);
 
   //priests to cults
-  for(var c = C_R; c <= C_W; c++) {
+  for(var c = C_F; c <= C_A; c++) {
     if(cultp[c][0] == N) addPossibleSimpleAction([0,0,1,0,0], player, restrictions, A_CULT_PRIEST3, result).cult = c;
     if(cultp[c][3] == N) addPossibleSimpleAction([0,0,1,0,0], player, restrictions, A_CULT_PRIEST2, result).cult = c;
     addPossibleSimpleAction([0,0,1,0,0], player, restrictions, A_CULT_PRIEST1, result).cult = c;
   }
 
   //other cult actions
-  if(player.bonustile == T_BON_CULT_4C && !player.octogons[O_BON_CULT_4C]) {
-    for(var c = C_R; c <= C_W; c++) addPossibleSimpleAction([0,0,0,0,0], player, restrictions, A_BONUS_CULT, result).cult = c;
+  if(player.bonustile == T_BON_CULT_4C && !player.octogons[A_BONUS_CULT]) {
+    for(var c = C_F; c <= C_A; c++) addPossibleSimpleAction([0,0,0,0,0], player, restrictions, A_BONUS_CULT, result).cult = c;
   }
-  if(player.favortiles[T_FAV_2B_CULT] && !player.octogons[O_FAV_2B_CULT]) {
-    for(var c = C_R; c <= C_W; c++) addPossibleSimpleAction([0,0,0,0,0], player, restrictions, A_FAVOR_CULT, result).cult = c;
+  if(player.favortiles[T_FAV_2W_CULT] && !player.octogons[A_FAVOR_CULT]) {
+    for(var c = C_F; c <= C_A; c++) addPossibleSimpleAction([0,0,0,0,0], player, restrictions, A_FAVOR_CULT, result).cult = c;
   }
-  if(player.faction == F_AUREN && player.b_sh == 0 && !player.octogons[O_FACTION_AUREN]) {
+  if(player.faction == F_AUREN && player.b_sh == 0 && !player.octogons[A_AUREN_CULT]) {
     var cost = [0,0,0,0,0];
-    for(var c = C_R; c <= C_W; c++) addPossibleSimpleAction([0,0,0,0,0], player, restrictions, A_AUREN_CULT, result).cult = c;
+    for(var c = C_F; c <= C_A; c++) addPossibleSimpleAction([0,0,0,0,0], player, restrictions, A_AUREN_CULT, result).cult = c;
   }
 
   //witches
-  if(player.faction == F_WITCHES && player.b_sh == 0 && player.b_d > 0 && !player.octogons[O_FACTION_WITCHES]) {
+  if(player.faction == F_WITCHES && player.b_sh == 0 && player.b_d > 0 && !player.octogons[A_WITCHES_D]) {
     var tiles = getFreeTilesOfSameColor(player.color);
     for(var i = 0; i < tiles.length; i++) {
       var a = new Action(A_WITCHES_D);
@@ -695,9 +695,9 @@ function getPossibleActions(player, restrictions) {
     for(var j = 0; j < result[i].length; j++) {
       var num;
       num = actionGivesFavorTile(player, result[i][j]);
-      for(var k = 0; k < num; k++) result[i][j].favtiles.push(T_DUD);
+      for(var k = 0; k < num; k++) result[i][j].favtiles.push(T_DUMMY);
       num = actionCreatesTown(player, result[i][j], result[i]);
-      for(var k = 0; k < num; k++) result[i][j].twtiles.push(T_DUD);
+      for(var k = 0; k < num; k++) result[i][j].twtiles.push(T_DUMMY);
     }
   }
 
@@ -716,7 +716,7 @@ function getPossibleActions(player, restrictions) {
         if(tw.length > 0) {
           var a = new Action(A_CONNECT_WATER_TOWN);
           a.co = tiles[j];
-          a.twtiles.push(T_DUD);
+          a.twtiles.push(T_DUMMY);
           result[i].push(a);
           break;
         }
@@ -1006,7 +1006,7 @@ function scoreAction(player, actions, values, roundnum) {
 
   if(cult[0] || cult[1] || cult[2] || cult[3]) {
     //cap the cults to max of cult track
-    for(var i = C_R; i <= C_W; i++) {
+    for(var i = C_F; i <= C_A; i++) {
       var total = cult[i];
       var actual = willGiveCult(player, i, total);
       if(t_tw && player.cult[i] + actual == 9 && total > actual) actual++; //new town key not known by willGiveCult
@@ -1024,19 +1024,19 @@ function scoreAction(player, actions, values, roundnum) {
 
   // TODO: I don't think all bonuses are in here yet
   var roundtile = roundtiles[roundnum];
-  if(roundtile == T_ROUND_TP3VP_4B1DIG || roundtile == T_ROUND_TP3VP_4W1DIG) {
+  if(roundtile == T_ROUND_TP3VP_4W1DIG || roundtile == T_ROUND_TP3VP_4A1DIG) {
     res[4] += b_tp * 3;
   }
-  if(player.favortiles[T_FAV_1B_TPVP]) {
+  if(player.favortiles[T_FAV_1W_TPVP]) {
     res[4] += b_tp * 3;
   }
-  if(roundtile == T_ROUND_D2VP_4B1P || roundtile == T_ROUND_D2VP_4R4PW) {
+  if(roundtile == T_ROUND_D2VP_4W1P || roundtile == T_ROUND_D2VP_4F4PW) {
     res[4] += b_d * 2;
   }
-  if(player.favortiles[T_FAV_1O_DVP]) {
+  if(player.favortiles[T_FAV_1E_DVP]) {
     res[4] += b_d * 2;
   }
-  if(roundtile == T_ROUND_DIG2VP_1O1C) {
+  if(roundtile == T_ROUND_DIG2VP_1E1C) {
     res[4] += spades * 2;
   }
   if(player.faction == F_HALFLINGS) {
@@ -1045,7 +1045,7 @@ function scoreAction(player, actions, values, roundnum) {
   if(player.faction == F_DARKLINGS) {
     res[4] += workerdig * 2;
   }
-  if(roundtile == T_ROUND_SHSA5VP_2R1W || roundtile == T_ROUND_SHSA5VP_2W1W) {
+  if(roundtile == T_ROUND_SHSA5VP_2F1W || roundtile == T_ROUND_SHSA5VP_2A1W) {
     res[4] += (b_sh + b_sa) * 4;
   }
 
@@ -1070,7 +1070,7 @@ function scoreAction(player, actions, values, roundnum) {
   result += forbridge * values.forbridge;
   result += dig * values.dig;
   result += cultspades * values.cultspade;
-  for(var i = C_R; i < C_W; i++) {
+  for(var i = C_F; i < C_A; i++) {
     var num = cult[i];
     if(num == 1) result += values.cult[0][i];
     else if(num == 2) result += values.cult[1][i];
@@ -1147,7 +1147,7 @@ function getHighestOtherPlayerValueOnCult(player, cult) {
 function getMostThreatenedWinningCultTrack(player) {
   var highestscore = -1; //threat score
   var track = C_NONE;
-  for(var i = C_R; i <= C_W; i++) {
+  for(var i = C_F; i <= C_A; i++) {
     highestvalue = getHighestOtherPlayerValueOnCult(player, i);
     if(player.cult[i] <= highestvalue) continue; //not a winning cult track
     var score = highestvalue < 10 ? highestvalue : 0;

@@ -25,36 +25,16 @@ freely, subject to the following restrictions:
 
 //Players and the parameters of their factions.
 
-//Faction enum
-var F_NONE = 0;
-var F_GENERIC = 1; //generic faction, has none of the properties of the actual factions
-var F_START = 2; //not a faction, indicator of start of official game factions
-var F_CHAOS = 3;
-var F_GIANTS = 4;
-var F_FAKIRS = 5;
-var F_NOMADS = 6;
-var F_HALFLINGS = 7;
-var F_CULTISTS = 8;
-var F_ALCHEMISTS = 9;
-var F_DARKLINGS = 10;
-var F_MERMAIDS = 11;
-var F_SWARMLINGS = 12;
-var F_AUREN = 13;
-var F_WITCHES = 14;
-var F_ENGINEERS = 15;
-var F_DWARVES = 16;
-var F_END = 17; //not a faction, indicator of end of official game factions
-
 //returns the landscape color of the given faction
 function factionColor(faction) {
   if(faction == F_NONE) return I;
   if(faction == F_CHAOS || faction == F_GIANTS) return R;
   if(faction == F_FAKIRS || faction == F_NOMADS) return Y;
-  if(faction == F_HALFLINGS || faction == F_CULTISTS) return O;
+  if(faction == F_HALFLINGS || faction == F_CULTISTS) return U;
   if(faction == F_ALCHEMISTS || faction == F_DARKLINGS) return K;
   if(faction == F_MERMAIDS || faction == F_SWARMLINGS) return B;
   if(faction == F_AUREN || faction == F_WITCHES) return G;
-  if(faction == F_ENGINEERS || faction == F_DWARVES) return E;
+  if(faction == F_ENGINEERS || faction == F_DWARVES) return S;
   return R; //generic debug faction. Gfactionfully return some value.
 }
 
@@ -62,16 +42,13 @@ function factionColor(faction) {
 function colorFactions(color) {
   if(color == R) return [F_CHAOS, F_GIANTS];
   if(color == Y) return [F_FAKIRS, F_NOMADS];
-  if(color == O) return [F_HALFLINGS, F_CULTISTS];
+  if(color == U) return [F_HALFLINGS, F_CULTISTS];
   if(color == K) return [F_ALCHEMISTS, F_DARKLINGS];
   if(color == B) return [F_MERMAIDS, F_SWARMLINGS];
   if(color == G) return [F_AUREN, F_WITCHES];
-  if(color == E) return [F_ENGINEERS, F_DWARVES];
+  if(color == S) return [F_ENGINEERS, F_DWARVES];
   throw 'invalid faction color';
 }
-
-var factionNames = ['none', 'generic', 'invalid [start]', 'chaosmag', 'giants', 'fakirs', 'nomads', 'halflings', 'cultists', 'alchemists', 'darklings', 'mermaids', 'swarmlings', 'auren', 'witches', 'engineers', 'dwarves', 'invalid [end]'];
-
 
 //Constructor for Player
 var Player = function() {
@@ -81,7 +58,7 @@ var Player = function() {
   this.human = true;
 
   this.faction = F_NONE;
-  this.color = I;
+  this.color = N;
 
   this.passed = false;
 
@@ -117,20 +94,11 @@ var Player = function() {
   this.digging = 0;
   this.maxdigging = 2;
   this.tunnelcarpetdistance = 0; // 1 for dwarves, 1-4 for fakirs
+  this.maxtunnelcarpetdistance = 0;
 
   //for more detailed VP statistics (these are shown on mouseover over VP in player panel, and some in the end game stats)
-  this.vp_start = 20;
-  this.vp_round = 0; //from any round bonus
-  this.vp_bonus = 0; //from any bonus tile passing
-  this.vp_town = 0; //from town tiles (excludes faction and round town VPs, those are in vp_faction and vp_round)
-  this.vp_favor = 0; //from any favor tile (building or passing)
-  this.vp_advance = 0; //from advancing shipping or digging
-  this.vp_faction = 0; //from faction-specific VP abilities (e.g. fakirs carpet. Can be negative for alchemists. Positive conversion at goes to vp_resources though)
-  this.vp_leech = 0; //0 or negative
-  this.vp_cult = [0,0,0,0]; //end game cult tracks
-  this.vp_network = 0; //end game network
-  this.vp_resources = 0; //end game resources
-  this.vp_other = 0; //anything else not included in the categories above. This should be zero normally.
+  this.vp_reason = {start:20}; //map of named vp reasons to number. This is a rough reason, e.g. any passing bonus tile has reason 'bonus'
+  this.vp_detail = {start:20}; //map of named vp detailed reasons to number. This is a detailed reason, e.g. for a passing bonus tile it's the tile codename
 
   // Temporary resources and state only valid during an action sequence. These are cleared after the action sequence is done.
   this.numactions = 1; //how much actions you can do this turn. 1 at start of your turn. 0 as soon as a turn action is taken. Set to 2 if chaos magicians double action is used. Note that convert actions (and some others) do not count towards this.
@@ -160,9 +128,26 @@ function initPlayerTemporaryTurnState(player) {
   player.tunnelcarpet = null;
 }
 
+//reason is a rough reason, e.g. 'bonus' for any pass bonus tile, 'cult' for any cult track, ...
+//details is the exact reason, e.g. the name of the cult track or bonus tile, ...
+Player.prototype.addVP = function(vp, reason, detail) {
+  if(vp != 0) this.vp_reason[reason] = incrUndef(this.vp_reason[reason], vp);
+  if(vp != 0) this.vp_detail[detail] = incrUndef(this.vp_detail[detail], vp);
+  this.vp += vp;
+}
+
+//Get the VP for the given reason
+Player.prototype.getVPFor = function(reason) {
+  return undef0(this.vp_reason[reason]);
+}
+
+Player.prototype.getVPForDetail = function(detail) {
+  return undef0(this.vp_detail[detail]);
+}
+
 function getShipping(player) {
   var result = player.shipping
-  if(state.type != S_ROUND_END) result += player.bonusshipping; //shipping bonus tile does not work during round bonus digging
+  if(state.type != S_ROUND_END_DIG) result += player.bonusshipping; //shipping bonus tile does not work during round bonus digging
   return result;
 }
 
@@ -258,11 +243,8 @@ function giveStartingResources(player) {
   }
 }
 
-//initialize player parameters based on faction: shipping and digging, cults, staring resources
-function initPlayerFaction(player) {
-  initCult(player);
-  giveStartingResources(player);
-  
+//initialize player stats based on faction: shipping and digging
+function initPlayerFactionStats(player) {
   player.maxshipping = 3;
   player.maxdigging = 2;
   if(player.faction == F_FAKIRS) player.maxdigging = 1;
@@ -271,11 +253,19 @@ function initPlayerFaction(player) {
   if(player.faction == F_FAKIRS || player.faction == F_DWARVES) {
     player.maxshipping = 0;
     player.tunnelcarpetdistance = 1;
+    player.maxtunnelcarpetdistance = player.faction == F_FAKIRS ? 4 : 1;
   }
   else if(player.faction == F_MERMAIDS) {
     player.maxshipping = 5;
     player.shipping = 1;
   }
+}
+
+//initialize player parameters based on faction: shipping and digging, cults, staring resources
+function initPlayerFaction(player) {
+  initCult(player);
+  giveStartingResources(player);
+  initPlayerFactionStats(player);
 }
 
 function shippingBonusTileWorks(player) {

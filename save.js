@@ -40,7 +40,6 @@ function saveGameState(includeLog) {
   game.roundtiles = clone(roundtiles);
   game.state = clone(state);
   if(includeLog) game.logText = logText;
-  //game.humanstate = humanstate;
   return game;
 }
 
@@ -61,7 +60,6 @@ function loadGameState(game) {
     logText = game.logText;
     logEl.innerHTML = logText;
   }
-  //humanstate = game.humanstate;
 
   waterDistanceCalculated = [];
   createColorToPlayerMap();
@@ -71,161 +69,214 @@ function loadGameState(game) {
 
 //also reinits
 function loadGameStateHard(game) {
-  loadGameState(game);
-  clearHumanState();
-  clearPopupElementNow();
-  if(state.currentStateDone) state.nextState();
-  else state.executeState();
-  showingNextButtonPanel = false;
-  pactions = [];
+  // Make any previous callbacks finish fully
+  window.setTimeout(function() {
+    loadGameState(game);
+    clearHumanState();
+    clearPopupElementNow();
+    showingNextButtonPanel = false;
+    pactions = [];
 
-  uiElement.innerHTML = '';
-  drawMap();
-  drawMapClick();
-  drawSaveLoadUI(false);
-  drawHud();
+    state.executeState();
+
+    uiElement.innerHTML = '';
+    drawMap();
+    drawMapClick();
+    drawSaveLoadUI(false);
+    drawHud();
+
+    //nextState(state.type, true); //this is an alternative rather than doing state.executeState() above, but requires player to press "Next"
+  }, 0);
 }
-
-function encode3DArray(array) {
-  var result = '[';
-  for(var i = 0; i < array.length; i++) {
-    result += '[';
-    for(var j = 0; j < array[i].length; j++) {
-      result += '[';
-      var num = array[i][j].length;
-      for(var k = 0; k < num; k++) result += array[i][j][k] + (k < num - 1 ? ',' : '');
-      result += ']';
-      if(j < array[i].length - 1) result += ',';
-    }
-    result += ']';
-    if(i < array.length - 1) result += ',';
-  }
-  result += ']';
-  return result;
-}
-
-function decode3DArray(text) {
-  text = trim(text);
-  var result = [];
-  var stack = [];
-  stack.push(result);
-  var text2 = '';
-  for(var i = 1; i < text.length - 1; i++) {
-    var c = text.charAt(i);
-    if(c == '[') {
-      var a = [];
-      stack[stack.length - 1].push(a);
-      stack.push(a);
-    }
-    else if(c == ']') {
-      if(text2 != '') {
-        stack[stack.length - 1].push(parseInt(text2));
-        text2 = '';
-      }
-      stack.pop();
-    }
-    else if(c == ',') {
-      if(text2 != '') {
-        stack[stack.length - 1].push(parseInt(text2));
-        text2 = '';
-      }
-    }
-    else {
-      text2 += c;
-    }
-  }
-  if(text2 != '') stack[stack.length - 1].push(parseInt(text2));
-  return result;
-}
-
-var colorLetters = ['n' /*null, edge of hexmap*/, 'R', 'Y', 'O', 'K', 'B', 'G', 'E', 'i' /*river*/];
-var buildingLetters = ['n' /*none*/, 'D', 'P', 'E', 'H', 'A', 'M' /*mermaids*/];
 
 //returns it as a string
 function serializeGameState(game) {
   var result = '';
+  var comma = false;
   
   result += 'size:\n';
   result += '' + BW + ',' + BH;
   result += '\n';
   
-  result += 'landscape:\n';
+  result += '\nlandscape:\n';
 
   for(var y = 0; y < BH; y++) {
     if(y % 2 == 1) result += ' ';
     for(var x = 0; x < BW; x++) {
-      result += colorLetters[getWorld(x, y)] + ',';
+      result += colorCodeName[getWorld(x, y)] + ',';
     }
     result += '\n';
   }
   
-  result += 'buildings:\n';
+  result += '\nbuildings:\n';
   for(var y = 0; y < BH; y++) {
     if(y % 2 == 1) result += ' ';
     for(var x = 0; x < BW; x++) {
-      result += buildingLetters[getBuilding(x, y)[0]] + ',';
+      result += buildingCodeName[getBuilding(x, y)[0]] + ',';
     }
     result += '\n';
   }
   
-  result += 'bridges:\n';
+  result += '\nbridges:\n';
+  comma = false;
   for(var y = 0; y < BH; y++) {
-    if(y % 2 == 1) result += '  ';
     for(var x = 0; x < BW; x++) {
-      var code = colorLetters[bridges[arCo(x, y)][0]] + colorLetters[bridges[arCo(x, y)][1]] + colorLetters[bridges[arCo(x, y)][2]];
-      result += code + ',';
+      for(var z = 0; z < 3; z++) {
+        if(bridges[arCo(x, y)][z] != N) {
+          var co = bridgeCo(x, y, [D_N, D_NE, D_SE][z]);
+          if (comma) result += ',';
+          result += printCo(x, y) + printCo(co[0], co[1]) + colorCodeName[bridges[arCo(x, y)][z]];
+          comma = true;
+        }
+      }
     }
-    result += '\n';
   }
-
-  for(var i = 0; i < players.length; i++) {
-    var p = players[i];
-    result += 'player:\n';
-    result += p.name + ',' + p.human + ',' + p.faction + ',' + colorLetters[p.color] + ',' + p.passed + '\n';
-    result += p.c + ',' + p.w + ',' + p.p + ',' + p.pp + ',' + p.pw0 + ',' + p.pw1 + ',' + p.pw2 + ',' + p.vp + '\n';
-    result += p.b_d + ',' + p.b_tp + ',' + p.b_te + ',' + p.b_sh + ',' + p.b_sa + ',' + p.bridges + '\n';
-    result += '' + (p.bonustile ? (p.bonustile - T_BON_BEGIN) : 0) + '\n';
-    for(var j = T_FAV_BEGIN + 1; j < T_FAV_END; j++) result += undef0(p.favortiles[j]) + (j == T_FAV_END - 1 ? '\n' : ',');
-    for(var j = T_TW_BEGIN + 1; j < T_TW_END; j++) result += undef0(p.towntiles[j]) + (j == T_TW_END - 1 ? '\n' : ',');
-    for(var j = O_NONE + 1; j < O_END; j++) result += undef0(p.octogons[j]) + (j == O_END - 1 ? '\n' : ',');
-    result += p.cult[0] + ',' + p.cult[1] + ',' + p.cult[2] + ',' + p.cult[3] + ',' + p.keys + '\n';
-    result += p.shipping + ',' + p.maxshipping + ',' + p.bonusshipping + ',' + p.digging + ',' + p.maxdigging + '\n';
-    // player.tunnelcarpetdistance not saved: is instead calculated after loading
-    result += p.vp_start + ',' + p.vp_round + ',' + p.vp_bonus + ',' + p.vp_town + ',' + p.vp_favor + ',' +
-        p.vp_advance + ',' + p.vp_faction + ',' + p.vp_leech + ',' + p.vp_cult[0] + ',' + p.vp_cult[1] + ',' + p.vp_cult[2] + ',' + p.vp_cult[3] + ',' +
-        p.vp_network + ',' + p.vp_resources + ',' + p.vp_other + '\n';
-  }
+  result += '\n';
   
-  result += 'octogons:\n';
-  for(var i = O_NONE + 1; i < O_END; i++) result += undef0(game.octogons[i]) + (i == O_END - 1 ? '\n' : ',');
-  
-  result += 'cultpriests:\n';
+  result += '\ncultpriests:\n';
   for(var i = 0; i < 16; i++) {
-    result += game.cultp[Math.floor(i / 4)][i % 4];
+    result += colorCodeName[game.cultp[Math.floor(i / 4)][i % 4]];
     if(i < 15) result += ',';
   }
   result += '\n';
   
-  result += 'tiles:\n';
-  for(var i = T_BON_BEGIN + 1; i < T_BON_END; i++) result += game.bonustiles[i] + (i == T_BON_END - 1 ? '\n' : ',');
-  for(var i = T_BON_BEGIN + 1; i < T_BON_END; i++) result += undef0(game.bonustilecoins[i]) + (i == T_BON_END - 1 ? '\n' : ',');
-  for(var i = T_FAV_BEGIN + 1; i < T_FAV_END; i++) result += game.favortiles[i] + (i == T_FAV_END - 1 ? '\n' : ',');
-  for(var i = T_TW_BEGIN + 1; i < T_TW_END; i++) result += game.towntiles[i] + (i == T_TW_END - 1 ? '\n' : ',');
-  for(var i = 1; i <= 6; i++) result += '' + (game.roundtiles[i] - T_ROUND_BEGIN - 1) + (i == 6 ? '\n' : ',');
-  
-  result += 'gamestate:\n';
-  result += '' + game.state.type + ',' + game.state.round + ',' + game.state.startPlayer + ',' + game.state.currentPlayer + ',' + game.state.rounddigsdone  + ',' + game.state.currentStateDone + '\n';
-  result += '' + encode3DArray(game.state.leecharray) + ',' + game.state.leechi + ',' + game.state.leechj + ',' + game.state.leechtaken + '\n';
+  result += '\ntiles:\n';
 
-  if(game.logText) {
+  result += 'bon=';
+  comma = false;
+  for(var i = T_BON_BEGIN + 1; i < T_BON_END; i++) {
+    if(game.bonustiles[i]) {
+      if (comma) result += ',';
+      result += getTileCodeName(i) + ' ' + undef0(game.bonustilecoins[i]);
+      comma = true;
+    }
+  }
+  result += '\n';
+
+  result += 'fav=';
+  comma = false;
+  for(var i = T_FAV_BEGIN + 1; i < T_FAV_END; i++) {
+    if(game.favortiles[i]) {
+      if (comma) result += ',';
+      result += getTileCodeName(i) + ' ' + undef0(game.favortiles[i]);
+      comma = true;
+    }
+  }
+  result += '\n';
+
+  result += 'tw=';
+  comma = false;
+  for(var i = T_TW_BEGIN + 1; i < T_TW_END; i++) {
+    if(game.towntiles[i]) {
+      if (comma) result += ',';
+      result += getTileCodeName(i) + ' ' + undef0(game.towntiles[i]);
+      comma = true;
+    }
+  }
+  result += '\n';
+
+  result += 'rnd=';
+  for(var i = 1; i <= 6; i++) result += '' + getTileCodeName(game.roundtiles[i]) + (i == 6 ? '\n' : ',');
+  
+  result += 'oct=';
+  comma = false;
+  for(var j = A_BEGIN + 1; j < A_END; j++) {
+    if(game.octogons[j]) {
+      if (comma) result += ',';
+      result += getActionCodeName(j);
+      comma = true;
+    }
+  }
+  result += '\n';
+  
+  result += '\ngamestate:\n';
+  result += 'state=' + getGameStateCodeName(game.state.type) + ',' + game.state.round + ',' + game.state.startPlayer + ',' + game.state.currentPlayer + '\n';
+  result += 'leech=' + encodeNestedArray(game.state.leecharray) + ',' + game.state.leechi + ',' + game.state.leechtaken + '\n';
+
+  for(var i = 0; i < players.length; i++) {
+    var p = players[i];
+    result += '\nplayer:\n';
+
+    result += 'bio=';
+    result += p.name + ',' + (p.human ? 'human' : 'ai') + ',' + getFactionCodeName(p.faction) + ',' + colorCodeName[p.color] + '\n'
+
+    result += 'passed=';
+    result += p.passed + '\n';
+
+    result += 'res=';
+    result += p.c + ',' + p.w + ',' + p.p + ',' + p.pp + ',' + p.pw0 + ',' + p.pw1 + ',' + p.pw2 + ',' + p.vp + '\n';
+
+    result += 'buildings=';
+    result += p.b_d + ',' + p.b_tp + ',' + p.b_te + ',' + p.b_sh + ',' + p.b_sa + ',' + p.bridges + '\n';
+
+    result += 'bon=';
+    result += '' + getTileCodeName(p.bonustile ? p.bonustile : T_NONE) + '\n';
+
+    result += 'fav=';
+    comma = false;
+    for(var j = T_FAV_BEGIN + 1; j < T_FAV_END; j++) {
+      if(p.favortiles[j]) {
+        if (comma) result += ',';
+        result += getTileCodeName(j) + ' ' + 1; // the 1 is useless but is for consistency
+        comma = true;
+      }
+    }
     result += '\n';
-    result += 'log:\n';
-    result += game.logText.replace(/<br\/>/g, '\n');
+
+    result += 'tw=';
+    comma = false;
+    for(var j = T_TW_BEGIN + 1; j < T_TW_END; j++) {
+      if(p.towntiles[j]) {
+        if (comma) result += ',';
+        result += getTileCodeName(j) + ' ' + p.towntiles[j];
+        comma = true;
+      }
+    }
+    result += '\n';
+
+    result += 'oct=';
+    comma = false;
+    for(var j = A_BEGIN + 1; j < A_END; j++) {
+      if(p.octogons[j]) {
+        if (comma) result += ',';
+        result += getActionCodeName(j);
+        comma = true;
+      }
+    }
+    result += '\n';
+
+    result += 'cult=';
+    result += p.cult[0] + ',' + p.cult[1] + ',' + p.cult[2] + ',' + p.cult[3] + ',' + p.keys + '\n';
+
+    result += 'adv=';
+    result += p.shipping + ',' + p.digging + '\n';
+    // player.tunnelcarpetdistance not saved: is instead calculated after loading
+
+    result += 'vpreason=';
+    comma = false;
+    var vpbreakdown = '';
+    for(name in p.vp_reason) {
+      if(comma) vpbreakdown += ',';
+      vpbreakdown += name + ' ' + p.vp_reason[name];
+      comma = true;
+    }
+    result += vpbreakdown + '\n';
+
+    result += 'vpdetail=';
+    comma = false;
+    vpbreakdown = '';
+    for(name in p.vp_detail) {
+      if(comma) vpbreakdown += ',';
+      vpbreakdown += name + ' ' + p.vp_detail[name];
+      comma = true;
+    }
+    result += vpbreakdown + '\n';
   }
 
-  /*result += 'uistate:\n';
-  result += '' + game.humanstate + ',' + showingNextButtonPanel + '\n';
-  result += '\n';*/
+  if(game.logText) {
+    result += '\nlog:\n';
+    result += game.logText.replace(/<br\/>/g, '\n');
+  }
 
   return result;
 }
@@ -234,6 +285,7 @@ function parseLabelPart(text, label, n) {
   if(!n) n = 0;
   var begin = text.indexOf(label) + label.length;
   if(begin < label.length) return null;
+  while(begin < text.length && text.charCodeAt(begin) < 32) begin++; //skip newlines
   while(n > 0) {
     n--;
     begin = text.indexOf(label, begin) + label.length;
@@ -242,7 +294,7 @@ function parseLabelPart(text, label, n) {
   var end = text.indexOf(':', begin + label.length + 1);
   if(end < 0) end = text.length
   while(text.charCodeAt(end) > 32) end--; //skip to previous line
-  if(end <= begin) return null;
+  if(end <= begin) return '';
   return text.substring(begin, end);
 }
 
@@ -270,59 +322,164 @@ function getNonEmptyLines(text) {
 }
 
 function getCommas(text) {
+  if(text == '') return [];
   var result = text.split(',');
-  for(var i = 0; i < result.length; i++) result[i] = trim(result[i]);
+  for(var i = 0; i < result.length; i++) result[i] = result[i].trim();
   return result;
 }
 
-//returns null on fail (invalid text, ...)
-function deSerializeGameState(text) {
+function getSpaces(text) {
+  if(text == '') return [];
+  var s = text.split(' ');
+  var result = [];
+  for(var i = 0; i < s.length; i++) {
+    if(s[i].length > 0) result.push(s[i].trim());
+  }
+  return result;
+}
 
+function decomposeEqualsLine(text) {
+  return text.split('=');
+}
+
+function deSerializeGameState(text) {
+  var result = deSerializeGameStateNewFormat(text);
+  if(!result) return deSerializeGameStateLegacyFormat(text);
+  else return result;
+}
+
+//returns null on fail (invalid text, ...)
+function deSerializeGameStateNewFormat(text) {
   var result = saveGameState(false); //a way to get an initialized object
 
-  var colorMap = {};
-  for(var i = 0; i < colorLetters.length; i++) colorMap[colorLetters[i]] = i;
-  var buildingMap = {};
-  for(var i = 0; i < buildingLetters.length; i++) buildingMap[buildingLetters[i]] = i;
-
   var s;
+  var d;
   var lines; //lines of a section
   var el; //split line
 
   s = parseLabelPart(text, 'size:');
-  if(!s || s == '') {
-    // support old saves that don't have size
-    BW = 13;
-    BH = 9;
-  } else {
-    el = getCommas(s);
-    if(el.length != 2) return null;
-    BW = parseInt(el[0]);
-    BH = parseInt(el[1]);
-  }
+  el = getCommas(s);
+  if(el.length != 2) return null;
+  // TODO: make this not global variables but part of the result
+  BW = parseInt(el[0]);
+  BH = parseInt(el[1]);
 
   s = parseWorldString(text, 'landscape:');
   if(!s || s.length < BW * BH) return null;
-  for(var i = 0; i < BW * BH; i++) result.world[i] = colorMap[s[i]];
+  for(var i = 0; i < BW * BH; i++) result.world[i] = codeNameToColor[s[i]];
 
   s = parseWorldString(text, 'buildings:');
   if(!s || s.length < BW * BH) return null;
   for(var i = 0; i < BW * BH; i++) {
-    var building = buildingMap[s[i]];
+    var building = codeNameToBuilding[s[i]];
     var color = building == B_NONE ? N : result.world[i];
     if(building == B_MERMAIDS) color = B;
     result.buildings[i] = [building, color];
   }
 
-  s = parseWorldString(text, 'bridges:');
-  if(!s || s.length < BW * BH) return null;
-  for(var i = 0; i < BW * BH; i++) {
-    if(s[i].length != 3) return null;
-    var b0 = colorMap[s[i].charAt(0)];
-    var b1 = colorMap[s[i].charAt(1)];
-    var b2 = colorMap[s[i].charAt(2)];
-    result.bridges[i] = [b0,b1,b2];
+  s = parseLabelPart(text, 'bridges:');
+  el = getCommas(s);
+  //TODO: this bridges init code is already in global namespace and in initBoard(). Don't duplicate it here, have it only once in total.
+  result.bridges = [];
+  for(var y = 0; y < BH; y++)
+  for(var x = 0; x < BW; x++)
+  {
+    result.bridges[arCo(x, y)] = [ N, N, N ];
   }
+  for(var i = 0; i < el.length; i++) {
+    var b = el[i];
+    if(b.length < 5) return null; //expected format something like A1B2R, or larger like A11B12R
+    var secondletterpos = 0;
+    for(var j = 1; j < b.length; j++) {
+      if(b.charCodeAt(j) >= 65 /*'A'*/ && b.charCodeAt(j) <= 90 /*'Z'*/) {
+        secondletterpos = j;
+        break;
+      }
+    }
+    var co0 = parsePrintCo(b.substring(0, secondletterpos));
+    var co1 = parsePrintCo(b.substring(secondletterpos, b.length - 1));
+    var color = codeNameToColor[b[b.length - 1]];
+    addBridgeTo(co0[0], co0[1], co1[0], co1[1], color, result.bridges);
+  }
+
+  s = parseLabelPart(text, 'cultpriests:');
+  el = getCommas(s);
+  if(el.length != 16) return null;
+  for(var i = 0; i < 16; i++) {
+    result.cultp[Math.floor(i / 4)][i % 4] = codeNameToColor[el[i]];
+  }
+
+  s = parseLabelPart(text, 'tiles:');
+  lines = getNonEmptyLines(s);
+  if(lines.length != 5) return null;
+
+  d = decomposeEqualsLine(lines[0]);
+  if(d[0] != 'bon') return null;
+  el = getCommas(d[1]);
+  for(var i = T_BON_BEGIN + 1; i < T_BON_END; i++) result.bonustiles[i] = 0;
+  for(var i = 0; i < el.length; i++) {
+    var t = getSpaces(el[i]);
+    result.bonustiles[codeNameToTile(t[0])] = 1;
+    result.bonustilecoins = parseInt(t[1]);
+  }
+  
+  d = decomposeEqualsLine(lines[1]);
+  if(d[0] != 'fav') return null;
+  el = getCommas(d[1]);
+  for(var i = T_FAV_BEGIN + 1; i < T_FAV_END; i++) result.favortiles[i] = 0;
+  for(var i = 0; i < el.length; i++) {
+    var t = getSpaces(el[i]);
+    result.favortiles[codeNameToTile(t[0])] = parseInt(t[1]);
+  }
+  
+  d = decomposeEqualsLine(lines[2]);
+  if(d[0] != 'tw') return null;
+  el = getCommas(d[1]);
+  for(var i = T_TW_BEGIN + 1; i < T_TW_END; i++) result.towntiles[i] = 0;
+  for(var i = 0; i < el.length; i++) {
+    var t = getSpaces(el[i]);
+    result.towntiles[codeNameToTile(t[0])] = parseInt(t[1]);
+  }
+  
+  d = decomposeEqualsLine(lines[3]);
+  if(d[0] != 'rnd') return null;
+  el = getCommas(d[1]);
+  if(el.length != 6) return null;
+  for(var i = 0; i < el.length; i++) {
+    result.roundtiles[i + 1] = codeNameToTile(el[i]);
+  }
+  result.roundtiles[0] = T_NONE;
+  
+  d = decomposeEqualsLine(lines[4]);
+  if(d[0] != 'oct') return null;
+  el = getCommas(d[1]);
+  result.octogons = {};
+  for(var i = 0; i < el.length; i++) {
+    result.octogons[codeNameToAction(el[i])] = 1;
+  }
+
+  s = parseLabelPart(text, 'gamestate:');
+  lines = getNonEmptyLines(s);
+  if(lines.length != 2) return null;
+  
+  d = decomposeEqualsLine(lines[0]);
+  if(d[0] != 'state') return null;
+  el = getCommas(d[1]);
+  if(el.length != 4) return null;
+  result.state.type = codeNameToGameState(el[0]);
+  result.state.round = parseInt(el[1]);
+  result.state.startPlayer = parseInt(el[2]);
+  result.state.currentPlayer = parseInt(el[3]);
+
+  d = decomposeEqualsLine(lines[1]);
+  if(d[0] != 'leech') return null;
+  var leecharrayend = d[1].lastIndexOf(']');
+  if(leecharrayend <= 0) return null;
+  result.state.leecharray = decodeNestedArray(d[1].substring(0, leecharrayend + 1));
+  el = getCommas(d[1].substring(leecharrayend + 2));
+  if(el.length != 2) return null;
+  result.state.leechi = parseInt(el[0]);
+  result.state.leechtaken = parseInt(el[1]);
 
   var index = 0;
   result.players = [];
@@ -333,23 +490,31 @@ function deSerializeGameState(text) {
       else break;
     }
     lines = getNonEmptyLines(s);
-    if(lines.length != 10) return null;
+    if(lines.length != 12) return null;
     var player = new Player();
     result.players[index] = player;
 
     player.index = index;
-    
-    el = getCommas(lines[0]);
-    if(el.length != 5) return null;
+
+    d = decomposeEqualsLine(lines[0]);
+    if(d[0] != 'bio') return null;
+    el = getCommas(d[1]);
+    if(el.length != 4) return null;
     player.name = el[0];
-    player.human = (el[1] == 'true');
+    player.human = (el[1] == 'human');
     if(player.human) player.actor = new Human();
     else player.actor = new AI();
-    player.faction = parseInt(el[2]);
-    player.color = colorMap[el[3]];
-    player.passed = (el[4] == 'true');
+    player.faction = codeNameToFaction(el[2]);
+    player.color = codeNameToColor[el[3]];
+    initPlayerFactionStats(player);
+    
+    d = decomposeEqualsLine(lines[1]);
+    if(d[0] != 'passed') return null;
+    player.passed = (d[1] == 'true');
 
-    el = getCommas(lines[1]);
+    d = decomposeEqualsLine(lines[2]);
+    if(d[0] != 'res') return null;
+    el = getCommas(d[1]);
     if(el.length != 8) return null;
     player.c = parseInt(el[0]);
     player.w = parseInt(el[1]);
@@ -360,7 +525,10 @@ function deSerializeGameState(text) {
     player.pw2 = parseInt(el[6]);
     player.vp = parseInt(el[7]);
 
-    el = getCommas(lines[2]);
+
+    d = decomposeEqualsLine(lines[3]);
+    if(d[0] != 'buildings') return null;
+    el = getCommas(d[1]);
     if(el.length != 6) return null;
     player.b_d = parseInt(el[0]);
     player.b_tp = parseInt(el[1]);
@@ -369,25 +537,40 @@ function deSerializeGameState(text) {
     player.b_sa = parseInt(el[4]);
     player.bridges = parseInt(el[5]);
 
-    el = getCommas(lines[3]);
+    d = decomposeEqualsLine(lines[4]);
+    if(d[0] != 'bon') return null;
+    el = getCommas(d[1]);
     if(el.length != 1) return null;
-    var bonint = parseInt(el[0]);
-    player.bonustile = bonint == 0 ? T_NONE : bonint + T_BON_BEGIN;
+    player.bonustile = codeNameToTile(el[0]);
 
-    el = getCommas(lines[4]);
-    if(el.length != T_FAV_END - T_FAV_BEGIN - 1) return null;
-    for(var i = T_FAV_BEGIN + 1; i < T_FAV_END; i++) player.favortiles[i] = parseInt(el[i - T_FAV_BEGIN - 1]);
-    el = getCommas(lines[5]);
-    if(el.length != T_TW_END - T_TW_BEGIN - 1) return null;
-    for(var i = T_TW_BEGIN + 1; i < T_TW_END; i++) player.towntiles[i] = parseInt(el[i- T_TW_BEGIN - 1]);
-    el = getCommas(lines[6]);
-    if(el.length != O_END - O_NONE - 1) return null;
-    for(var i = O_NONE + 1; i < O_END; i++) {
-      var octoint = parseInt(el[i - O_NONE - 1]);
-      if(octoint) player.octogons[i] = octoint;
+    d = decomposeEqualsLine(lines[5]);
+    if(d[0] != 'fav') return null;
+    el = getCommas(d[1]);
+    for(var i = 0; i < el.length; i++) {
+      var t = getSpaces(el[i]);
+      if(parseInt(t[1]) != 1) return null; //player can't have more than 1 per favor tile type
+      player.favortiles[codeNameToTile(t[0])] = parseInt(t[1]);
     }
 
-    el = getCommas(lines[7]);
+    d = decomposeEqualsLine(lines[6]);
+    if(d[0] != 'tw') return null;
+    el = getCommas(d[1]);
+    for(var i = 0; i < el.length; i++) {
+      var t = getSpaces(el[i]);
+      player.towntiles[codeNameToTile(t[0])] = parseInt(t[1]);
+    }
+
+    d = decomposeEqualsLine(lines[7]);
+    if(d[0] != 'oct') return null;
+    el = getCommas(d[1]);
+    for(var i = 0; i < el.length; i++) {
+      var t = getSpaces(el[i]);
+      player.octogons[codeNameToAction(t[0])] = 1;
+    }
+
+    d = decomposeEqualsLine(lines[8]);
+    if(d[0] != 'cult') return null;
+    el = getCommas(d[1]);
     if(el.length != 5) return null;
     player.cult[0] = parseInt(el[0]);
     player.cult[1] = parseInt(el[1]);
@@ -395,99 +578,43 @@ function deSerializeGameState(text) {
     player.cult[3] = parseInt(el[3]);
     player.keys = parseInt(el[4]);
 
-    el = getCommas(lines[8]);
-    if(el.length != 5) return null;
+    d = decomposeEqualsLine(lines[9]);
+    if(d[0] != 'adv') return null;
+    el = getCommas(d[1]);
+    if(el.length != 2) return null;
     player.shipping = parseInt(el[0]);
-    player.maxshipping = parseInt(el[1]);
-    player.bonusshipping = parseInt(el[2]);
-    player.digging = parseInt(el[3]);
-    player.maxdigging = parseInt(el[4]);
+    player.digging = parseInt(el[1]);
 
-    el = getCommas(lines[9]);
-    if(el.length != 15) return null;
-    player.vp_start = parseInt(el[0]);
-    player.vp_round = parseInt(el[1]);
-    player.vp_bonus = parseInt(el[2]);
-    player.vp_town = parseInt(el[3]);
-    player.vp_favor = parseInt(el[4]);
-    player.vp_advance = parseInt(el[5]);
-    player.vp_faction = parseInt(el[6]);
-    player.vp_leech = parseInt(el[7]);
-    player.vp_cult[0] = parseInt(el[8]);
-    player.vp_cult[1] = parseInt(el[9]);
-    player.vp_cult[2] = parseInt(el[10]);
-    player.vp_cult[3] = parseInt(el[11]);
-    player.vp_network = parseInt(el[12]);
-    player.vp_resources = parseInt(el[13]);
-    player.vp_other = parseInt(el[14]);
+    d = decomposeEqualsLine(lines[10]);
+    if(d[0] != 'vpreason') return null;
+    el = getCommas(d[1]);
+    for(var i = 0; i < el.length; i++) {
+      var t = getSpaces(el[i]);
+      player.vp_reason[t[0]] = parseInt(t[1]);
+    }
+
+    d = decomposeEqualsLine(lines[11]);
+    if(d[0] != 'vpdetail') return null;
+    el = getCommas(d[1]);
+    for(var i = 0; i < el.length; i++) {
+      var t = getSpaces(el[i]);
+      player.vp_detail[t[0]] = parseInt(t[1]);
+    }
 
     // values deduced from the rest:
     player.tunnelcarpetdistance = 0;
-    if(player.faction = F_DWARVES) {
+    if(player.faction == F_DWARVES) {
       player.tunnelcarpetdistance = 1;
     }
-    if(player.faction = F_FAKIRS) {
+    if(player.faction == F_FAKIRS) {
       player.tunnelcarpetdistance = 1;
       if(built_sh(player)) player.tunnelcarpetdistance++;
       player.tunnelcarpetdistance += player.towntiles[T_TW_4VP_SHIP];
     }
+    player.bonusshipping = player.bonustile == T_BON_3PW_SHIP ? 1 : 0;
 
     index++;
   }
-
-  s = parseLabelPart(text, 'octogons:');
-  el = getCommas(s);
-  if(el.length != O_END - O_NONE - 1) return null;
-  for(var i = O_NONE + 1; i < O_END; i++) {
-    var octoint = parseInt(el[i - O_NONE - 1]);
-    result.octogons[i] = octoint;
-  }
-
-  s = parseLabelPart(text, 'cultpriests:');
-  el = getCommas(s);
-  if(el.length != 16) return null;
-  for(var i = 0; i < 16; i++) {
-    result.cultp[Math.floor(i / 4)][i % 4] = parseInt(el[i]);
-  }
-
-  s = parseLabelPart(text, 'tiles:');
-  lines = getNonEmptyLines(s);
-  if(lines.length != 5) return null;
-  el = getCommas(lines[0]);
-  if(el.length != T_BON_END - T_BON_BEGIN - 1) return null;
-  for(var i = T_BON_BEGIN + 1; i < T_BON_END; i++) result.bonustiles[i] = parseInt(el[i - T_BON_BEGIN - 1]);
-  el = getCommas(lines[1]);
-  if(el.length != T_BON_END - T_BON_BEGIN - 1) return null;
-  for(var i = T_BON_BEGIN + 1; i < T_BON_END; i++) result.bonustilecoins[i] = parseInt(el[i - T_BON_BEGIN - 1]);
-  el = getCommas(lines[2]);
-  if(el.length != T_FAV_END - T_FAV_BEGIN - 1) return null;
-  for(var i = T_FAV_BEGIN + 1; i < T_FAV_END; i++) result.favortiles[i] = parseInt(el[i - T_FAV_BEGIN - 1]);
-  el = getCommas(lines[3]);
-  if(el.length != T_TW_END - T_TW_BEGIN - 1) return null;
-  for(var i = T_TW_BEGIN + 1; i < T_TW_END; i++) result.towntiles[i] = parseInt(el[i- T_TW_BEGIN - 1]);
-  el = getCommas(lines[4]);
-  if(el.length != 6) return null;
-  for(var i = 1; i <= 6; i++) result.roundtiles[i] = parseInt(el[i - 1]) + T_ROUND_BEGIN + 1;
-  
-  s = parseLabelPart(text, 'gamestate:');
-  lines = getNonEmptyLines(s);
-  if(lines.length != 2) return null;
-  el = getCommas(lines[0]);
-  if(el.length != 6) return null;
-  result.state.type = parseInt(el[0]);
-  result.state.round = parseInt(el[1]);
-  result.state.startPlayer = parseInt(el[2]);
-  result.state.currentPlayer = parseInt(el[3]);
-  result.state.rounddigsdone = parseInt(el[4]);
-  result.state.currentStateDone = el[5] == 'true';
-  var leecharrayend = lines[1].lastIndexOf(']');
-  if(leecharrayend <= 0) return null;
-  result.state.leecharray = decode3DArray(lines[1].substring(0, leecharrayend + 1));
-  el = getCommas(lines[1].substring(leecharrayend + 2));
-  if(el.length != 3) return null;
-  result.state.leechi = parseInt(el[0]);
-  result.state.leechj = parseInt(el[1]);
-  result.state.leechtaken = parseInt(el[2]);
   
   var logPos = text.indexOf('log:');
   if(logPos > 0) {
@@ -501,3 +628,258 @@ function deSerializeGameState(text) {
   return result;
 }
 
+//The format before new town tiles were introduced. I had accidently made that format not compatible with any game upgrades. The new format should be future proof.
+function deSerializeGameStateLegacyFormat(text) {
+  var result = '';
+  var comma = false;
+
+  var legacycolors = {'n':'N', 'R':'R', 'Y':'Y', 'O':'U', 'K':'K', 'B':'B', 'G':'G', 'E':'S', 'i':'I'};
+  // The order (index) of the array is legacy, the contents are the index converted to the current value.
+  var legacyfactions = [F_NONE, F_GENERIC, 0, F_CHAOS, F_GIANTS,
+      F_FAKIRS, F_NOMADS, F_HALFLINGS, F_CULTISTS, F_ALCHEMISTS, F_DARKLINGS,
+      F_MERMAIDS, F_SWARMLINGS, F_AUREN, F_WITCHES, F_ENGINEERS, F_DWARVES];
+  // without the new bonus tiles etc..., these make the numbers differ from the old format
+  var legacytilesorig = [
+      T_NONE, 0, 0, T_BON_SPADE_2C/*3*/, T_BON_CULT_4C, T_BON_6C, T_BON_3PW_SHIP,
+      T_BON_3PW_1W, T_BON_PASSDVP_2C, T_BON_PASSTPVP_1W, T_BON_PASSSHSAVP_2W,
+      T_BON_1P /*11*/, 0, 0, T_FAV_3F/*14*/, T_FAV_3W, T_FAV_3E, T_FAV_3A,
+      T_FAV_2F_6TW, T_FAV_2W_CULT, T_FAV_2E_1PW1W, T_FAV_2A_4PW, T_FAV_1F_3C,
+      T_FAV_1W_TPVP, T_FAV_1E_DVP, T_FAV_1A_PASSTPVP /*25*/, 0, 0,
+      T_TW_5VP_6C /*28*/, T_TW_6VP_8PW, T_TW_7VP_2W, T_TW_8VP_CULT, T_TW_9VP_P /*32*/,
+      0, 0, T_ROUND_DIG2VP_1E1C /*35*/, T_ROUND_TW5VP_4E1DIG, T_ROUND_D2VP_4W1P,
+      T_ROUND_SHSA5VP_2F1W, T_ROUND_D2VP_4F4PW, T_ROUND_TP3VP_4W1DIG,
+      T_ROUND_SHSA5VP_2A1W, T_ROUND_TP3VP_4A1DIG /*42*/, 0 ];
+  // This is how they were after the promo
+  var legacytilespromo = legacytilesorig.slice(0); // The last TW now is 35 instead of 32, and ROUND now goes from 38 to 45.
+  legacytilespromo.splice(28, 0, T_TW_2VP_2CULT);
+  legacytilespromo.splice(29, 0, T_TW_4VP_SHIP);
+  legacytilespromo.splice(35, 0, T_TW_11VP);
+  var legacyoctogons = [A_NONE, 0, A_POWER_BRIDGE, A_POWER_1P, A_POWER_2W, A_POWER_7C,
+      A_POWER_SPADE, A_POWER_2SPADE, A_BONUS_SPADE, A_BONUS_CULT, A_FAVOR_CULT, 0,
+      A_DOUBLE, A_GIANTS_2SPADE, A_SANDSTORM, A_SWARMLINGS_TP,
+      A_AUREN_CULT, A_WITCHES_D, 0, 0 ];
+  var legacyvp = ['start', 'round', 'bonus', 'town', 'favor', 'advance', 'faction',
+                  'leech', 'fire', 'water', 'earth', 'air', 'network', 'resources', 'other' ];
+  var legacystate = [S_PRE, S_INIT_FACTION, S_INIT_DWELLING, S_INIT_BONUS, S_ACTION, S_LEECH, S_CULTISTS, S_ROUND_END_DIG, S_GAME_OVER];
+
+  var s;
+  var d;
+  var lines; //lines of a section
+  var el; //split line
+
+  s = parseLabelPart(text, 'size:');
+  el = getCommas(s);
+  if(el.length != 2) return null;
+  BW = parseInt(el[0]);
+  BH = parseInt(el[1]);
+
+  var copysection = function(label) {
+    result += label + ':\n';
+    result += parseLabelPart(text, label + ':');
+  }
+
+  result +='size:\n';
+  result += parseLabelPart(text, 'size:');
+
+  result +='\nlandscape:\n';
+  var landscape = parseLabelPart(text, 'landscape:').
+      replace(/n/g, 'N').replace(/i/g, 'I').replace(/O/g, 'U').replace(/E/g, 'S');
+  result += landscape;
+
+  result +='\nbuildings:\n';
+  var buildings = parseLabelPart(text, 'buildings:').replace(/n/g, 'N');
+  result += buildings;
+
+  s = parseWorldString(text, 'bridges:');
+  result += '\nbridges:\n';
+  comma = false;
+  if(!s || s.length < BW * BH) return null;
+  for(var i = 0; i < BW * BH; i++) {
+    if(s[i].length != 3) return null;
+    for(var z = 0; z < 3; z++) {
+      var b = legacycolors[s[i].charAt(z)];
+      if(!!b && b != 'N') {
+        var x = i % BW;
+        var y = Math.floor(i / BW);
+        var co = bridgeCo(x, y, [D_N, D_NE, D_SE][z]);
+        if (comma) result += ',';
+        result += printCo(x, y) + printCo(co[0], co[1]) + b;
+        comma = true;
+      }
+    }
+  }
+  result += '\n';
+  
+  s = parseLabelPart(text, 'cultpriests:');
+  result += 'cultpriests:\n';
+  el = getCommas(s);
+  for(var i = 0; i < el.length; i++) result += colorCodeName[parseInt(el[i])] + (i == el.length - 1 ? '\n' : ',');
+
+  s = parseLabelPart(text, 'tiles:');
+  result += 'tiles:\n';
+  lines = getNonEmptyLines(s);
+  if(lines.length != 5) return null;
+  var promo = getCommas(lines[3]).length > 5; //new town tiles promo 2013
+  var legacytiles = promo ? legacytilespromo : legacytilesorig;
+  result += 'bon=';
+  var el1 = getCommas(lines[0]);
+  var el2 = getCommas(lines[1]);
+  comma = false;
+  for(var i = 3; i <= 11; i++) {
+    var a = parseInt(el1[i - 3]);
+    var m = parseInt(el2[i - 3]);
+    if(a > 0) {
+      result += (comma ? ',' : '') + getTileCodeName(legacytiles[i]) + ' ' + m;
+      comma = true;
+    }
+    if(i == 11) result += '\n';
+  }
+
+  result += 'fav=';
+  el = getCommas(lines[2]);
+  comma = false;
+  for(var i = 14; i <= 25; i++) {
+    var a = parseInt(el[i - 14]);
+    if(a > 0) {
+      result += (comma ? ',' : '') + getTileCodeName(legacytiles[i]) + ' ' + a;
+      comma = true;
+    }
+    if(i == 25) result += '\n';
+  }
+
+  result += 'tw=';
+  el = getCommas(lines[3]);
+  comma = false;
+  for(var i = 28; i <= (promo ? 35 : 32); i++) {
+    var a = parseInt(el[i - 28]);
+    if(a > 0) {
+      result += (comma ? ',' : '') + getTileCodeName(legacytiles[i]) + ' ' + a;
+      comma = true;
+    }
+    if(i == (promo ? 35 : 32)) result += '\n';
+  }
+
+  result += 'rnd=';
+  el = getCommas(lines[4]);
+  if(el.length != 6) return null;
+  for(var i = 0; i < 6; i++) result += getTileCodeName(legacytiles[parseInt(el[i]) + (promo ? 38 : 35)]) + (i == el.length - 1 ? '\n' : ',');
+  
+  s = parseLabelPart(text, 'octogons:');
+  result += 'oct=';
+  el = getCommas(lines[0]);
+  comma = false;
+  for(var i = 1; i < 18 /*amount of legacy octogons + 1*/; i++) {
+    var a = parseInt(el[i]);
+    if(a > 0) {
+      result += (comma ? ',' : '') + getActionCodeName(legacyoctogons[i + 1]);
+      comma = true;
+    }
+    if(i == 17) result += '\n';
+  }
+
+
+  s = parseLabelPart(text, 'gamestate:');
+  result += 'gamestate:\n';
+  lines = getNonEmptyLines(s);
+  if(lines.length != 2) return null;
+  el = getCommas(lines[0]);
+  result += 'state=' + getGameStateCodeName(legacystate[parseInt(el[0])]) + ',' + el[1] + ',' + el[2] + ',' + el[3] + '\n';
+  /*var leecharrayend = lines[1].lastIndexOf(']');
+  if(leecharrayend <= 0) return null;
+  result.state.leecharray = decodeNestedArray(lines[1].substring(0, leecharrayend + 1));
+  el = getCommas(lines[1].substring(leecharrayend + 2));*/
+  //legacy leech array not supported for now
+  result += 'leech=[],0,0';
+  result += '\n';
+
+  var index = 0;
+  result.players = [];
+  while(true) {
+    s = parseLabelPart(text, 'player:', index);
+    if(s == null) {
+      if(index == 0) return null;
+      else break;
+    }
+    result += 'player:\n';
+    lines = getNonEmptyLines(s);
+    if(lines.length != 10) return null;
+    
+    el = getCommas(lines[0]);
+    if(el.length != 5) return null;
+    result += 'bio=' + el[0] + ',' + (el[1] == 'true' ? 'human' : 'ai') + ',' +
+        getFactionCodeName(legacyfactions[parseInt(el[2])]) + ',' +
+    legacycolors[el[3]] + '\n';
+    result += 'passed=' + el[4] + '\n';
+    
+    result += 'res=' + lines[1] + '\n';
+    result += 'buildings=' + lines[2] + '\n';
+
+    result += 'bon=' + getTileCodeName(legacytiles[parseInt(lines[3])]) + '\n';
+    
+    result += 'fav=';
+    el = getCommas(lines[4]);
+    comma = false;
+    for(var i = 14; i <= 25; i++) {
+      var a = parseInt(el[i - 14]);
+      if(a > 0) {
+        result += (comma ? ',' : '') + getTileCodeName(legacytiles[i]) + ' ' + a;
+        comma = true;
+      }
+      if(i == 25) result += '\n';
+    }
+
+    result += 'tw=';
+    el = getCommas(lines[5]);
+    comma = false;
+    for(var i = 28; i <= (promo ? 35 : 32); i++) {
+      var a = parseInt(el[i - 28]);
+      if(a > 0) {
+        result += (comma ? ',' : '') + getTileCodeName(legacytiles[i]) + ' ' + a;
+        comma = true;
+      }
+      if(i == (promo ? 35 : 32)) result += '\n';
+    }
+
+    result += 'oct=';
+    el = getCommas(lines[6]);
+    comma = false;
+    for(var i = 1; i < 18 /*amount of legacy octogons + 1*/; i++) {
+      var a = parseInt(el[i]);
+      if(a > 0) {
+        result += (comma ? ',' : '') + getActionCodeName(legacyoctogons[i + 1]);
+        comma = true;
+      }
+      if(i == 17) result += '\n';
+    }
+    
+    result += 'cult=' + lines[7] + '\n';
+
+    el = getCommas(lines[8]);
+    if(el.length != 5) return null;
+    result += 'adv=' + el[0] + ',' + el[3] + '\n';
+
+    el = getCommas(lines[9]);
+    if(el.length != 15) return null;
+    result += 'vpreason='
+    for(var i = 0; i < el.length; i++) {
+      if(i == 8) {
+        n = parseInt(el[i]) + parseInt(el[i + 1]) + parseInt(el[i + 2]) + parseInt(el[i + 3]);
+        result += 'cult' + ' ' + n + ',';
+        i += 3;
+      } else {
+        result += legacyvp[i] + ' ' + el[i] + (i == el.length - 1 ? '\n' : ',');
+      }
+    }
+    result += 'vpdetail='
+    for(var i = 0; i < el.length; i++) result += legacyvp[i] + ' ' + el[i] + (i == el.length - 1 ? '\n' : ',');
+
+    index++;
+  }
+  
+  var logPos = text.indexOf('log:');
+  if(logPos > 0) {
+    result += text.substr(logPos);
+  }
+
+  return deSerializeGameStateNewFormat(result);
+}

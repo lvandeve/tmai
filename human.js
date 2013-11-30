@@ -47,6 +47,9 @@ var HS_TOWN_TILE = 7;
 
 var humanstate = HS_MAIN;
 
+var undoGameStates = []; //remember game state from last action
+var undoIndex = 0;
+
 function humanStateBusy() {
   return mapClickFun != null || tileClickFun != null || cultClickFun != null;
 }
@@ -203,15 +206,25 @@ var executeButtonClearFun = function() {
   if(executeButtonClearFun_) executeButtonClearFun_();
 };
 
+function saveUndoState(undoGameState) {
+  if(undoIndex + 1 < undoGameStates.length) undoGameStates.length = undoIndex + 1; //lose the redo states
+  if(undoGameStates.length > 100) undoGameStates = undoGameStates.splice(50); //ensure it doesn't grow too extreme
+  undoGameStates.push(undoGameState);
+  undoIndex = undoGameStates.length - 1;
+}
+
 Human.prototype.doAction = function(playerIndex, callback) {
   executeButtonFun_ = function() {
+    var undoGameState = saveGameState(true)
     actionEl.innerHTML = '';
     var error = callback(players[playerIndex], pactions);
     pactions = [];
-    if(error != '') setHelp('Execute action error: ' + error);
-    else {
+    if(error != '') {
+      setHelp('Execute action error: ' + error);
+    } else {
       executeButtonFun_ = null;
       executeButtonClearFun_ = null;
+      saveUndoState(undoGameState);
     }
   };
   executeButtonClearFun_ = function() {
@@ -245,9 +258,11 @@ function humanPlaceInitialDwelling(x, y) {
 
 Human.prototype.chooseInitialDwelling = function(playerIndex, callback) {
   var fun = function(x, y) {
+    undoGameState = saveGameState(false);
     var error = callback(players[playerIndex], x, y);
     if(error == '') {
       clearHumanState();
+      saveUndoState(undoGameState);
     }
     else setHelp('could not place initial dwelling: ' + error + ' - Please try again');
   };
@@ -278,11 +293,10 @@ Human.prototype.chooseFaction = function(playerIndex, callback) {
   bg.innerHTML = 'choose faction';
   bg.style.border = '1px solid black';
 
-  for(var i = F_START + 1; i <= F_END; i++) {
-    var r = i == F_END ? F_GENERIC : i; //make "generic" appear last
-    if(already[factionColor(r)]) continue;
-    var el = makeLinkButton(305, 100 + (j + 1) * 16, factionNames[r], popupElement);
-    el.onclick = bind(buttonClickFun, r);
+  for(var i = F_ALL_BEGIN; i <= F_ALL_END; i++) {
+    if(already[factionColor(i)]) continue;
+    var el = makeLinkButton(305, 100 + (j + 1) * 16, getFactionName(i), popupElement);
+    el.onclick = bind(buttonClickFun, i);
     j++;
   }
 };
@@ -294,10 +308,10 @@ var autoLeechNo = false;//for debug
 var leechYesFun = null; //for shortcuts
 var leechNoFun = null; //for shortcuts
 
-Human.prototype.leechPower = function(playerIndex, fromPlayer, x, y, amount, vpcost, roundnum, already, still, callback) {
+Human.prototype.leechPower = function(playerIndex, fromPlayer, amount, vpcost, roundnum, already, still, callback) {
   var doAutoLeech = function() {
     // Let an AI do the decisions for you.
-    (new AI).leechPower(playerIndex, fromPlayer, x, y, amount, vpcost, roundnum, already, still, callback);
+    (new AI).leechPower(playerIndex, fromPlayer, amount, vpcost, roundnum, already, still, callback);
     return;
   }
 
@@ -476,7 +490,7 @@ function digAndBuildFun(initialMode, helpText) {
   digAndBuildMode = initialMode;
   
   var ptype = pactions.length > 0 ? pactions[pactions.length - 1].type : A_NONE; //previous action type
-  var roundend = state.type == S_ROUND_END;
+  var roundend = state.type == S_ROUND_END_DIG;
   var halflingssh = (ptype == A_UPGRADE_SH && player.faction == F_HALFLINGS);
   var cansplit = ptype == A_POWER_2SPADE || halflingssh;
   var canaddspades = !roundend && ptype != A_SANDSTORM && !halflingssh;
@@ -577,45 +591,24 @@ function upgrade2fun() {
   setHumanState(HS_MAP, 'click where to upgrade to TE/SA', fun);
 }
 
-//This one is instead of onkeypress for some non-alphanumeric keys that don't trigger onkeypress in Chrome
-document.onkeydown = function(e) {
-  var k;
-  var ctrl;
-  if (window.event != null) {
-    k = window.event.keyCode;
-    ctrl = window.event.ctrlKey;
-  } else {
-    k = e.charCode;
-    if(k == 0) k = e.keyCode;
-    ctrl = e.ctrlKey;
-  }
-
-  var result = false;
-  if(!ctrl) {
-    if(k == 88 /*X*/ || k == 13 /*enter*/) executeButtonFun(); //keyboard shortcut for the execute button
-    else if(k == 66 /*B*/) {
-      if(isHandlingActionInput()) digAndBuildFun(DBM_BUILD, 'click where to dig&build');
-    }
-    else if(k == 78 /*N*/) {
-      if(nextButtonFun) nextButtonFun();
-      else if(leechNoFun) leechNoFun();
-    }
-    else if(k == 89 /*Y*/) {
-      if(leechYesFun) leechYesFun();
-    }
-    else if(k == 70 /*F*/) {
-      if(fastButtonFun) fastButtonFun();
-    }
-    else if(k == 85 /*U*/) {
-      if(isHandlingActionInput()) upgrade1fun();
-    }
-    else if(k == 86 /*V*/) {
-      if(isHandlingActionInput()) upgrade2fun();
-    }
-    else result = true;
-  }
-  else result = true;
-
-  return result; //this overrides shortcuts in e.g. firefox (e.g. / would do quick find in firefox)
-};
-
+registerKeyHandler(88 /*X*/, executeButtonFun);
+registerKeyHandler(13 /*enter*/, executeButtonFun);
+registerKeyHandler(66 /*B*/, function() {
+  if(isHandlingActionInput()) digAndBuildFun(DBM_BUILD, 'click where to dig&build');
+});
+registerKeyHandler(78 /*N*/, function() {
+  if(nextButtonFun) nextButtonFun();
+  else if(leechNoFun) leechNoFun();
+});
+registerKeyHandler(89 /*Y*/, function() {
+  if(leechYesFun) leechYesFun();
+});
+registerKeyHandler(70 /*F*/, function() {
+  if(fastButtonFun) fastButtonFun();
+});
+registerKeyHandler(85 /*U*/, function() {
+  if(isHandlingActionInput()) upgrade1fun();
+});
+registerKeyHandler(86 /*V*/, function() {
+  if(isHandlingActionInput()) upgrade2fun();
+});

@@ -25,42 +25,58 @@ freely, subject to the following restrictions:
 
 //The game state machine
 
-//Gamestate enum
-var S_index = 0;
-S_PRE = S_index++; //Pre-game state, where you can choose options, amount of players, start player, ...
-//Initial states, each next state is either the same with a next player, or the next one (until S_ACTION is reached)
-S_INIT_FACTION = S_index++; //Choosing faction.
-S_INIT_DWELLING = S_index++; //Placing initial dwellings until all done.
-S_INIT_BONUS = S_index++; //Choosing initial bonus tile.
-//The most complex state, handles player taking actions on their turn, passing, rounds, and income between rounds.
-S_ACTION = S_index++; //Taking actions, for 6 rounds long.
-//States between actions or caused by actions. Next state is again itself, or S_ACTION
-S_LEECH = S_index++; //Player making leeching decision
-S_CULTISTS = S_index++; //Cultists player choosing cult track after leeching
-//States between rounds. Next state is again itself, or S_ACTION
-S_ROUND_END = S_index++; //Player digging due to round end cult bonus
-//Final state after all actions and rounds are done.
-S_GAME_OVER = S_index++; //Game done, final scores shown.
+
+//Callback state enum. For debugging only.
+//Each state goes through the progression executeState -> (callback) -> transitionState -> nextState --> ...
+//This shows in which stage it is, for debuggin.
+CS_NONE = 0;
+CS_EXECUTE = 1;
+CS_ACTOR = 2;
+CS_CALLBACK = 3;
+CS_TRANSITION = 4;
+CS_NEXTSTATE = 5;
+
+//This is just there for debugging, has no actually function.
+function getCallbackStateName(state) {
+  switch(state) {
+    case CS_NONE: return 'none';
+    case CS_EXECUTE: return 'execute';
+    case CS_ACTOR: return 'actor';
+    case CS_CALLBACK: return 'callback';
+    case CS_TRANSITION: return 'transition';
+    case CS_NEXTSTATE: return 'next';
+  }
+  return 'unknown';
+}
+
+var callbackState = CS_NONE;
+// for running in JS console
+function getCallBackStateDebugString() {
+  return 'round: ' + state.round +
+         ', player: ' + state.currentPlayer +
+         ', leechi: ' + state.leechi +
+         ', leecharray: ' + encodeNestedArray(state.leecharray) +
+         ', state type: ' + getGameStateCodeName(state.type) +
+         ', next_type: ' + getGameStateCodeName(state.next_type) +
+         ', callback state: ' + getCallbackStateName(callbackState);
+}
 
 //Constructor
 var State = function() {
   this.type = S_PRE;
+  this.next_type = S_NONE;
   this.round = 0; //the round for actions. 0 = pre-rounds, 1-6 = game rounds.
   this.startPlayer = 0;
-  this.currentPlayer = -1;
-  this.rounddigsdone = 0; //players who have done the round dig bonus (this could be more generic, but only bonus round digs need it now - it's similar to currentPlayer, except it cound up and when >= players.length, it's all done)
-  this.currentStateDone = false; //whether current state has been finished and the next should start. E.g. while waiting for the player to press "next". Keeping track of this prevents accidentially giving the same person two actions.
+  this.currentPlayer = 0;
 
-  this.leecharray = 0; //3D leech array described at function getLeechEffect
-  this.leechi = 0; //index in main leech array
-  this.leechj = 0; //player index in current leech sub array
+  this.leecharray = []; //2D leech array described at function getLeechEffect
+  this.leechi = 0; //index in leech array
   this.leechtaken = 0;
-
-  this.reset = false; //for restarting a game
 
   // game rule options
   this.newcultistsrule = true;
-  this.miniexpansion2013 = true; // new town tiles
+  this.towntilepromo2013 = true; // new town tiles
+  this.bonustilepromo2013 = true; // new bonus tile
 };
 
 var logPlayerNameFun = getFullName; //alternative is getFullNameColored, but that makes it slower to render
@@ -77,26 +93,31 @@ var fastestMode = false;
 var nscount = 0;
 var nsfuncount = 0;
 var showingNextButtonPanel = false;
-// When this function is called, state.currentPlayer must be the previous player (and what previous is depends on the state, e.g. during dwelling placement it goes in various directions)
+// When this function is called, everything must be set up and ready for the next state (which will now become the current state)
+// This function may show a "next" button to the player or handle UI in other ways, that is, if this function did nothing, the game would just keep going on with no possible interaction
 // progress = whether the state change progresses the game (= should pause for the player)
 function nextState(type, progress) {
+  callbackState = CS_NEXTSTATE;
+  state.next_type = S_NONE;
+  state.type = type; //set that here so that the state in savegame is correct when using the "save" button now.
   var nsfun = function(type) {
     nextButtonFun = null;
     fastButtonFun = null;
-    state.type = type;
     showingNextButtonPanel = false;
-    state.nextState();
+    state.executeState();
     if(players.length > 0) {
       drawHud();
       drawMap();
     }
   };
 
-  if(state.currentPlayer == 0 && !fastestMode && state.type != S_LEECH) fastMode = false;
-
+  // Do not show "next" button if fast mode, or if not a progression state
   var fast = !progress || fastMode || type == S_PRE;
 
   if(fast) {
+    // Turn off fastMode again when it was the action of the current player again.
+    if(state.currentPlayer == 0 && !fastestMode && state.type != S_LEECH) fastMode = false;
+
     // First let previous player's functions all finish
     // Without this, some stuff breaks, due to actor functions still doing some things after calling callbacks (mostly the human actor though)
     // This makes it slower, but in fact nicer, it makes the screen being redrawn between every action of every AI player, which gives a nice progressive update animation.
@@ -126,41 +147,35 @@ function nextState(type, progress) {
 }
 
 function initialDwellingDoCallback(player, x, y) {
-  state.currentStateDone = true;
+  callbackState = CS_CALLBACK;
   var error = placeInitialDwelling(player, x, y);
   if(error == '') addLog(logPlayerNameFun(player) + ' placed initial dwelling at ' + printCo(x, y));
   else addLog(logPlayerNameFun(player) + ' attempted illegal initial dwelling ' + printCo(x, y) + '. Error: ' + error);
-  //drawHud();
-  //drawMap();
-  if(error == '') {
-    nextState(S_INIT_DWELLING, true);
-  }
+  if(error == '') state.transitionState();
   return error;
 }
 
 function factionDoCallback(player, faction) {
-  state.currentStateDone = true;
+  callbackState = CS_CALLBACK;
   var error = trySetFaction(player, faction);
-  if(error == '') addLog(logPlayerNameFun(player) + ' chose faction: ' + factionNames[faction]);
-  else addLog(logPlayerNameFun(player) + ' chose illegal faction: ' + factionNames[faction]);
+  if(error == '') addLog(logPlayerNameFun(player) + ' chose faction: ' + getFactionCodeName(faction));
+  else addLog(logPlayerNameFun(player) + ' chose illegal faction: ' + getFactionCodeName(faction));
   initPlayerFaction(player);
-  //drawHud();
-  if(error == '') nextState(S_INIT_FACTION, true);
+  if(error == '') state.transitionState();
   return error;
 }
 
 function initialBonusTileDoCallback(player, tile) {
-  state.currentStateDone = true;
+  callbackState = CS_CALLBACK;
   var error = giveBonusTile(player, tile);
-  if(error == '') addLog(logPlayerNameFun(player) + ' took bonus tile ' + tileToString(tile));
+  if(error == '') addLog(logPlayerNameFun(player) + ' took bonus tile ' + getTileCodeName(tile));
   else addLog(logPlayerNameFun(player) + ' attempted illegal bonus tile ' + tile + '. Error: ' + error);
-  //drawHud();
-  if(error == '') nextState(S_INIT_BONUS, true);
+  if(error == '') state.transitionState();
   return error;
 }
 
 function leechCallback(amount, player, leech) {
-  state.currentStateDone = true;
+  callbackState = CS_CALLBACK;
   if(leech) {
     addLog(logPlayerNameFun(player) + ' leeched ' + amount + ' from ' + logPlayerNameFun(players[state.currentPlayer]));
     leechPower(player, amount);
@@ -168,28 +183,28 @@ function leechCallback(amount, player, leech) {
   } else {
     addLog(logPlayerNameFun(player) + ' declined to leech ' + amount + ' from ' + logPlayerNameFun(players[state.currentPlayer]));
   }
-  nextState(S_LEECH, true);
+  state.transitionState();
   return '';
 }
 
 function cultistsCallback(player, cult) {
-  state.currentStateDone = true;
+  callbackState = CS_CALLBACK;
   giveCult(player, cult, 1);
   addLog(logPlayerNameFun(player) + ' used cultists ability on ' + getCultName(cult));
-  nextState(S_LEECH, true);
+  state.transitionState();
   return '';
 }
 
 //digs = array where each element is an array [actiontype, x, y], and actiontype is  e.g. A_TRANSFORM_CW, ...
 function roundDigCallback(player, digs) {
-  state.currentStateDone = true;
+  callbackState = CS_CALLBACK;
   var error = canDoRoundBonusDigs(player, digs);
   if(error != '') {
     addLog(logPlayerNameFun(player) + ' attempted illegal round bonus dig at: ' + printCos(digs) + '. Error: ' + error);
     return error; //the error is ignored for humans, so that human player can click invalid tiles if no valid ones exist. TODO: throw errors instead and give UI to skip it instead
   }
   for(var i = 0; i < digs.length; i++) {
-    var error = tryRoundBonusDig(player, digs[i][0], digs[i][1], digs[i][2]);
+    error = tryRoundBonusDig(player, digs[i][0], digs[i][1], digs[i][2]);
     if(error == '') {
       addLog(logPlayerNameFun(player) + ' did round bonus dig at ' + printCo(digs[i][1], digs[i][2]));
     } else {
@@ -197,15 +212,15 @@ function roundDigCallback(player, digs) {
       return error;
     }
   }
-  nextState(S_ROUND_END, true);
-  return '';
+  if(error == '') state.transitionState();
+  return error;
 }
 
 function startNewRound() {
   state.round++;
   addLog('');
   addLog('ROUND ' + state.round + (logUpsideDown ? ' started ^' : ' started'));
-  this.currentPlayer = this.startPlayer - 1; //so that when pre-incrementing, start player begins
+  this.currentPlayer = this.startPlayer;
   for(var i = 0; i < players.length; i++) {
     var player = players[i];
     var income = getIncome(player, true, state.round - 1 /*because you get the round bonus from last round*/);
@@ -218,7 +233,7 @@ function startNewRound() {
 }
 
 function actionDoCallback(player, actions) {
-  state.currentStateDone = true;
+  callbackState = CS_CALLBACK;
   var resbefore = [player.c, player.w, player.p, player.pw2, player.vp];
   var error = tryActions(player, actions);
   var resafter = [player.c, player.w, player.p, player.pw2, player.vp];
@@ -228,20 +243,19 @@ function actionDoCallback(player, actions) {
   resstring += player.vp + 'vp';
   if(error == '') addLog(logPlayerNameFun(player) + ' Action: <b>' + actionsToString(actions) + '</b> | ' + resstring);
   else addLog(logPlayerNameFun(player) + ' attempted illegal action: ' + actionsToString(actions) + ' Error: ' + error);
-  //drawMap();
-  //drawHud();
+
   if(error == '') {
     var leech = getLeechEffect(player.index, actions);
     if(leech.length > 0) {
       state.leecharray = leech;
       state.leechi = 0;
-      state.leechj = -1;
       state.leechtaken = 0;
-      nextState(S_LEECH, true);
+      state.next_type = S_LEECH;
     } else {
-      nextState(S_ACTION, true);
+      state.next_type = S_ACTION;
     }
   }
+  if(error == '') state.transitionState();
   return error;
 }
 
@@ -268,24 +282,30 @@ function makeNewHumanPlayer(name) {
 
 function initParams(params) {
   state.newcultistsrule = params.newcultistsrule;
-  state.miniexpansion2013 = params.miniexpansion2013;
+  state.towntilepromo2013 = params.towntilepromo2013;
+  state.bonustilepromo2013 = params.bonustilepromo2013;
 
   initBoard();
 }
 
+function getAIPlayerName(index) {
+  if(index < 5) return ['Automaton', 'Talos', 'Galatea', 'Golem', 'Hal'][index];
+  else return 'AI' + index;
+}
+
 function initPlayers(params) {
-  players[0] = makeNewHumanPlayer('human');
+  players[0] = makeNewHumanPlayer('Human');
   players[0].index = 0;
   for(var i = 1; i < params.numplayers; i++) {
-    players[i] = makeNewAIPlayer(['AI1', 'AI2', 'AI3', 'AI4'][i-1]);
+    players[i] = makeNewAIPlayer(getAIPlayerName(i));
     players[i].index = i;
   }
 
   var startplayer = params.startplayer;
   if(startplayer == -1) startplayer = randomInt(players.length);
-  startplayer = wrap(startplayer, 0, players.length)
+  startplayer = wrapPlayer(startplayer)
   state.startPlayer = startplayer;
-  state.currentPlayer = startplayer - 1; // -1 so that when pre-incrementing it becomes the correct one.
+  state.currentPlayer = startplayer;
 }
 
 
@@ -336,25 +356,25 @@ function startBeginnerGameButtonFun(params) {
   if(players.length <= 2) {
     // 1-player not supported
     players[state.startPlayer].faction = F_WITCHES;
-    players[wrap(state.startPlayer + 1, 0, players.length)].faction = F_NOMADS;
+    players[wrapPlayer(state.startPlayer + 1)].faction = F_NOMADS;
   }
   else if(players.length == 3) {
     players[state.startPlayer].faction = F_WITCHES;
-    players[wrap(state.startPlayer + 1, 0, players.length)].faction = F_NOMADS;
-    players[wrap(state.startPlayer + 2, 0, players.length)].faction = F_ALCHEMISTS;
+    players[wrapPlayer(state.startPlayer + 1)].faction = F_NOMADS;
+    players[wrapPlayer(state.startPlayer + 2)].faction = F_ALCHEMISTS;
   }
   else if(players.length == 4) {
     players[state.startPlayer].faction = F_WITCHES;
-    players[wrap(state.startPlayer + 1, 0, players.length)].faction = F_NOMADS;
-    players[wrap(state.startPlayer + 2, 0, players.length)].faction = F_HALFLINGS;
-    players[wrap(state.startPlayer + 3, 0, players.length)].faction = F_MERMAIDS;
+    players[wrapPlayer(state.startPlayer + 1)].faction = F_NOMADS;
+    players[wrapPlayer(state.startPlayer + 2)].faction = F_HALFLINGS;
+    players[wrapPlayer(state.startPlayer + 3)].faction = F_MERMAIDS;
   }
   else if(players.length == 5) {
     players[state.startPlayer].faction = F_WITCHES;
-    players[wrap(state.startPlayer + 1, 0, players.length)].faction = F_NOMADS;
-    players[wrap(state.startPlayer + 2, 0, players.length)].faction = F_HALFLINGS;
-    players[wrap(state.startPlayer + 3, 0, players.length)].faction = F_MERMAIDS;
-    players[wrap(state.startPlayer + 4, 0, players.length)].faction = F_GIANTS;
+    players[wrapPlayer(state.startPlayer + 1)].faction = F_NOMADS;
+    players[wrapPlayer(state.startPlayer + 2)].faction = F_HALFLINGS;
+    players[wrapPlayer(state.startPlayer + 3)].faction = F_MERMAIDS;
+    players[wrapPlayer(state.startPlayer + 4)].faction = F_GIANTS;
   }
   for(var i = 0; i < players.length; i++) {
     players[i].color = factionColor(players[i].faction);
@@ -368,32 +388,36 @@ function startBeginnerGameButtonFun(params) {
     bonustiles[T_BON_PASSDVP_2C] = 0;
     bonustiles[T_BON_PASSTPVP_1W] = 0;
     bonustiles[T_BON_1P] = 0;
+    bonustiles[T_BON_PASSSHIPVP_3PW] = 0;
   }
   else if(players.length == 3) {
     bonustiles[T_BON_CULT_4C] = 0;
     bonustiles[T_BON_PASSDVP_2C] = 0;
     bonustiles[T_BON_PASSTPVP_1W] = 0;
+    bonustiles[T_BON_PASSSHIPVP_3PW] = 0;
   }
   else if(players.length == 4) {
     bonustiles[T_BON_PASSDVP_2C] = 0;
     bonustiles[T_BON_PASSTPVP_1W] = 0;
+    bonustiles[T_BON_PASSSHIPVP_3PW] = 0;
   }
   else if(players.length == 5) {
     bonustiles[T_BON_PASSDVP_2C] = 0;
+    bonustiles[T_BON_PASSSHIPVP_3PW] = 0;
   }
 
   //beginner game round tiles
-  roundtiles[1] = T_ROUND_D2VP_4R4PW;
-  roundtiles[2] = T_ROUND_SHSA5VP_2W1W;
-  roundtiles[3] = T_ROUND_DIG2VP_1O1C;
-  roundtiles[4] = T_ROUND_TP3VP_4W1DIG;
-  roundtiles[5] = T_ROUND_SHSA5VP_2R1W;
-  roundtiles[6] = T_ROUND_TP3VP_4B1DIG;
+  roundtiles[1] = T_ROUND_D2VP_4F4PW;
+  roundtiles[2] = T_ROUND_SHSA5VP_2A1W;
+  roundtiles[3] = T_ROUND_DIG2VP_1E1C;
+  roundtiles[4] = T_ROUND_TP3VP_4A1DIG;
+  roundtiles[5] = T_ROUND_SHSA5VP_2F1W;
+  roundtiles[6] = T_ROUND_TP3VP_4W1DIG;
 
   //beginner game starting dwellings
   function placeBeginnerDwelling(i, x, y) {
-    var error = placeInitialDwelling(players[wrap(state.startPlayer + i, 0, players.length)], x, y);
-    if(error != '') throw 'invalid beginner dwelling coordinates: ' + error + ' ' + x + ' ' + y + ' ' + players[wrap(state.startPlayer + i, 0, players.length)].color;
+    var error = placeInitialDwelling(players[wrapPlayer(state.startPlayer + i)], x, y);
+    if(error != '') throw 'invalid beginner dwelling coordinates: ' + error + ' ' + x + ' ' + y + ' ' + players[wrapPlayer(state.startPlayer + i)].color;
   }
   if(players.length == 2) {
     placeBeginnerDwelling(0, 6, 2);
@@ -439,7 +463,7 @@ function startBeginnerGameButtonFun(params) {
   calculateTownClusters();
 
   initialGameRender();
-  state.currentPlayer = state.startPlayer; //so that when pre-decrementing, the last player chooses the bonus tile first
+  state.currentPlayer = wrapPlayer(state.startPlayer - 1);
   nextState(S_INIT_BONUS, false); //faction and starting dwellings already done.
 }
 
@@ -449,15 +473,15 @@ function startObserveGameButtonFun(params) {
   else randomizeWorld(params.worldmap == 2);
 
   for(var i = 0; i < params.numplayers; i++) {
-    players[i] = makeNewAIPlayer(['AI0', 'AI1', 'AI2', 'AI3', 'AI4'][i]);
+    players[i] = makeNewAIPlayer(getAIPlayerName(i));
     players[i].index = i;
   }
 
   var startplayer = params.startplayer;
   if(startplayer == -1) startplayer = randomInt(players.length);
-  startplayer = wrap(startplayer, 0, players.length)
+  startplayer = wrapPlayer(startplayer)
   state.startPlayer = startplayer;
-  state.currentPlayer = startplayer - 1; // -1 so that when pre-incrementing it becomes the correct one.
+  state.currentPlayer = startplayer;
 
   chooseRoundTiles(params);
   chooseBonusTiles(params);
@@ -537,7 +561,7 @@ function randomizePlayerFactions(params) {
     }
   }
   var freecolors = [];
-  for(var i = R; i <= E; i++) {
+  for(var i = LANDSCAPE_BEGIN; i <= LANDSCAPE_END; i++) {
     if(!takencolors[i]) freecolors.push(i);
   }
   // The players with random race
@@ -559,7 +583,7 @@ function chooseRoundTiles(params) {
   var taken = {};
   for(var i = 6; i > 0; i--) {
     var index = params.presetround[i - 1];
-    if(i >= 5 && index == T_ROUND_DIG2VP_1O1C) continue; //no digging VP's in the last two rounds due to halflings abuse
+    if(i >= 5 && index == T_ROUND_DIG2VP_1E1C) continue; //no digging VP's in the last two rounds due to halflings abuse
     if(taken[index]) continue; //no duplicate round tiles
     taken[index] = true;
     roundtiles[i] = index;
@@ -568,7 +592,7 @@ function chooseRoundTiles(params) {
     if(roundtiles[i] != T_NONE) continue;
     while(true) {
       var index = T_ROUND_BEGIN + 1 + randomInt(T_ROUND_END - T_ROUND_BEGIN - 1);
-      if(i >= 5 && index == T_ROUND_DIG2VP_1O1C) continue; //no digging VP's in the last two rounds due to halflings abuse
+      if(i >= 5 && index == T_ROUND_DIG2VP_1E1C) continue; //no digging VP's in the last two rounds due to halflings abuse
       if(taken[index]) continue; //no duplicate round tiles
       taken[index] = true;
       roundtiles[i] = index;
@@ -583,6 +607,9 @@ function chooseBonusTiles(params) {
   var list1 = []; //the preferred ones
   var list2 = [];
   for(var i = T_BON_BEGIN + 1; i < T_BON_END; i++) {
+    if (!params.bonustilepromo2013 && isBonusTilePromo2013Tile(i)) {
+      continue;
+    }
     if(params.presetbonus[i]) {
       list1.push(i);
     } else {
@@ -633,14 +660,13 @@ function getInitialDwellingsDone(player) {
 //TODO: this function probably belongs in rules.js (but not the addLog things)
 function addEndGameScore() {
   //cult tracks
-  for(var i = C_R; i <= C_W; i++) {
+  for(var i = C_F; i <= C_A; i++) {
     addLog('');
     var scores = getCultEndScores(i);
     for(var j = 0; j < scores.length; j++) {
       if(scores[j] != 0) {
         addLog(logPlayerNameFun(players[j]) + ' gets ' + scores[j] + ' VP from ' + getCultName(i) + ' cult');
-        players[j].vp += scores[j];
-        players[j].vp_cult[i] += scores[j];
+        players[j].addVP(scores[j], 'cult', ['fire', 'water', 'earth', 'air'][i - C_F]);
       }
     }
   }
@@ -651,8 +677,7 @@ function addEndGameScore() {
   for(var j = 0; j < scores.length; j++) {
       if(scores[j][0] != 0) {
       addLog(logPlayerNameFun(players[j]) + ' gets ' + scores[j][0] + ' VP from network size ' + scores[j][1]);
-      players[j].vp += scores[j][0];
-      players[j].vp_network += scores[j][0];
+      players[j].addVP(scores[j][0], 'network', 'network');
     }
   }
 
@@ -661,8 +686,7 @@ function addEndGameScore() {
   addLog('');
   for(var i = 0; i < players.length; i++) {
     addLog(logPlayerNameFun(players[i]) + ' gets ' + scores[i] + ' VP from resources');
-    players[i].vp += scores[i];
-    players[i].vp_resources += scores[i];
+    players[i].addVP(scores[i], 'resources', 'resources');
   }
 
   //log final scores
@@ -673,24 +697,37 @@ function addEndGameScore() {
   }
 }
 
+function wrapPlayer(i) {
+  return wrap(i, 0, players.length);
+}
 
-State.prototype.nextState = function() {
-  if(this.reset) {
-    if(this.type != S_PRE) return; //you must call beginGame() yourself later to restart it
-    this.reset = false;
+
+State.prototype.selectNextActionPlayer_ = function() {
+  var count = 0;
+  while(true) {
+    if(count > players.length) throw 'this function should not be called if everyone passed';
+    this.currentPlayer = wrapPlayer(this.currentPlayer + 1);
+    if(!players[this.currentPlayer].passed) break;
+    count++;
   }
+};
 
-  this.currentStateDone = false;
+
+State.prototype.transitionState = function() {
+  callbackState = CS_TRANSITION;
+  var next_state = this.next_type == S_NONE ? this.type : this.next_type;
+
   if(this.type == S_PRE) {
-    //Nothing to do here. executeState will do it.
+    next_state = S_INIT_FACTION;
   }
   else if(this.type == S_INIT_FACTION) {
-    this.currentPlayer = wrap(this.currentPlayer + 1, 0, players.length);
-    if(players[this.currentPlayer].faction != F_NONE /*this means we went fully around*/) {
+    var nextplayer = wrapPlayer(this.currentPlayer + 1);
+    if(players[nextplayer].faction != F_NONE /*this means we went fully around*/) {
       createColorToPlayerMap();
-      this.currentPlayer = this.startPlayer - 1;
-      nextState(S_INIT_DWELLING); //done with current state
-      return;
+      this.currentPlayer = this.startPlayer;
+      next_state = S_INIT_DWELLING; //done with current state
+    } else {
+      this.currentPlayer = nextplayer;
     }
   }
   else if(this.type == S_INIT_DWELLING) {
@@ -712,17 +749,16 @@ State.prototype.nextState = function() {
 
     if(tier == 4) {
       calculateTownClusters();
-      this.currentPlayer = this.startPlayer; //so that when pre-decrementing, the last player chooses the bonus tile first
-      nextState(S_INIT_BONUS); //TODO: chaos magician 1 dwelling, nomads 3 dwellings
-      return;
+      this.currentPlayer = wrapPlayer(this.startPlayer - 1); //last player chooses bonus tile first
+      next_state = S_INIT_BONUS; //TODO: chaos magician 1 dwelling, nomads 3 dwellings
     } else {
       if(tier == 0) {
-        this.currentPlayer = wrap(this.currentPlayer + 1, 0, players.length);
-        if(players[this.currentPlayer].faction == F_CHAOS) this.currentPlayer = wrap(this.currentPlayer + 1, 0, players.length);
+        this.currentPlayer = wrapPlayer(this.currentPlayer + 1);
+        if(players[this.currentPlayer].faction == F_CHAOS) this.currentPlayer = wrapPlayer(this.currentPlayer + 1);
       }
       else if(tier == 1) {
         for(var i = 0; i < players.length; i++) {
-          var j = wrap(this.startPlayer - 1 - i, 0, players.length);
+          var j = wrapPlayer(this.startPlayer - 1 - i);
           if(players[j].faction != F_CHAOS && getInitialDwellingsDone(players[j]) < 2) { this.currentPlayer = j; break; }
         }
       }
@@ -739,11 +775,12 @@ State.prototype.nextState = function() {
     }
   }
   else if(this.type == S_INIT_BONUS) {
-    this.currentPlayer = wrap(this.currentPlayer - 1, 0, players.length);
-    if(players[this.currentPlayer].bonustile != T_NONE) {
+    var nextplayer = wrapPlayer(this.currentPlayer - 1);
+    if(players[nextplayer].bonustile != T_NONE) {
       startNewRound();
-      nextState(S_ACTION);
-      return;
+      next_state = S_ACTION;
+    } else {
+      this.currentPlayer = nextplayer;
     }
   }
   else if(this.type == S_ACTION) {
@@ -755,100 +792,97 @@ State.prototype.nextState = function() {
         firstpass = i;
       }
     }
-
-    if(passcount == players.length) {
-      this.currentPlayer = this.startPlayer - 1; //so that when pre-incrementing, start player begins
-      this.rounddigsdone = 0;
-      if(this.round == 6) {
-        addEndGameScore();
-        nextState(S_GAME_OVER);
-      } else {
-        nextState(S_ROUND_END);
-      }
-      return;
-    }
     if(passcount == 1) {
       this.startPlayer = firstpass;
     }
-
-    while(true) {
-      this.currentPlayer++;
-      if(this.currentPlayer >= players.length) this.currentPlayer = 0;
-      if(!players[this.currentPlayer].passed) break;
+    if(passcount == players.length) {
+      this.currentPlayer = this.startPlayer;
+      if(this.round == 6 && this.next_type == S_ACTION) {
+        addEndGameScore();
+        next_state = S_GAME_OVER;
+      } else {
+        this.currentPlayer = this.startPlayer;
+        next_state = S_ROUND_END_DIG;
+      }
+    } else {
+      if(this.next_type == S_ACTION) {
+        this.selectNextActionPlayer_();
+      }
     }
   }
   else if(this.type == S_LEECH) {
-    this.leechj++;
-    if(this.leechi < this.leecharray.length && this.leechj >= this.leecharray[this.leechi].length) {
+    this.leechi++;
+    if(this.leechi >= this.leecharray.length) {
       // leeching done. Reset state and handle cultists.
-      var cultists = players[this.currentPlayer] && players[this.currentPlayer].faction == F_CULTISTS;
+      var player = players[this.currentPlayer];
+      var cultists = player && player.faction == F_CULTISTS;
       var taken = this.leechtaken > 0;
       this.leechtaken = 0;
-      this.leechj = 0;
-      this.leechi++;
+      this.leechi = 0;
+      this.leecharray = [];
       if(cultists) {
-        var player = players[this.currentPlayer];
         if(taken) {
           setHelp('player ' + player.name + ' choose cultists track');
-          nextState(S_CULTISTS);
-          return;
+          next_state = S_CULTISTS;
         } else {
           if(state.newcultistsrule) {
             addPower(player, 1);
             addLog(logPlayerNameFun(player) + ' receives one extra pw because everyone declined the cultists');
           }
+          next_state = S_ACTION;
         }
+      } else {
+        next_state = S_ACTION;
       }
-    }
-    if(this.leechi >= this.leecharray.length) {
-      nextState(S_ACTION);
-      return;
+
+      if(next_state == S_ACTION) this.selectNextActionPlayer_();
     }
   }
   else if(this.type == S_CULTISTS) {
-    //Nothing to do here. executeState will do it.
+    // Cultists leeching is a one time state that goes to next action immediately after.
+    next_state = S_ACTION;
+    this.selectNextActionPlayer_();
   }
-  else if(this.type == S_ROUND_END) {
-    var num = 0;
-    for(var i = 0; i < players.length; i++) {
-      var j = wrap(this.startPlayer + this.rounddigsdone, 0, players.length);
-      this.rounddigsdone++;
-      if(this.rounddigsdone > players.length) break;
-      var digs = getRoundBonusDigs(players[j], this.round);
-      if(digs > 0) {
-        num = digs;
+  else if(this.type == S_ROUND_END_DIG) {
+    for(;;) {
+      this.currentPlayer = wrapPlayer(this.currentPlayer + 1);
+      if(this.currentPlayer == this.startPlayer) {
+        startNewRound();
+        next_state = S_ACTION ;
         break;
       }
+      var digs = getRoundBonusDigs(players[this.currentPlayer], this.round);
+      if(digs > 0) break;
     }
-    if(num == 0) {
-      startNewRound();
-      nextState(S_ACTION);
-      return;
-    }
+    
   }
   else if(this.type == S_GAME_OVER) {
-    //Nothing to do here. executeState will do it.
+    //Nothing to do here.
   }
 
-  this.executeState();
+  nextState(next_state, true);
 };
 
 
 //Actually executes the current state after choosing right player, possible transitions other next states, etc...
 State.prototype.executeState = function() {
+  callbackState = CS_EXECUTE;
   if(this.type == S_PRE) {
     renderPreScreen(200, 300, startGameButtonFun, startPresetGameButtonFun, startBeginnerGameButtonFun, startObserveGameButtonFun, startDebugGameButtonFun);
   }
   else if(this.type == S_INIT_FACTION) {
     setHelp('player ' + players[this.currentPlayer].name + ' choose faction');
+    callbackState = CS_ACTOR;
     players[this.currentPlayer].actor.chooseFaction(this.currentPlayer, factionDoCallback);
   }
   else if(this.type == S_INIT_DWELLING) {
     setHelp('player ' + players[this.currentPlayer].name + ' place initial dwelling');
+    callbackState = CS_ACTOR;
     players[this.currentPlayer].actor.chooseInitialDwelling(this.currentPlayer, initialDwellingDoCallback);
   }
   else if(this.type == S_INIT_BONUS) {
     setHelp('player ' + players[this.currentPlayer].name + ' choose bonus tile');
+    callbackState = CS_ACTOR;
     players[this.currentPlayer].actor.chooseInitialBonusTile(this.currentPlayer, initialBonusTileDoCallback);
   }
   else if(this.type == S_ACTION) {
@@ -856,22 +890,33 @@ State.prototype.executeState = function() {
     setHelp('player ' + player.name + ' action');
     actionEl.innerHTML = '';
     if(this.currentPlayer == 0) popupElement.innerHTML = ''; //sometimes the popupelement is not correctly cleared after the leech yes/no menu. Take care of it here. TODO: investigate why and fix this in a better way. The button does clear it, has it something to do with timeout?
+    callbackState = CS_ACTOR;
     player.actor.doAction(this.currentPlayer, actionDoCallback);
   }
   else if(this.type == S_LEECH) {
-    var leech = this.leecharray[this.leechi][this.leechj];
+    var leech = this.leecharray[this.leechi];
     setHelp('player ' + players[leech[0]].name + ' leech decision');
     var amount = actualLeechAmount(players[leech[0]], leech[1]);
-    if(amount > 0) players[leech[0]].actor.leechPower(leech[0], this.currentPlayer, leech[2], leech[3], amount, amount - 1, this.round, this.leechtaken, this.leecharray[this.leechi].length - this.leechj - 1, bind(leechCallback, amount));
-    else nextState(S_LEECH, true); //skip 0 power leech
+    if(amount > 0) {
+      callbackState = CS_ACTOR;
+      players[leech[0]].actor.leechPower(leech[0], this.currentPlayer, amount, amount - 1, this.round, this.leechtaken, this.leecharray.length - this.leechi - 1, bind(leechCallback, amount));
+    } else {
+      state.transitionState();
+    }
   }
   else if(this.type == S_CULTISTS) {
+    callbackState = CS_ACTOR;
     players[this.currentPlayer].actor.chooseCultistTrack(this.currentPlayer, cultistsCallback);
   }
-  else if(this.type == S_ROUND_END) {
-    var j = wrap(this.startPlayer + this.rounddigsdone - 1, 0, players.length);
+  else if(this.type == S_ROUND_END_DIG) {
+    var j = this.currentPlayer;
     var digs = getRoundBonusDigs(players[j], this.round);
-    players[j].actor.doRoundBonusSpade(j, digs, roundDigCallback);
+    if(digs > 0) {
+      callbackState = CS_ACTOR;
+      players[j].actor.doRoundBonusSpade(j, digs, roundDigCallback);
+    } else {
+      state.transitionState();
+    }
   }
   else if(this.type == S_GAME_OVER) {
     popupElement.innerHTML = '';
@@ -879,8 +924,4 @@ State.prototype.executeState = function() {
     drawMap();
     drawHud();
   }
-}
-
-State.prototype.doReset = function() {
-  this.reset = true;
 }

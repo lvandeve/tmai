@@ -43,7 +43,7 @@ Actor.prototype.doAction = function(playerIndex /*player object can change durin
 //already is true if some previous players already accepted power from this move (that is to determine what to do with the cultists, if they already received it your decision does not help them further)
 //still is the amount of next players that still need to decide about this (once more useful for handling the cultists)
 //this function is only called if you have enough VP to afford it and if amount > 0
-Actor.prototype.leechPower = function(playerIndex /*receiver*/, fromPlayer /*sender*/, x, y, amount, vpcost, roundnum, already, still, callback) {
+Actor.prototype.leechPower = function(playerIndex /*receiver*/, fromPlayer /*sender*/, amount, vpcost, roundnum, already, still, callback) {
 };
 
 //bonus from the cult track.

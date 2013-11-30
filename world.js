@@ -28,29 +28,6 @@ freely, subject to the following restrictions:
 var BW = 13; //board width
 var BH = 9; //board height
 
-//Tile color enum
-var N = 0; /*Null (edge of hexmap)*/
-var R = 1; /*Red*/
-var Y = 2; /*Yellow*/
-var O = 3; /*brOwn*/
-var K = 4; /*blacK*/
-var B = 5; /*Blue*/
-var G = 6; /*Green*/
-var E = 7; /*grEy*/
-var I = 8; /*rIver*/
-
-//Buildings
-var B_NONE = 0;
-var B_D = 1;
-var B_TP = 2;
-var B_TE = 3;
-var B_SH = 4;
-var B_SA = 5;
-//mermaids town over water connection tile.
-//This is implemented as a building, because the clustering calculation works like that, and it can connect up to 3 parts together.
-//it's only allowed to build this if it results in forming a new town (that ensures the rule "may skip only ONE river tile", and prevents placing tons in a row to cross large river distances)
-var B_MERMAIDS = 6;
-
 //returns the power value of a building
 //given building may not be B_NONE or undefined.
 function getBuildingPower(building) {
@@ -67,19 +44,6 @@ function getBuildingTownSize(building) {
   if(building == B_SA) return 2;
   return 1;
 }
-
-//Directions
-//For bridges: N, NE, SE, S, SW, NW
-//For touching tiles: NE, E, SE, SW, W, NW
-var D_INVALID = 0; //for tiles not in correct relative location
-var D_N = 1;
-var D_NE = 2;
-var D_E = 3;
-var D_SE = 4;
-var D_S = 5;
-var D_SW = 6;
-var D_W = 7;
-var D_NW = 8;
 
 //Grid coordinates to array coordinates
 function arCo(x, y) {
@@ -116,15 +80,15 @@ var world = [];
 function initStandardWorld() {
   BW = 13;
   BH = 9;
-  world = [O,E,G,B,Y,R,O,K,R,G,B,R,K,
-            Y,I,I,O,K,I,I,Y,K,I,I,Y,N,
-           I,I,K,I,E,I,G,I,G,I,E,I,I,
-            G,B,Y,I,I,R,B,I,R,I,R,O,N,
-           K,O,R,B,K,O,E,Y,I,I,G,K,B,
-            E,G,I,I,Y,G,I,I,I,O,E,O,N,
-           I,I,I,E,I,R,I,G,I,Y,K,B,Y,
-            Y,B,O,I,I,I,B,K,I,E,O,E,N,
-           R,K,E,B,R,G,Y,O,E,I,B,G,R];
+  world = [U,S,G,B,Y,R,U,K,R,G,B,R,K,
+            Y,I,I,U,K,I,I,Y,K,I,I,Y,N,
+           I,I,K,I,S,I,G,I,G,I,S,I,I,
+            G,B,Y,I,I,R,B,I,R,I,R,U,N,
+           K,U,R,B,K,U,S,Y,I,I,G,K,B,
+            S,G,I,I,Y,G,I,I,I,U,S,U,N,
+           I,I,I,S,I,R,I,G,I,Y,K,B,Y,
+            Y,B,U,I,I,I,B,K,I,S,U,S,N,
+           R,K,S,B,R,G,Y,U,S,I,B,G,R];
 }
 
 function randomizeWorld(small) {
@@ -231,7 +195,7 @@ function randomizeWorld(small) {
 
   //yellow and blue first because they have more rectrictions
   var bad = [];
-  var colors = [Y, B, O, K, G, E, R];
+  var colors = [Y, B, U, K, G, S, R];
   for(var c = 0; c < colors.length; c++) {
     done = 0;
     attempt = 0;
@@ -401,6 +365,9 @@ function calculateClustersGeneric(clusters, clustermap, isBuildingFun, getConnec
     cluster.networkamount = 0;
     cluster.color = b[1];
     var player = players[colorToPlayerMap[cluster.color]];
+    if(!player) {
+      throw 'no player for building color';
+    }
     while(stack.length > 0) {
       var t = stack.pop();
       if(clustermap[arCo(t[0], t[1])] != 0) continue; //already handled
@@ -603,8 +570,8 @@ function updateTestClusters(action, testclusters, testmap, testconnections, colo
     for(var i = 0; i < oldc1.tiles.length; i++) newc.tiles.push(oldc1.tiles[i]);
     for(var i = 0; i < newc.tiles.length; i++) testmap[arCo(newc.tiles[i][0], newc.tiles[i][1])] = newi;
 
-    addToTestConnections(testconnections, action.co[0], action.co[1]);
-    addToTestConnections(testconnections, action.co[1], action.co[0]);
+    addToTestConnections(testconnections, action.cos[0], action.cos[1]);
+    addToTestConnections(testconnections, action.cos[1], action.cos[0]);
     
     oldc0.obsolete = newi;
     oldc1.obsolete = newi;
@@ -723,7 +690,7 @@ function actionsMakeTown(player, actions, action) {
 
     //favtiles must be checked first, for when you pick fav tile for town size 6 and at the same time upgrade to SA making some town size 6.
     for(var j = 0; j < a.favtiles.length; j++) {
-      if(a.favtiles[j] == T_FAV_2R_6TW) {
+      if(a.favtiles[j] == T_FAV_2F_6TW) {
         reqpower = 6; //from now on for next actions this reqpower is used
         if(iscurrent) {
           var tw = getPlayerTownsOfSize6(player.color, testclusters);
@@ -900,7 +867,7 @@ function getBridgeDir(x0, y0, x1, y1) {
   return D_INVALID;
 }
 
-function addBridge(x0, y0, x1, y1, color) {
+function addBridgeTo(x0, y0, x1, y1, color, bridges) {
   if(y0 < y1) {
     var temp;
     temp = x0; x0 = x1; x1 = temp;
@@ -918,6 +885,10 @@ function addBridge(x0, y0, x1, y1, color) {
   else if(dir == D_N) {
     bridges[arCo(x0, y0)][0] = color;
   }
+}
+
+function addBridge(x0, y0, x1, y1, color) {
+  addBridgeTo(x0, y0, x1, y1, color, bridges);
 }
 
 //returns the bridge color at that area, or N if no bridge

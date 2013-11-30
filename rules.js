@@ -26,68 +26,6 @@ freely, subject to the following restrictions:
 //Everything related to game and action rules, cults and income. But not the world and player faction related rules.
 
 
-//Actions. The cost and result are not included, must be known given the A_ value, faction and player stats.
-var A_index = 0;
-var A_NONE = A_index++;
-//Burn & convert power (non-turn actions)
-var A_BURN = A_index++; //burn power
-var A_CONVERT_ACTIONS_BEGIN = A_index++; //not an actual action, used for comparisons
-var A_CONVERT_1PW_1C = A_index++;
-var A_CONVERT_3PW_1W = A_index++;
-var A_CONVERT_5PW_1P = A_index++;
-var A_CONVERT_1P_1W = A_index++;
-var A_CONVERT_1W_1C = A_index++;
-var A_CONVERT_1VP_1C = A_index++; //alchemists only
-var A_CONVERT_2C_1VP = A_index++; //alchemists only (TODO: remove this as action? It is only for endgame scoring)
-var A_CONVERT_1W_1P = A_index++; //darklings only, after building their SH, max 3 times (the SH upgrade action must precede)
-var A_CONVERT_ACTIONS_END = A_index++; //not an actual action, used for comparisons
-var A_CONNECT_WATER_TOWN = A_index++; //mermaids
-//Faction specific non-turn actions
-var A_DOUBLE = A_index++; //chaos magicians double action
-var A_TUNNEL = A_index++; //dwarves special ability.
-var A_CARPET = A_index++; //fakirs special ability.
-//Pass
-var A_PASS = A_index++;
-//Power resources
-var A_POWER_1P = A_index++;
-var A_POWER_2W = A_index++;
-var A_POWER_7C = A_index++;
-//Spade giving actions
-var A_SPADE = A_index++; //Convert workers into spade (or priest if alchemists)
-var A_BONUS_SPADE = A_index++; //From the pass bonus tile.
-var A_POWER_SPADE = A_index++;
-var A_POWER_2SPADE = A_index++;
-var A_GIANTS_2SPADE = A_index++;
-//Transforming actions
-var A_TRANSFORM_CW = A_index++; //transform terrain clockwise 1 step
-var A_TRANSFORM_CCW = A_index++; //transform terrain counterclockwise 1 step
-var A_GIANTS_TRANSFORM = A_index++; //transform terrain to giants home color. Consumes two spades.
-var A_SANDSTORM = A_index++; //nomads sandstorm. No spades needed for this action.
-//The build dwelling actions
-var A_BUILD = A_index++; //build a dwelling. This action can either be on its own, or after any of the DIG actions
-var A_WITCHES_D = A_index++; //free dwelling anywhere on the green color
-//The upgrade actions need the coordinates of the location of the building to upgrade, plus potentially more for the SH effect, potential town tile, ...
-var A_UPGRADE_TP = A_index++;
-var A_UPGRADE_TE = A_index++; //includes taking favor tile(s)
-var A_UPGRADE_SH = A_index++; //includes any of the actions of the faction, including up to 3 dig coordinates + house coordinate for halflings
-var A_UPGRADE_SA = A_index++; //includes taking favor tile(s)
-var A_SWARMLINGS_TP = A_index++; //free TP upgrade
-//Cult
-var A_CULT_PRIEST3 = A_index++; //priest to first spot on cult track, move 3 up
-var A_CULT_PRIEST2 = A_index++; //priest to remaining spot on cult track, move 2 up
-var A_CULT_PRIEST1 = A_index++; //priest comes back to pool, move 1 up
-var A_BONUS_CULT = A_index++;
-var A_FAVOR_CULT = A_index++;
-var A_AUREN_CULT = A_index++; //2 cult advances
-//Advance
-var A_ADV_SHIP = A_index++;
-var A_ADV_DIG = A_index++;
-//Bridge
-var A_POWER_BRIDGE = A_index++; //from the power action
-var A_ENGINEERS_BRIDGE = A_index++;
-//Debug
-var A_DEBUG_SKIP = A_index++; //skip a whole round for debug purposes (such as watching AI's)
-var A_DEBUG_STEP = A_index++; //skip an action for debug purposes (such as watching AI's)
 
 //Whether it's an action that you can do once per turn. If false, it's an auxiliary action such as burn/convert.
 //Even though they can be combined, every spade, transform and build action is also a turn action. Further code is needed to enforce their rules during a turn.
@@ -160,7 +98,7 @@ function actionRequiresTownClusterRecalc(action) {
 function actionMightFormTown(action) {
   if(actionRequiresTownClusterRecalc(action)) return true;
   for(var i = 0; i < action.favtiles.length; i++) {
-    if(action.favtiles[i] == T_FAV_2R_6TW) return true;
+    if(action.favtiles[i] == T_FAV_2F_6TW) return true;
   }
   return false;
 }
@@ -169,57 +107,6 @@ function actionsRequireTownClusterRecalc(actions) {
   for(var i = 0; i < actions.length; i++) if(actionRequiresTownClusterRecalc(actions[i])) return true;
   return false;
 }
-
-//Bonus, favor, town and round scoring tiles
-var T_index = 0;
-var T_NONE = T_index++;
-var T_DUD = T_index++; //not a real tile, but filled in by action generation functions, to be replaced with proper tiles later
-var T_BON_BEGIN = T_index++;
-var T_BON_SPADE_2C = T_index++;
-var T_BON_CULT_4C = T_index++;
-var T_BON_6C = T_index++;
-var T_BON_3PW_SHIP = T_index++;
-var T_BON_3PW_1W = T_index++;
-var T_BON_PASSDVP_2C = T_index++;
-var T_BON_PASSTPVP_1W = T_index++;
-var T_BON_PASSSHSAVP_2W = T_index++;
-var T_BON_1P = T_index++;
-var T_BON_END = T_index++;
-var T_FAV_BEGIN = T_index++;
-var T_FAV_3R = T_index++;
-var T_FAV_3B = T_index++;
-var T_FAV_3O = T_index++;
-var T_FAV_3W = T_index++;
-var T_FAV_2R_6TW = T_index++;
-var T_FAV_2B_CULT = T_index++;
-var T_FAV_2O_1PW1W = T_index++;
-var T_FAV_2W_4PW = T_index++;
-var T_FAV_1R_3C = T_index++;
-var T_FAV_1B_TPVP = T_index++;
-var T_FAV_1O_DVP = T_index++; //place dwelling VP
-var T_FAV_1W_PASSTPVP = T_index++;
-var T_FAV_END = T_index++;
-var T_TW_BEGIN = T_index++;
-var T_TW_2VP_2CULT = T_index++; //mini-expansion 2013
-var T_TW_4VP_SHIP = T_index++; //mini-expansion 2013
-var T_TW_5VP_6C = T_index++;
-var T_TW_6VP_8PW = T_index++;
-var T_TW_7VP_2W = T_index++;
-var T_TW_8VP_CULT = T_index++;
-var T_TW_9VP_P = T_index++;
-var T_TW_11VP = T_index++; //mini-expansion 2013
-var T_TW_END = T_index++;
-var T_ROUND_BEGIN = T_index++;
-var T_ROUND_DIG2VP_1O1C = T_index++;
-var T_ROUND_TW5VP_4O1DIG = T_index++;
-var T_ROUND_D2VP_4B1P = T_index++;
-var T_ROUND_SHSA5VP_2R1W = T_index++;
-var T_ROUND_D2VP_4R4PW = T_index++;
-var T_ROUND_TP3VP_4B1DIG = T_index++;
-var T_ROUND_SHSA5VP_2W1W = T_index++;
-var T_ROUND_TP3VP_4W1DIG = T_index++;
-var T_ROUND_END = T_index++;
-var T_TILE_ENUM_END = T_index++;
 
 function isBonusTile(tile) {
   return tile > T_BON_BEGIN && tile < T_BON_END;
@@ -231,9 +118,15 @@ function isTownTile(tile) {
   return tile > T_TW_BEGIN && tile < T_TW_END;
 }
 
-function isMiniExpansion2013Tile(tile) {
+function isTownTilePromo2013Tile(tile) {
   return tile == T_TW_2VP_2CULT || tile == T_TW_4VP_SHIP || tile == T_TW_11VP;
 }
+
+function isBonusTilePromo2013Tile(tile) {
+  return tile == T_BON_PASSSHIPVP_3PW;
+}
+
+// how much of that tile are placed at game setup
 function getTileInitialCount(tile) {
   if(isFavorTile(tile)) return tile <= T_FAV_3W ? 1 : 3;
   if(isTownTile(tile)) return (tile == T_TW_2VP_2CULT || tile == T_TW_11VP) ? 1 : 2;
@@ -266,7 +159,7 @@ function randomizeBonusTiles() {
       var index = T_BON_BEGIN + 1 + randomInt(T_BON_END - T_BON_BEGIN - 1);
       if(!bonustiles[index]) continue; //already gone;
       bonustiles[index] = 0;
-      addLog('eliminated bonus tile ' + tileToString(index));
+      addLog('eliminated bonus tile ' + getTileCodeName(index));
       break;
     }
   }
@@ -280,7 +173,7 @@ function randomizeRoundTiles() {
   for(var i = 6; i > 0; i--) {
     while(true) {
       var index = T_ROUND_BEGIN + 1 + randomInt(T_ROUND_END - T_ROUND_BEGIN - 1);
-      if(i >= 5 && index == T_ROUND_DIG2VP_1O1C) continue; //no digging VP's in the last two rounds due to halflings abuse
+      if(i >= 5 && index == T_ROUND_DIG2VP_1E1C) continue; //no digging VP's in the last two rounds due to halflings abuse
       if(taken[index]) continue; //no duplicate round tiles
       taken[index] = true;
       roundtiles[i] = index;
@@ -289,47 +182,21 @@ function randomizeRoundTiles() {
   }
 }
 
+function isFactionOctogonAction(type) {
+  return type == A_DOUBLE || type == A_GIANTS_2SPADE || type == A_SANDSTORM
+      || type == A_WITCHES_D || type == A_SWARMLINGS_TP || type == A_AUREN_CULT;
+}
 
+function isPowerOctogonAction(type) {
+  return type == A_POWER_BRIDGE || type == A_POWER_1P || type == A_POWER_2W || type == A_POWER_7C || type == A_POWER_SPADE || type == A_POWER_2SPADE;
+}
 
-//All action octogons
-var O_index = 0;
-var O_NONE = O_index++;
-var O_START = O_index++;
-var O_POW_BRIDGE = O_index++;
-var O_POW_1P = O_index++;
-var O_POW_2W = O_index++;
-var O_POW_7C = O_index++;
-var O_POW_SPADE = O_index++;
-var O_POW_2SPADE = O_index++;
-var O_BON_SPADE_2C = O_index++;
-var O_BON_CULT_4C = O_index++;
-var O_FAV_2B_CULT = O_index++;
-var O_FACTION_BEGIN = O_index++; //not a real octogon
-var O_FACTION_CHAOS = O_index++;
-var O_FACTION_GIANTS = O_index++;
-var O_FACTION_NOMADS = O_index++;
-var O_FACTION_SWARMLINGS = O_index++;
-var O_FACTION_AUREN = O_index++;
-var O_FACTION_WITCHES = O_index++;
-var O_FACTION_END = O_index++; //not a real octogon
-var O_END = O_index++;
+function isTileOctogonAction(type) {
+  return type == A_BONUS_SPADE || type == A_BONUS_CULT || type == A_FAVOR_CULT;
+}
 
-//todo: merge this with action names everywhere to have consistent names
-function getOctogonName(octogon) {
-  if(octogon == O_POW_BRIDGE) return 'bridge';
-  if(octogon == O_POW_1P) return '1p';
-  if(octogon == O_POW_2W) return '2w';
-  if(octogon == O_POW_7C) return '7c';
-  if(octogon == O_POW_SPADE) return 'powspade';
-  if(octogon == O_POW_2SPADE) return 'pow2spade';
-  if(octogon == O_BON_SPADE_2C) return 'bonspade';
-  if(octogon == O_BON_CULT_4C) return 'boncult';
-  if(octogon == O_FAV_2B_CULT) return 'favcult';
-  if(octogon == O_FACTION_CHAOS) return 'chaos';
-  if(octogon == O_FACTION_GIANTS) return 'giants';
-  if(octogon == O_FACTION_NOMADS) return 'nomads';
-  if(octogon == O_FACTION_SWARMLINGS) return 'swarmlings';
-  if(octogon == O_FACTION_WITCHES) return 'witches';
+function isOctogonAction(type) {
+  return isFactionOctogonAction(type) || isPowerOctogonAction(type) || isTileOctogonAction(type);
 }
 
 //global octogons. Octogons is a map, where undefined means the action is free, 1 means the action is taken. There are global octogons and per-player octogons.
@@ -341,28 +208,13 @@ function initOctogons() {
   }
 }
 
-//cults
-var C_NONE = -1;
-var C_R = 0; //red
-var C_B = 1; //blue
-var C_O = 2; //brown
-var C_W = 3; //white
-//TODO: Name these according to the element instead of color: C_F, C_W, C_E and C_A
-
-function getCultName(cult) {
-  if(cult == C_R) return 'fire';
-  if(cult == C_B) return 'water';
-  if(cult == C_O) return 'earth';
-  if(cult == C_W) return 'air';
-  return 'unknown';
-}
-
 //The players
 var players = [];
 
 var colorToPlayerMap = {}; //map to the index of the player (cannot point to the player objects themselves due to their backup cloning that changes their addresses)
 
 function createColorToPlayerMap() {
+  colorToPlayerMap = {};
   for(var i = 0; i < players.length; i++) {
     colorToPlayerMap[players[i].color] = i;
   }
@@ -386,11 +238,11 @@ var Action = function(type) {
 //priests sent to each cult track. The main array is for each track.
 //The sub array is the 4 priest places, the first being the value 3 one, the others the value 2 ones.
 //value N means no player is there, otherwise it's the player color
-//the '2' spots are filled in from left to right, so checking if cultp[C_R][3] == 'N' is enough to see that there's a free '2' spot left there.
+//the '2' spots are filled in from left to right, so checking if cultp[C_F][3] == 'N' is enough to see that there's a free '2' spot left there.
 var cultp = [[N,N,N,N],[N,N,N,N],[N,N,N,N],[N,N,N,N]];
 
 function getTownReqPower(player) {
-  return player.favortiles[T_FAV_2R_6TW] > 0 ? 6 : 7;
+  return player.favortiles[T_FAV_2F_6TW] > 0 ? 6 : 7;
 }
 
 function getTileIncome(tile) {
@@ -403,9 +255,10 @@ function getTileIncome(tile) {
   else if(tile == T_BON_PASSTPVP_1W) return [0,1,0,0,0];
   else if(tile == T_BON_PASSSHSAVP_2W) return [0,2,0,0,0];
   else if(tile == T_BON_1P) return [0,0,1,0,0];
-  else if(tile == T_FAV_2O_1PW1W) return [0,1,0,1,0];
-  else if(tile == T_FAV_2W_4PW) return [0,0,0,4,0];
-  else if(tile == T_FAV_1R_3C) return [3,0,0,0,0];
+  else if(tile == T_BON_PASSSHIPVP_3PW) return [0,0,0,3,0];
+  else if(tile == T_FAV_2E_1PW1W) return [0,1,0,1,0];
+  else if(tile == T_FAV_2A_4PW) return [0,0,0,4,0];
+  else if(tile == T_FAV_1F_3C) return [3,0,0,0,0];
   else return null;
 }
 
@@ -473,15 +326,13 @@ function addPriests(player, p) {
   if(player.p > player.pp) player.p = player.pp;
 }
 
-//This can also add VP, but you must add this to the specific player VP breakdown type yourself
-function addIncome(player, income) {
+//This can also add VP, if that case give reason
+function addIncome(player, income, opt_reason, opt_detail) {
   player.c += income[0];
   player.w += income[1];
   addPriests(player, income[2]);
   addPower(player, income[3]);
-
-  //this probably never happens, VP is not part of income
-  player.vp += income[4];
+  player.addVP(income[4], opt_reason, opt_detail);
 }
 
 //consumed is a 5 element income array
@@ -493,9 +344,8 @@ function consume(player, consumed) {
   usePower(player, consumed[3]);
 
   //this can happen for alchemists
-  player.vp -= consumed[4];
-  if(player.faction == F_ALCHEMISTS) player.vp_faction -= consumed[4];
-  else player.vp_other -= consumed[4];
+  if(player.faction == F_ALCHEMISTS) player.addVP(-consumed[4], 'faction', 'faction');
+  else player.addVP(consumed[4], 'other', 'other');
 }
 
 //only for cheat/debug buttons
@@ -621,16 +471,16 @@ function tryRoundBonusDig(player, type, x, y) {
   if(type == A_GIANTS_TRANSFORM) setWorld(x, y, player.color);
   else if(type == A_TRANSFORM_CW) {
       color = tile + 1;
-      if(color == E + 1) color = R;
+      if(color == S + 1) color = R;
       setWorld(x, y, color);
   }
   else if(type == A_TRANSFORM_CCW) {
       color = tile - 1;
-      if(color == R - 1) color = E;
+      if(color == R - 1) color = S;
       setWorld(x, y, color);
   }
 
-  if(player.faction == F_HALFLINGS) { player.vp++; player.vp_faction++; }
+  if(player.faction == F_HALFLINGS) { player.addVP(1, 'faction', 'faction') }
   if(player.faction == F_ALCHEMISTS && built_sh(player)) addPower(player, 2);
   return '';
 }
@@ -784,20 +634,20 @@ function tryCultAction(player, action) {
 
   if(action.type == A_BONUS_CULT) {
     if(player.bonustile != T_BON_CULT_4C) return 'player does not have bonus cult tile';
-    if(player.octogons[O_BON_CULT_4C]) return 'bonus cult already used';
-    player.octogons[O_BON_CULT_4C] = 1;
+    if(player.octogons[A_BONUS_CULT]) return 'bonus cult already used';
+    player.octogons[A_BONUS_CULT] = 1;
   }
 
   if(action.type == A_FAVOR_CULT) {
-    if(!player.favortiles[T_FAV_2B_CULT]) return 'player does not have favor cult tile';
-    if(player.octogons[O_FAV_2B_CULT]) return 'favor cult already used';
-    player.octogons[O_FAV_2B_CULT] = 1;
+    if(!player.favortiles[T_FAV_2W_CULT]) return 'player does not have favor cult tile';
+    if(player.octogons[A_FAVOR_CULT]) return 'favor cult already used';
+    player.octogons[A_FAVOR_CULT] = 1;
   }
 
   if(action.type == A_AUREN_CULT) {
     if(!built_sh(player)) return 'auren cult action requires stronghold';
-    if(player.octogons[O_FACTION_AUREN]) return 'auren cult already used';
-    player.octogons[O_FACTION_AUREN] = 1;
+    if(player.octogons[A_AUREN_CULT]) return 'auren cult already used';
+    player.octogons[A_AUREN_CULT] = 1;
   }
 
   giveCult(player, action.cult, num);
@@ -809,50 +659,42 @@ function tryCultAction(player, action) {
 //includes alchemists SH power
 function addExtrasForAction(player, action) {
   if(action.type == A_UPGRADE_TP || action.type == A_SWARMLINGS_TP) {
-    if(player.favortiles[T_FAV_1B_TPVP]) {
-      player.vp += 3;
-      player.vp_favor += 3;
+    if(player.favortiles[T_FAV_1W_TPVP]) {
+      player.addVP(3, 'favor', getTileCodeName(T_FAV_1W_TPVP));
     }
-    if(getRoundTile() == T_ROUND_TP3VP_4B1DIG || getRoundTile() == T_ROUND_TP3VP_4W1DIG) {
-      player.vp += 3;
-      player.vp_round += 3;
+    if(getRoundTile() == T_ROUND_TP3VP_4W1DIG || getRoundTile() == T_ROUND_TP3VP_4A1DIG) {
+      player.addVP(3, 'round', getTileCodeName(getRoundTile()));
     }
   }
   
   if(action.type == A_BUILD || action.type == A_WITCHES_D) {
-    if(player.favortiles[T_FAV_1O_DVP]) {
-      player.vp += 2;
-      player.vp_favor += 2;
+    if(player.favortiles[T_FAV_1E_DVP]) {
+      player.addVP(2, 'favor', getTileCodeName(T_FAV_1E_DVP));
     }
-    if(getRoundTile() == T_ROUND_D2VP_4B1P || getRoundTile() == T_ROUND_D2VP_4R4PW) {
-      player.vp += 2;
-      player.vp_round += 2;
+    if(getRoundTile() == T_ROUND_D2VP_4W1P || getRoundTile() == T_ROUND_D2VP_4F4PW) {
+      player.addVP(2, 'round', getTileCodeName(getRoundTile()));
     }
   }
 
   if(isSpadeConsumingAction(action)) {
     var num = action.type == A_GIANTS_TRANSFORM ? 2 : 1;
-    if(getRoundTile() == T_ROUND_DIG2VP_1O1C) {
-      player.vp += num * 2;
-      player.vp_round += num * 2;
+    if(getRoundTile() == T_ROUND_DIG2VP_1E1C) {
+      player.addVP(num * 2, 'round', getTileCodeName(getRoundTile()));
     }
     if(player.faction == F_HALFLINGS) {
-      player.vp += num;
-      player.vp_faction += num;
+      player.addVP(num, 'faction', 'faction');
     }
     if(player.faction == F_ALCHEMISTS && built_sh(player)) addPower(player, num * 2);
   }
 
   if(player.faction == F_DARKLINGS && action.type == A_SPADE) {
     //2VP for digging with priest
-    player.vp += 2;
-    player.vp_faction += 2;
+    player.addVP(2, 'faction', 'faction');
   }
 
   if(action.type == A_UPGRADE_SH || action.type == A_UPGRADE_SA) {
-    if(getRoundTile() == T_ROUND_SHSA5VP_2R1W || getRoundTile() == T_ROUND_SHSA5VP_2W1W) {
-      player.vp += 5;
-      player.vp_round += 5;
+    if(getRoundTile() == T_ROUND_SHSA5VP_2F1W || getRoundTile() == T_ROUND_SHSA5VP_2A1W) {
+      player.addVP(5, 'round', getTileCodeName(getRoundTile()));
     }
     if(action.type == A_UPGRADE_SH) {
       if(player.faction == F_ALCHEMISTS) addPower(player, 12);
@@ -863,19 +705,16 @@ function addExtrasForAction(player, action) {
 
   if(action.type == A_UPGRADE_SH) {
     if(player.faction == F_CULTISTS) {
-      player.vp += 7;
-      player.vp_faction += 7;
+      player.addVP(7, 'faction', 'faction');
     }
   }
 
   for(var i = 0; i < action.twtiles.length; i++) {
-    if(getRoundTile() == T_ROUND_TW5VP_4O1DIG) {
-      player.vp += 5;
-      player.vp_round += 5;
+    if(getRoundTile() == T_ROUND_TW5VP_4E1DIG) {
+      player.addVP(5, 'round', getTileCodeName(getRoundTile()));
     }
     if(player.faction == F_WITCHES) {
-      player.vp += 5;
-      player.vp_faction += 5;
+      player.addVP(5, 'faction', 'faction');
     }
     if(player.faction == F_SWARMLINGS) player.w += 3;
 
@@ -898,14 +737,14 @@ function getRoundBonusDigsForCults(cult, round) {
   if(round == 0) return 0;
   var t = roundtiles[round];
   if(!t) return 0;
-  if(t == T_ROUND_TP3VP_4B1DIG) {
-    return Math.floor(cult[C_B] / 4);
-  }
-  else if(t == T_ROUND_TP3VP_4W1DIG) {
+  if(t == T_ROUND_TP3VP_4W1DIG) {
     return Math.floor(cult[C_W] / 4);
   }
-  else if(t == T_ROUND_TW5VP_4O1DIG) {
-    return Math.floor(cult[C_O] / 4);
+  else if(t == T_ROUND_TP3VP_4A1DIG) {
+    return Math.floor(cult[C_A] / 4);
+  }
+  else if(t == T_ROUND_TW5VP_4E1DIG) {
+    return Math.floor(cult[C_E] / 4);
   }
   return 0;
 }
@@ -920,20 +759,20 @@ function getRoundBonusResourcesForCults(cult, round) {
   if(round == 0) return [0,0,0,0,0];
   var t = roundtiles[round];
   if(!t) return [0,0,0,0,0];
-  if(t == T_ROUND_D2VP_4B1P) {
-    return [0,0,Math.floor(cult[C_B] / 4),0,0];
+  if(t == T_ROUND_D2VP_4W1P) {
+    return [0,0,Math.floor(cult[C_W] / 4),0,0];
   }
-  else if(t == T_ROUND_D2VP_4R4PW) {
-    return [0,0,0,4*Math.floor(cult[C_R] / 4),0];
+  else if(t == T_ROUND_D2VP_4F4PW) {
+    return [0,0,0,4*Math.floor(cult[C_F] / 4),0];
   }
-  else if(t == T_ROUND_DIG2VP_1O1C) {
-    return [cult[C_O],0,0,0,0];
+  else if(t == T_ROUND_DIG2VP_1E1C) {
+    return [cult[C_E],0,0,0,0];
   }
-  else if(t == T_ROUND_SHSA5VP_2R1W) {
-    return [0,Math.floor(cult[C_R] / 2),0,0,0];
+  else if(t == T_ROUND_SHSA5VP_2F1W) {
+    return [0,Math.floor(cult[C_F] / 2),0,0,0];
   }
-  else if(t == T_ROUND_SHSA5VP_2W1W) {
-    return [0,Math.floor(cult[C_W] / 2),0,0,0];
+  else if(t == T_ROUND_SHSA5VP_2A1W) {
+    return [0,Math.floor(cult[C_A] / 2),0,0,0];
   }
   return [0,0,0,0,0];
 }
@@ -946,8 +785,7 @@ function getRoundBonusResources(player, round) {
 //this one does NOT fail and does not consume income. If you already have max shipping, it does nothing.
 function advanceShipping(player) {
   if(!canAdvanceShip(player)) return;
-  player.vp += getAdvanceShipVP(player);
-  player.vp_advance += getAdvanceShipVP(player);
+  player.addVP(getAdvanceShipVP(player), 'advance', 'advship');
   player.shipping++;
 }
 
@@ -1002,7 +840,7 @@ function tryAction(player, action /*Action object*/) {
     }
   }
 
-  // Check town tiles. Also takes care of the T_FAV_2R_6TW tile.
+  // Check town tiles. Also takes care of the T_FAV_2F_6TW tile.
   var numtw = actionCreatesTown(player, action, null);
   if(action.twtiles.length < numtw) return action.favtiles.length == 0 ? 'no town tile chosen' : 'too few town tiles chosen';
   if(action.twtiles.length > numtw) return numtw == 0 ? 'town tile chosen injustly' : 'too many town tiles chosen';
@@ -1020,7 +858,7 @@ function tryAction(player, action /*Action object*/) {
     error = tryConversion(player, action.type);
   }
   else if(action.type == A_ADV_SHIP) {
-    if(!canAdvanceShip(player)) return 'already max digging';
+    if(!canAdvanceShip(player)) return 'already max shipping';
     var cost = getAdvanceShipCost(player.faction);
     if(!canConsume(player, cost)) return 'not enough resources for ' + getActionName(action.type);
     consume(player, cost);
@@ -1032,8 +870,7 @@ function tryAction(player, action /*Action object*/) {
     var cost = getAdvanceDigCost(player.faction);
     if(!canConsume(player, cost)) return 'not enough resources for ' + getActionName(action.type);
     consume(player, cost);
-    player.vp += 6;
-    player.vp_advance += 6;
+    player.addVP(6, 'advance', 'advdig');
     player.digging++;
   }
   else if(isSpadeGivingAction(action)) {
@@ -1060,20 +897,20 @@ function tryAction(player, action /*Action object*/) {
       player.overflowspades = false; //overflowing of spades can only when taking 2 spade power action or halflings SH, but the overflow is no longer valid if you pay for extra spades (because you may only pay for extra spades to keep digging the same terrain tile).
     }
     else if(action.type == A_BONUS_SPADE) {
-      if(player.octogons[O_BON_SPADE_2C]) return 'action already taken';
-      player.octogons[O_BON_SPADE_2C] = 1;
+      if(player.octogons[A_BONUS_SPADE]) return 'action already taken';
+      player.octogons[A_BONUS_SPADE] = 1;
       player.spades++;
     }
     else if(action.type == A_POWER_SPADE) {
-      if(octogons[O_POW_SPADE]) return 'action already taken';
-      octogons[O_POW_SPADE] = 1;
+      if(octogons[A_POWER_SPADE]) return 'action already taken';
+      octogons[A_POWER_SPADE] = 1;
       if(player.pw2 < 4) return 'not enough resources for ' + getActionName(action.type);
       usePower(player, 4);
       player.spades++;
     }
     else if(action.type == A_POWER_2SPADE) {
-      if(octogons[O_POW_2SPADE]) return 'action already taken';
-      octogons[O_POW_2SPADE] = 1;
+      if(octogons[A_POWER_2SPADE]) return 'action already taken';
+      octogons[A_POWER_2SPADE] = 1;
       if(player.pw2 < 6) return 'not enough resources for ' + getActionName(action.type);
       usePower(player, 6);
       player.spades += 2;
@@ -1082,8 +919,8 @@ function tryAction(player, action /*Action object*/) {
     else if(action.type == A_GIANTS_2SPADE) {
       if(player.faction != F_GIANTS) return 'must be giants for this action';
       if(!built_sh(player)) return 'this action requires SH';
-      if(player.octogons[O_FACTION_GIANTS]) return 'action already taken';
-      player.octogons[O_FACTION_GIANTS] = 1;
+      if(player.octogons[A_GIANTS_2SPADE]) return 'action already taken';
+      player.octogons[A_GIANTS_2SPADE] = 1;
       player.spades += 2;
     }
     else return 'unknown spade action';
@@ -1119,8 +956,8 @@ function tryAction(player, action /*Action object*/) {
     if(action.type == A_SANDSTORM) {
       if(player.faction != F_NOMADS) return 'sandstorm requires nomads';
       if(!built_sh(player)) return 'sandstorm requires SH';
-      if(player.octogons[O_FACTION_NOMADS]) return 'action already taken';
-      player.octogons[O_FACTION_NOMADS] = 1;
+      if(player.octogons[A_SANDSTORM]) return 'action already taken';
+      player.octogons[A_SANDSTORM] = 1;
       if(!hasOwnNeighborNoBridge(x, y, player.color)) return 'sandstorm must be directly adjecant, and does not work over bridges';
       if(tile == player.color) return 'sandstorm can only transform another color to player color';
     }
@@ -1137,12 +974,12 @@ function tryAction(player, action /*Action object*/) {
     if(action.type == A_GIANTS_TRANSFORM || action.type == A_SANDSTORM) setWorld(x, y, player.color);
     else if(action.type == A_TRANSFORM_CW) {
       color = tile + 1;
-      if(color == E + 1) color = R;
+      if(color == S + 1) color = R;
       setWorld(x, y, color);
     }
     else if(action.type == A_TRANSFORM_CCW) {
       color = tile - 1;
-      if(color == R - 1) color = E;
+      if(color == R - 1) color = S;
       setWorld(x, y, color);
     }
     else return 'unknown transform action';
@@ -1170,8 +1007,8 @@ function tryAction(player, action /*Action object*/) {
   }
   else if(action.type == A_POWER_BRIDGE || action.type == A_ENGINEERS_BRIDGE) {
     if(action.type == A_POWER_BRIDGE) {
-      if(octogons[O_POW_BRIDGE]) return 'action already taken';
-      octogons[O_POW_BRIDGE] = 1;
+      if(octogons[A_POWER_BRIDGE]) return 'action already taken';
+      octogons[A_POWER_BRIDGE] = 1;
       if(player.pw2 < 3) return 'not enough resources for ' + getActionName(action.type);
       usePower(player, 3);
     }
@@ -1196,8 +1033,8 @@ function tryAction(player, action /*Action object*/) {
   else if(action.type == A_UPGRADE_SH) error = tryUpgradeAction(player, action);
   else if(action.type == A_UPGRADE_SA) error = tryUpgradeAction(player, action);
   else if(action.type == A_POWER_1P) {
-    if(octogons[O_POW_1P]) return 'action already taken';
-    octogons[O_POW_1P] = 1;
+    if(octogons[A_POWER_1P]) return 'action already taken';
+    octogons[A_POWER_1P] = 1;
     if(usePower(player, 3)) {
       addIncome(player, [0,0,1,0,0]);
     } else {
@@ -1205,8 +1042,8 @@ function tryAction(player, action /*Action object*/) {
     }
   }
   else if(action.type == A_POWER_2W) {
-    if(octogons[O_POW_2W]) return 'action already taken';
-    octogons[O_POW_2W] = 1;
+    if(octogons[A_POWER_2W]) return 'action already taken';
+    octogons[A_POWER_2W] = 1;
     if(usePower(player, 4)) {
       addIncome(player, [0,2,0,0,0]);
     } else {
@@ -1214,8 +1051,8 @@ function tryAction(player, action /*Action object*/) {
     }
   }
   else if(action.type == A_POWER_7C) {
-    if(octogons[O_POW_7C]) return 'action already taken';
-    octogons[O_POW_7C] = 1;
+    if(octogons[A_POWER_7C]) return 'action already taken';
+    octogons[A_POWER_7C] = 1;
     if(usePower(player, 4)) {
       addIncome(player, [7,0,0,0,0]);
     } else {
@@ -1237,15 +1074,14 @@ function tryAction(player, action /*Action object*/) {
     if(error) return error;
 
     if(player.faction == F_ENGINEERS) {
-      player.vp += getEngineersPassScore(player);
-      player.vp_faction += getEngineersPassScore(player);
+      player.addVP(getEngineersPassScore(player), 'faction', 'faction');
     }
   }
   else if(action.type == A_DOUBLE) {
     if(player.faction != F_CHAOS) return 'wrong faction for this action';
     if(player.b_sh != 0) return 'this action requires SH built';
-    if(player.octogons[O_FACTION_CHAOS]) return 'action already taken';
-    player.octogons[O_FACTION_CHAOS] = 1;
+    if(player.octogons[A_DOUBLE]) return 'action already taken';
+    player.octogons[A_DOUBLE] = 1;
     player.numactions = 2;
   }
   else if(action.type == A_TUNNEL || action.type == A_CARPET) {
@@ -1258,8 +1094,7 @@ function tryAction(player, action /*Action object*/) {
 
     consume(player, getTunnelCarpetCost(player));
     player.tunnelcarpet = action.co; //from now on, next dig and build actions may consider this tile reachable until the whole action sequence is done
-    player.vp += 4; //this is 4 both for fakirs and dwarves
-    player.vp_faction += 4; //this is 4 both for fakirs and dwarves
+    player.addVP(4, 'faction', 'faction'); //this is 4 both for fakirs and dwarves
   }
   else if(action.type == A_DEBUG_SKIP) {
     //pass for debug reasons
@@ -1275,8 +1110,8 @@ function tryAction(player, action /*Action object*/) {
   else if(action.type == A_SWARMLINGS_TP) {
     if(player.faction != F_SWARMLINGS) return 'need to be swarmlings';
     if(player.b_sh != 0) return 'free TP requires SH';
-    if(player.octogons[O_FACTION_SWARMLINGS]) return 'action already used';
-    player.octogons[O_FACTION_SWARMLINGS] = 1;
+    if(player.octogons[A_SWARMLINGS_TP]) return 'action already used';
+    player.octogons[A_SWARMLINGS_TP] = 1;
     if(!action.co) return 'upgrade action must have coordinate';
     if(player.b_tp == 0) return 'no trading posts left';
     var x = action.co[0];
@@ -1291,8 +1126,8 @@ function tryAction(player, action /*Action object*/) {
   else if(action.type == A_WITCHES_D) {
     if(player.faction != F_WITCHES) return 'flying the broom requires witches';
     if(player.b_sh != 0) return 'flying the broom requires SH';
-    if(player.octogons[O_FACTION_WITCHES]) return 'witches ride already used';
-    player.octogons[O_FACTION_WITCHES] = 1;
+    if(player.octogons[A_WITCHES_D]) return 'witches ride already used';
+    player.octogons[A_WITCHES_D] = 1;
     if(!action.co) return 'build action must have coordinate';
     if(player.b_d == 0) return 'no dwellings left';
     var x = action.co[0];
@@ -1330,7 +1165,7 @@ function tryAction(player, action /*Action object*/) {
   return error;
 }
 
-//Used both to automatically undo invalid actions, and to allow the player to use the Undo button.
+//Used to automatically undo invalid actions.
 var backupGameState = null;
 
 function tryActions(player, actions /*array of Action objects*/) {
@@ -1355,7 +1190,14 @@ function tryActions(player, actions /*array of Action objects*/) {
 }
 
 function printCo(x, y) {
-  return ['A','B','C','D','E','F','G','H','I'][y] + (1 + x);
+  //return ['A','B','C','D','E','F','G','H','I'][y] + (1 + x);
+  return String.fromCharCode(65 + y) + (1 + x);
+}
+
+function parsePrintCo(text) {
+  var y = text.charCodeAt(0) - 65 /*'A'*/;
+  var x = parseInt(text.substr(1)) - 1;
+  return [x, y];
 }
 
 function printCos(cos) {
@@ -1375,61 +1217,9 @@ function printActionTiles(action) {
   tiles = tiles.concat(action.twtiles);
   for(var i = 0; i < tiles.length; i++) {
     if(i > 0) result += ' ';
-    result += '+' + tileToString(tiles[i]);
+    result += '+' + getTileCodeName(tiles[i]);
   }
   return result;
-}
-
-function getActionName(type) {
-  switch(type) {
-    case A_NONE: return 'none';
-    case A_BURN: return 'burn';
-    case A_CONVERT_1PW_1C: return '1pw->1c';
-    case A_CONVERT_3PW_1W: return '3pw->1w';
-    case A_CONVERT_5PW_1P: return '5pw->1p';
-    case A_CONVERT_1P_1W: return '1p->1w';
-    case A_CONVERT_1W_1C: return '1w->1c';
-    case A_CONVERT_1VP_1C: return '1vp->1c';
-    case A_CONVERT_2C_1VP: return '2c->1vp';
-    case A_CONVERT_1W_1P: return '1w->1p';
-    case A_CONNECT_WATER_TOWN: return 'watertown';
-    case A_DOUBLE: return 'chaosdouble';
-    case A_PASS: return 'pass';
-    case A_POWER_1P: return 'pow1p';
-    case A_POWER_2W: return 'pow2w';
-    case A_POWER_7C: return 'pow7c';
-    case A_BUILD: return 'build';
-    case A_WITCHES_D: return 'witchesride';
-    case A_SPADE: return 'spade';
-    case A_BONUS_SPADE: return 'bonspade';
-    case A_POWER_SPADE: return 'powspade';
-    case A_POWER_2SPADE: return 'pow2spade';
-    case A_GIANTS_2SPADE: return 'giants2spade';
-    case A_TRANSFORM_CW: return 'transformcw';
-    case A_TRANSFORM_CCW: return 'transformccw';
-    case A_GIANTS_TRANSFORM: return 'giantstransform';
-    case A_SANDSTORM: return 'sandstorm';
-    case A_UPGRADE_TP: return 'upgradeTP';
-    case A_SWARMLINGS_TP: return 'swarmlingsTP';
-    case A_UPGRADE_TE: return 'upgradeTE';
-    case A_UPGRADE_SH: return 'upgradeSH';
-    case A_UPGRADE_SA: return 'upgradeSA';
-    case A_CULT_PRIEST3: return 'cult3';
-    case A_CULT_PRIEST2: return 'cult2';
-    case A_CULT_PRIEST1: return 'cult1';
-    case A_BONUS_CULT: return 'boncult';
-    case A_FAVOR_CULT: return 'favcult';
-    case A_AUREN_CULT: return 'aurencult2';
-    case A_ADV_SHIP: return 'advshipping';
-    case A_ADV_DIG: return 'advdigging';
-    case A_POWER_BRIDGE: return 'powbridge';
-    case A_ENGINEERS_BRIDGE: return 'engbridge';
-    case A_TUNNEL: return 'tunnel';
-    case A_CARPET: return 'carpet';
-    case A_DEBUG_SKIP: return 'debugskip';
-    case A_DEBUG_STEP: return 'debugstep';
-    default: return 'unknown';
-  }
 }
 
 //returns A_TRANSFORM_CW or A_TRANSFORM_CCW depending on which is the closest direction from world color to player color (A_NONE if colors are equal, A_GIANTS_TRANSFORM if player is giants)
@@ -1485,21 +1275,21 @@ function actionsToString(actions) {
 }
 
 function giveCultForTakingFavorTile(player, tile) {
-  if(tile == T_FAV_3R) giveCult(player, C_R, 3);
-  else if(tile == T_FAV_3B) giveCult(player, C_B, 3);
-  else if(tile == T_FAV_3O) giveCult(player, C_O, 3);
+  if(tile == T_FAV_3F) giveCult(player, C_F, 3);
   else if(tile == T_FAV_3W) giveCult(player, C_W, 3);
-  else if(tile == T_FAV_2R_6TW) giveCult(player, C_R, 2);
-  else if(tile == T_FAV_2B_CULT) giveCult(player, C_B, 2);
-  else if(tile == T_FAV_2O_1PW1W) giveCult(player, C_O, 2);
-  else if(tile == T_FAV_2W_4PW) giveCult(player, C_W, 2);
-  else if(tile == T_FAV_1R_3C) giveCult(player, C_R, 1);
-  else if(tile == T_FAV_1B_TPVP) giveCult(player, C_B, 1);
-  else if(tile == T_FAV_1O_DVP) giveCult(player, C_O, 1);
-  else if(tile == T_FAV_1W_PASSTPVP) giveCult(player, C_W, 1);
+  else if(tile == T_FAV_3E) giveCult(player, C_E, 3);
+  else if(tile == T_FAV_3A) giveCult(player, C_A, 3);
+  else if(tile == T_FAV_2F_6TW) giveCult(player, C_F, 2);
+  else if(tile == T_FAV_2W_CULT) giveCult(player, C_W, 2);
+  else if(tile == T_FAV_2E_1PW1W) giveCult(player, C_E, 2);
+  else if(tile == T_FAV_2A_4PW) giveCult(player, C_A, 2);
+  else if(tile == T_FAV_1F_3C) giveCult(player, C_F, 1);
+  else if(tile == T_FAV_1W_TPVP) giveCult(player, C_W, 1);
+  else if(tile == T_FAV_1E_DVP) giveCult(player, C_E, 1);
+  else if(tile == T_FAV_1A_PASSTPVP) giveCult(player, C_A, 1);
 }
 
-//Does NOT handle the T_FAV_2R_6TW town formation, actionCreatesTown does that.
+//Does NOT handle the T_FAV_2F_6TW town formation, actionCreatesTown does that.
 function giveFavorTile(player, tile) {
   if(tile > T_FAV_BEGIN && tile < T_FAV_END) {
     if(favortiles[tile] <= 0) {
@@ -1538,8 +1328,7 @@ function giveTownTile(player, tile) {
     }
     player.towntiles[tile] = incrUndef(player.towntiles[tile], 1);
     var res = getTownTileResources(tile);
-    addIncome(player, res);
-    player.vp_town += res[4];
+    addIncome(player, res, 'town', getTileCodeName(tile));
 
     if(tile == T_TW_8VP_CULT || tile == T_TW_2VP_2CULT) {
       var num = tile == T_TW_2VP_2CULT ? 2 : 1;
@@ -1549,7 +1338,7 @@ function giveTownTile(player, tile) {
       //If there are multiple nines and not enough keys to go up all of them, in theory the player should have the choice. That code is not implemented yet, instead automatically choose the most threatened ones.
       //to quickly debug this, type in console: players[1].cult[2] = 5; players[0].cult[0] = 9; players[0].cult[1] = 9; players[0].cult[2] = 9; players[0].cult[3] = 9; 
       var nines = 0;
-      for(var i = C_R; i <= C_W; i++) {
+      for(var i = C_F; i <= C_A; i++) {
         if(player.cult[i] < 10 && player.cult[i] >= nine) nines++;
       }
       while(nines > player.keys && player.keys > 0) {
@@ -1560,7 +1349,7 @@ function giveTownTile(player, tile) {
       }
       //End of "most threatened cult track" hack.
       
-      for(var i = C_R; i <= C_W; i++) {
+      for(var i = C_F; i <= C_A; i++) {
         giveCult(player, i, num);
       }
     }
@@ -1675,7 +1464,7 @@ function actionCreatesTown(player, action, previousActions) {
 
   //favtiles must be checked first, for when you pick fav tile for town size 6 and at the same time upgrade to SA making some town size 6.
   for(var i = 0; i < action.favtiles.length; i++) {
-    if(action.favtiles[i] == T_FAV_2R_6TW) {
+    if(action.favtiles[i] == T_FAV_2F_6TW) {
       reqpower = 6; //from now on for next actions this reqpower is used
       var tw = getPlayerTownsOfSize6(player.color, townclusters);
       //this are all individual clusters, so add them one by one as a single length array each
@@ -1739,7 +1528,7 @@ function getAlreadyChosenColors() {
 
 //During faction choice. Returns '' if ok, error string if not.
 function trySetFaction(player, faction) {
-  if((faction <= F_START || faction >= F_END) && faction != F_GENERIC) return 'invalid faction';
+  if(faction < F_ALL_BEGIN || faction > F_ALL_END) return 'invalid faction';
 
   var already = getAlreadyChosenColors();
 
@@ -1750,16 +1539,15 @@ function trySetFaction(player, faction) {
   return '';
 }
 
-//returns the leech effects caused by the actions.
-//sometimes, multiple series of leeches can habben in one series of actions, e.g. halflings stronghold and then building dwelling, or chaos magicians double action.
-//it returns an array of leech series, where each leech series is an array of [playerIndex, amount, x, y]. So it's a 3D array.
+//returns the leech effects caused by the actions by the player.
+//it returns an array of leech actions, where each leech action is of the form [playerIndex, amount]. So it's a 2D array.
 //the order of players is already sorted correctly, beginning with the first one after the player who did the action and so on
 //The amount is the amount given the buildings. This must later be adjusted for the player's actual current power and VP (can be less or even 0 at that point)
+//sometimes, multiple series of leeches can happen in one series of actions, e.g. halflings stronghold and then building dwelling, or chaos magicians double action. So the same player may appear multiple times in the list.
 function getLeechEffect(playerIndex, actions) {
   var result = [];
   for(var i = 0; i < actions.length; i++) {
     if(isUpgradeAction(actions[i]) || isBuildDwellingAction(actions[i])) {
-      var current = []; //the result for this sub-action
       var pos = actions[i].co;
       var tiles = getConnectedTiles(pos[0], pos[1]);
       var leechers = [];
@@ -1777,11 +1565,10 @@ function getLeechEffect(playerIndex, actions) {
           var power = leechers[k];
           if(power) {
             var amount = leechers[k];
-            current.push([k, amount, pos[0], pos[1]]);
+            result.push([k, amount/*, pos[0], pos[1]*/]);
           }
         }
       }
-      if(current.length > 0) result.push(current);
     }
   }
   return result;
@@ -1799,8 +1586,7 @@ function actualLeechAmount(player, amount) {
 function leechPower(player, amount) {
   if(amount <= 0) throw 'invalid leech amount';
   if(player.vp - amount + 1 < 0) return 'not enough vp';
-  player.vp -= (amount - 1);
-  player.vp_leech -= (amount - 1);
+  player.addVP(-(amount - 1), 'leech', 'leech');
   addPower(player, amount);
   return '';
 }
@@ -1847,7 +1633,7 @@ function getResourceEndGameScoring(player) {
 //name and faction
 function getFullName(player) {
   if(!player.faction) return player.name;
-  return player.name + ' (' + factionNames[player.faction] + ')';
+  return player.name + ' (' + getFactionCodeName(player.faction) + ')';
 }
 
 function getFullNameColored(player) {
@@ -1978,21 +1764,17 @@ function getResourceEndScores() {
 
 function applyPassBonus(playerin, playerout) {
   if(playerin.bonustile == T_BON_PASSDVP_2C) {
-    playerout.vp += built_d(playerin) * 1;
-    playerout.vp_bonus += built_d(playerin) * 1;
+    playerout.addVP(built_d(playerin) * 1, 'bonus', getTileCodeName(T_BON_PASSDVP_2C));
   }
   if(playerin.bonustile == T_BON_PASSTPVP_1W) {
-    playerout.vp += built_tp(playerin) * 2;
-    playerout.vp_bonus += built_tp(playerin) * 2;
+    playerout.addVP(built_tp(playerin) * 2, 'bonus', getTileCodeName(T_BON_PASSTPVP_1W));
   }
   if(playerin.bonustile == T_BON_PASSSHSAVP_2W) {
-    playerout.vp += (built_sh(playerin) + built_sa(playerin)) * 4;
-    playerout.vp_bonus += (built_sh(playerin) + built_sa(playerin)) * 4;
+    playerout.addVP(built_sh(playerin) + built_sa(playerin) * 4, 'bonus', getTileCodeName(T_BON_PASSSHSAVP_2W));
   }
-  if(playerin.favortiles[T_FAV_1W_PASSTPVP]) {
+  if(playerin.favortiles[T_FAV_1A_PASSTPVP]) {
     var vp = [0,2,3,3,4][built_tp(playerin)];
-    playerout.vp += vp;
-    playerout.vp_favor += vp;
+    playerout.addVP(vp, 'favor', getTileCodeName(T_FAV_1A_PASSTPVP));
   }
 }
 
@@ -2015,10 +1797,10 @@ function getPassBonusEndScores() {
 //of: total, cult, network, resource, passing
 function projectEndGameScores() {
   var cultscores = [];
-  cultscores[0] = getCultEndScores(C_R);
-  cultscores[1] = getCultEndScores(C_B);
-  cultscores[2] = getCultEndScores(C_O);
-  cultscores[3] = getCultEndScores(C_W);
+  cultscores[0] = getCultEndScores(C_F);
+  cultscores[1] = getCultEndScores(C_W);
+  cultscores[2] = getCultEndScores(C_E);
+  cultscores[3] = getCultEndScores(C_A);
   var networkscores = getNetworkEndScores();
   var resourcescores = getResourceEndScores();
   var passscores = getPassBonusEndScores();
@@ -2027,8 +1809,8 @@ function projectEndGameScores() {
   for(var i = 0; i < players.length; i++) result[i] = [players[i].vp, 0, 0, 0, 0];
   
   for(var i = 0; i < players.length; i++) {
-    for(var j = C_R; j <= C_W; j++) {
-      result[i][1] += cultscores[j - C_R][i];
+    for(var j = C_F; j <= C_A; j++) {
+      result[i][1] += cultscores[j - C_F][i];
     }
     result[i][2] = networkscores[i][0];
     result[i][3] = resourcescores[i];
@@ -2061,12 +1843,17 @@ function initBoard() {
   for(var i = T_FAV_BEGIN + 1; i < T_FAV_END; i++) favortiles[i] = getTileInitialCount(i);
   towntiles = {};
   for(var i = T_TW_BEGIN + 1; i < T_TW_END; i++) {
-    if (state.miniexpansion2013 || !isMiniExpansion2013Tile(i)) {
+    if (state.towntilepromo2013 || !isTownTilePromo2013Tile(i)) {
       towntiles[i] = getTileInitialCount(i);
     }
   }
+  //TODO: the bonus tiles below make no sense, this is filling all of them instead of random. gamestate.js does the actual work. Remove this.
   bonustiles = {};
-  for(var i = T_BON_BEGIN + 1; i < T_BON_END; i++) bonustiles[i] = 1;
+  for(var i = T_BON_BEGIN + 1; i < T_BON_END; i++) {
+    if (state.bonustilepromo2013 || !isBonusTilePromo2013Tile(i)) {
+      bonustiles[i] = 1;
+    }
+  }
   bonustilecoins = [];
 
   cultp = [[N,N,N,N],[N,N,N,N],[N,N,N,N],[N,N,N,N]];

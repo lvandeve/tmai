@@ -191,7 +191,7 @@ AI.prototype.updateScoreActionValues_ = function(player, roundnum) {
   var s = this.scoreActionValues;
 
   for(var i = 1; i <= 3; i++) {
-    for(var j = C_R; j <= C_W; j++) {
+    for(var j = C_F; j <= C_A; j++) {
       s.cult[i - 1][j] = this.scoreCultTrackVP_(player, j, i, false) / (5 - i); //divided because overall a single cult track move is not worth the whole VP
     }
   }
@@ -456,6 +456,9 @@ AI.prototype.scoreBonusTile_ = function(player, tile, roundnum) {
   else if(tile == T_BON_1P) {
     score += s.p * 1;
   }
+  else if(tile == T_BON_PASSSHIPVP_3PW) {
+    score += player.shipping * 3 + s.pw * 3;
+  }
 
   score += s.c * undef0(bonustilecoins[tile]);
 
@@ -476,45 +479,45 @@ AI.prototype.getPreferredFavorTile_ = function(player, tiles) {
 AI.prototype.scoreFavorTile_ = function(player, tile, roundnum) {
   var score = 0;
 
-  if(tile == T_FAV_3R) {
-    if(player.cult[C_R] < 8) score++;
-  }
-  else if(tile == T_FAV_3B) {
-    if(player.cult[C_B] < 8) score++;
-  }
-  else if(tile == T_FAV_3O) {
-    if(player.cult[C_O] < 8) score++;
+  if(tile == T_FAV_3F) {
+    if(player.cult[C_F] < 8) score++;
   }
   else if(tile == T_FAV_3W) {
     if(player.cult[C_W] < 8) score++;
   }
-  else if(tile == T_FAV_2R_6TW) {
+  else if(tile == T_FAV_3E) {
+    if(player.cult[C_E] < 8) score++;
+  }
+  else if(tile == T_FAV_3A) {
+    if(player.cult[C_A] < 8) score++;
+  }
+  else if(tile == T_FAV_2F_6TW) {
     score++;
   }
-  else if(tile == T_FAV_2B_CULT) {
+  else if(tile == T_FAV_2W_CULT) {
     score += 2;
   }
-  else if(tile == T_FAV_2O_1PW1W) {
+  else if(tile == T_FAV_2E_1PW1W) {
     if(roundnum <= 3) score += 2;
     if(player.faction == F_ENGINEERS && roundnum < 3) score += 2;
   }
-  else if(tile == T_FAV_2W_4PW) {
+  else if(tile == T_FAV_2A_4PW) {
     if(roundnum <= 3) score += 2;
     if(player.faction == F_ENGINEERS && roundnum < 3) score += 2;
   }
-  else if(tile == T_FAV_1R_3C) {
+  else if(tile == T_FAV_1F_3C) {
     if(roundnum <= 3) score += 3;
     else if(roundnum == 4) score += 2;
     else if(roundnum == 5) score += 1;
   }
-  else if(tile == T_FAV_1B_TPVP) {
+  else if(tile == T_FAV_1W_TPVP) {
     if(player.b_tp > 0) score += 3;
   }
-  else if(tile == T_FAV_1O_DVP) {
+  else if(tile == T_FAV_1E_DVP) {
     if(player.b_d > 0) score += 3;
     if(player.faction == F_HALFLINGS) score += 3;
   }
-  else if(tile == T_FAV_1W_PASSTPVP) {
+  else if(tile == T_FAV_1A_PASSTPVP) {
     if(built_tp(player) > 1)score += 3;
   }
 
@@ -635,7 +638,7 @@ AI.prototype.chooseFaction = function(playerIndex, callback) {
   
   var possible = [];
   
-  for(var i = R; i <= E; i++) {
+  for(var i = LANDSCAPE_BEGIN; i <= LANDSCAPE_END; i++) {
     if(already[i]) continue;
     var factions = colorFactions(i);
     for(var j = 0; j < factions.length; j++) possible.push(factions[j]);
@@ -665,8 +668,8 @@ AI.prototype.chooseFaction = function(playerIndex, callback) {
 AI.prototype.scoreFaction_ = function(player, already, faction) {
   var score = 0;
   var color = factionColor(faction);
-  if(!already[wrap(color - 1, R, E + 1)]) score++;
-  if(!already[wrap(color + 1, R, E + 1)]) score++;
+  if(!already[wrap(color - 1, R, S + 1)]) score++;
+  if(!already[wrap(color + 1, R, S + 1)]) score++;
 
   // Based on in percentages of http://terra.snellman.net/stats.html
   var factionwinpercentages = [
@@ -692,7 +695,7 @@ AI.prototype.scoreFaction_ = function(player, already, faction) {
   return score;
 };
 
-AI.prototype.leechPower = function(playerIndex, fromPlayer, x, y, amount, vpcost, roundnum, already, still, callback) {
+AI.prototype.leechPower = function(playerIndex, fromPlayer, amount, vpcost, roundnum, already, still, callback) {
   var player = players[playerIndex];
   if(players[fromPlayer].faction == F_CULTISTS && !already && roundnum >= 5) {
     callback(player, false);
@@ -753,10 +756,10 @@ AI.prototype.chooseCultistTrack = function(playerIndex, callback) {
 
 AI.prototype.getBestCultTrack_ = function(player, num) {
   var scores = [];
-  for(var i = C_R; i <= C_W; i++) {
+  for(var i = C_F; i <= C_A; i++) {
     scores.push(this.scoreCultTrack_(player, i, num, true));
   }
-  return pickWithBestScore([C_R, C_B, C_O, C_W], scores, false);
+  return pickWithBestScore([C_F, C_W, C_E, C_A], scores, false);
 };
 
 //score cult track taking into account: power, bonus resources, relative positions to players and VPs

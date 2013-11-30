@@ -55,11 +55,12 @@ document.body.appendChild(popupElement);
 function pixelCo(x, y) {
   x++;
   y++;
-  var size = SIZE;
-  var px = x * size;
-  if(y % 2) px -= size / 2;
-  //var py = y * size * 21 / 23;
-  var py = y * size * 11 / 15;
+  var xsize = SIZE - 1;
+  var ysize = SIZE;
+  var px = x * xsize;
+  if(y % 2) px -= Math.floor(xsize / 2);
+  //var py = y * ysize * 21 / 23;
+  var py = y * ysize * 11 / 15;
   return [px, py + 16];
 }
 
@@ -265,10 +266,7 @@ for(var i = COLOR_BEGIN; i <= COLOR_END; i++) highc[i] = getHighContrastColor(ge
 var altco = false; //have coordinates like 0,0 instead of A1 on the map (for debugging)
 
 function drawMap() {
-  mapElement.innerHTML = '';
-  for(var y = 0; y < BH; y++)
-  for(var x = 0; x < BW; x++)
-  {
+  var drawMapTile = function(x, y) {
     var tile = world[arCo(x, y)];
     if(tile != N) {
       drawHexagon(x, y, tile);
@@ -280,6 +278,14 @@ function drawMap() {
     if(building[0] != B_NONE) {
       drawBuilding(x, y, building[0], building[1], mapElement);
     }
+  };
+
+  mapElement.innerHTML = '';
+  // This order of drawing gives slightly better looking hex tile overlaps
+  for(var y = 0; y < BH; y++)
+  for(var x = 0; x < BW; x++)
+  {
+    drawMapTile(x, y);
   }
   drawBridges();
 }
@@ -1277,7 +1283,7 @@ function drawPlayerActions(px, py, playerIndex, parent /*parent DOM element*/) {
 
 //IE hack: IE refuses to have onclick on transparent elements. But first line of tiles.png is see-through. So use it as bg image.
 function IEClickHack(el) {
-  el.style.backgroundImage = 'url("tiles.png")';
+  el.style.backgroundImage = 'url("iepixel.png")';
 }
 
 //creates the invisible buttons on the hex tiles

@@ -191,7 +191,11 @@ function serializeGameState(game) {
   
   result += '\ngamestate:\n';
   result += 'state=' + getGameStateCodeName(game.state.type) + ',' + game.state.round + ',' + game.state.startPlayer + ',' + game.state.currentPlayer + '\n';
-  result += 'leech=' + encodeNestedArray(game.state.leecharray) + ',' + game.state.leechi + ',' + game.state.leechtaken + '\n';
+  result += 'leech=' + game.state.leechi + ',' + game.state.leechtaken;
+  for(var i = 0; i < game.state.leecharray.length; i++) {
+      result += ',' + game.state.leecharray[i][0] + ' ' + game.state.leecharray[i][1];
+  }
+  result += '\n';
 
   for(var i = 0; i < players.length; i++) {
     var p = players[i];
@@ -473,13 +477,15 @@ function deSerializeGameStateNewFormat(text) {
 
   d = decomposeEqualsLine(lines[1]);
   if(d[0] != 'leech') return null;
-  var leecharrayend = d[1].lastIndexOf(']');
-  if(leecharrayend <= 0) return null;
-  result.state.leecharray = decodeNestedArray(d[1].substring(0, leecharrayend + 1));
-  el = getCommas(d[1].substring(leecharrayend + 2));
-  if(el.length != 2) return null;
+  el = getCommas(d[1]);
+  if(el.length < 2) return null;
   result.state.leechi = parseInt(el[0]);
   result.state.leechtaken = parseInt(el[1]);
+  result.state.leecharray = [];
+  for(var i = 2; i < el.length; i++) {
+    var t = getSpaces(el[i]);
+    result.state.leecharray.push([parseInt(t[0]), parseInt(t[1])]);
+  }
 
   var index = 0;
   result.players = [];
@@ -789,7 +795,7 @@ function deSerializeGameStateLegacyFormat(text) {
   result.state.leecharray = decodeNestedArray(lines[1].substring(0, leecharrayend + 1));
   el = getCommas(lines[1].substring(leecharrayend + 2));*/
   //legacy leech array not supported for now
-  result += 'leech=[],0,0';
+  result += 'leech=0,0';
   result += '\n';
 
   var index = 0;

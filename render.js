@@ -25,8 +25,6 @@ freely, subject to the following restrictions:
 
 //Everything related to drawing and UI
 
-var SIZE = 64;
-
 
 var mapElement =  document.createElement('div');
 document.body.appendChild(mapElement);
@@ -55,8 +53,8 @@ document.body.appendChild(popupElement);
 function pixelCo(x, y) {
   x++;
   y++;
-  var xsize = SIZE - 1;
-  var ysize = SIZE;
+  var xsize = 63;
+  var ysize = 64;
   var px = x * xsize;
   if(y % 2) px -= Math.floor(xsize / 2);
   //var py = y * ysize * 21 / 23;
@@ -97,11 +95,12 @@ function addText(px, py, text) {
 }
 
 function drawTileMapElement(px, py, tilex, tiley, parent) {
-  var el =  makeDiv((px - SIZE/2), (py - SIZE/3), parent);
+  var tilesize = 64;
+  var el =  makeDiv(px - tilesize/2, py - tilesize/3, parent);
   el.className = 'tiles';
-  el.style.width = '' + SIZE + 'px';
-  el.style.height = '' + SIZE + 'px';
-  el.style.backgroundPosition = '' + (-64 * tilex) + 'px ' + (-64 * tiley) + 'px';
+  el.style.width = '' + tilesize + 'px';
+  el.style.height = '' + tilesize + 'px';
+  el.style.backgroundPosition = '' + (-tilesize * tilex) + 'px ' + (-tilesize * tiley) + 'px';
   return el;
 }
 
@@ -127,7 +126,7 @@ function drawIcon(px, py, symbol, color, parent) {
 
 //draw a small player color token somewhere
 function drawOrb(px, py, color) {
-  return drawIcon(px, py + SIZE/3 - SIZE/2, 9, color, hudElement);
+  return drawIcon(px, py + 64/3 - 64/2, 9, color, hudElement);
 }
 
 function drawGridSymbol(x, y, text) {
@@ -152,14 +151,15 @@ function drawBridge(x0, y0, x1, y1, color) {
   var co = pixelCo(x0, y0);
   var dir = getBridgeDir(x0, y0, x1, y1);
 
+  var tilesize = 64;
   if(dir == D_NE) {
-    drawIcon(co[0] + (5*SIZE/7), co[1] - (5*SIZE/13), 7, color, mapElement);
+    drawIcon(co[0] + (5*tilesize/7), co[1] - (5*tilesize/13), 7, color, mapElement);
   }
   else if(dir == D_NW) {
-    drawIcon(co[0] - (5*SIZE/7), co[1] - (5*SIZE/13), 8, color, mapElement);
+    drawIcon(co[0] - (5*tilesize/7), co[1] - (5*tilesize/13), 8, color, mapElement);
   }
   else if(dir == D_N) {
-    drawIcon(co[0], co[1] - (3*SIZE/4), 6, color, mapElement);
+    drawIcon(co[0], co[1] - (3*tilesize/4), 6, color, mapElement);
   }
 }
 
@@ -311,6 +311,7 @@ function drawCultTracks(px, py) {
     }
     for(var i = 0; i < players.length; i++) {
       var player = players[i];
+      if(player.color == I || player.color == N) continue;
       var num = player.cult[cult];
       drawOrb(x + 20 + Math.floor(i * (trackwidth - 40) / players.length), 7 + Math.floor(trackheight * (11 - num + 0.5) / 12), player.color);
     }
@@ -665,20 +666,20 @@ function drawPlayerPanel(px, py, player, scoreProjection) {
   else if(player.passed) passedtext += 'passed';
   else if(player.index == state.startPlayer) passedtext += 'start';
   addText(px + 130, py , passedtext);
-  addText(px, py + 30, 'res: ' + player.c + ' c, ' + player.w + ' w, '
+  addText(px, py + 30, 'res: <b>' + player.c + 'c, ' + player.w + 'w, '
       + player.p + '/' + player.pp + ' p, '
-      + player.pw0 + '/' + player.pw1 + '/' + player.pw2 + ' pw ');
+      + player.pw0 + '/' + player.pw1 + '/' + player.pw2 + ' pw</b>');
   
-  addText(px, py + 45, 'D: ' + dangerColor(player.b_d == 0, built_d(player) + '/8') + ' cost: ' + costToString(getBuildingCost(player.faction, B_D, false)) +
+  addText(px, py + 45, 'D: <b>' + dangerColor(player.b_d == 0, built_d(player) + '/8</b>') + ' cost: ' + costToString(getBuildingCost(player.faction, B_D, false)) +
       ' next: ' + costToString(getIncomeForNextBuilding(player, B_D)));
-  addText(px, py + 60, 'TP: ' + dangerColor(player.b_tp == 0, built_tp(player) + '/4') + ' cost: ' +
+  addText(px, py + 60, 'TP: <b>' + dangerColor(player.b_tp == 0, built_tp(player) + '/4</b>') + ' cost: ' +
       costAlternativesToString(getBuildingCost(player.faction, B_TP, true), getBuildingCost(player.faction, B_TP, false)) +
       ' next: ' + costToString(getIncomeForNextBuilding(player, B_TP)));
-  addText(px, py + 75, 'TE: ' + dangerColor(player.b_te == 0, built_te(player) + '/3') + ' cost: ' + costToString(getBuildingCost(player.faction, B_TE, true)) +
+  addText(px, py + 75, 'TE: <b>' + dangerColor(player.b_te == 0, built_te(player) + '/3</b>') + ' cost: ' + costToString(getBuildingCost(player.faction, B_TE, true)) +
       ' next: ' + costToString(getIncomeForNextBuilding(player, B_TE)));
-  addText(px, py + 90, 'SH: ' + built_sh(player) + '/1 cost: ' + costToString(getBuildingCost(player.faction, B_SH, true)) +
+  addText(px, py + 90, 'SH: <b>' + built_sh(player) + '/1</b> cost: ' + costToString(getBuildingCost(player.faction, B_SH, true)) +
       ' next: ' + costToString(getIncomeForNextBuilding(player, B_SH)));
-  addText(px, py + 105, 'SA: ' + built_sa(player) + '/1 cost: ' + costToString(getBuildingCost(player.faction, B_SA, true)) +
+  addText(px, py + 105, 'SA: <b>' + built_sa(player) + '/1</b> cost: ' + costToString(getBuildingCost(player.faction, B_SA, true)) +
       ' next: ' + costToString(getIncomeForNextBuilding(player, B_SA)));
 
       
@@ -696,8 +697,8 @@ function drawPlayerPanel(px, py, player, scoreProjection) {
     var dangerp = income[2] > player.pp - player.p;
     var dangerpw = income[3] > player.pw0 * 2 + player.pw1;
 
-    addText(px, py + 150, 'income: ' + income[0] + ' c, ' + income[1] + ' w, ' +
-        dangerColor(dangerp, income[2] + ' p') + ', ' + dangerColor(dangerpw, income[3] + ' pw'));
+    addText(px, py + 150, 'income: <B>' + income[0] + 'c, ' + income[1] + 'w, ' +
+        dangerColor(dangerp, income[2] + 'p') + ', ' + dangerColor(dangerpw, income[3] + 'pw</b>'));
   }
 
   addText(px, py + 165, 'octogons: ').title = 'the actions with an action token this player has exclusive access to (striked through when already used this round)';
@@ -720,7 +721,7 @@ function drawPlayerPanel(px, py, player, scoreProjection) {
   }
   addText(px + 70, py + 165, actionsText);
 
-  drawDigCircle(px + 280, py + 20);
+  if(player.color != I && player.color != N) drawDigCircle(px + 280, py + 20);
 
   var bonustiles = {};
   if(player.bonustile) bonustiles[player.bonustile] = 1;
@@ -1283,11 +1284,12 @@ function drawPlayerActions(px, py, playerIndex, parent /*parent DOM element*/) {
 
 //IE hack: IE refuses to have onclick on transparent elements. But first line of tiles.png is see-through. So use it as bg image.
 function IEClickHack(el) {
-  el.style.backgroundImage = 'url("iepixel.png")';
+  el.style.backgroundImage = 'url("iepixel.gif")';
 }
 
 //creates the invisible buttons on the hex tiles
 function drawMapClick() {
+  var tilesize = 64;
   for(var y = 0; y < BH; y++)
   for(var x = 0; x < BW; x++)
   {
@@ -1296,9 +1298,9 @@ function drawMapClick() {
       var co = pixelCo(x, y);
       var px = co[0];
       var py = co[1];
-      var el =  makeDiv(px - SIZE/2, py - SIZE/3 + SIZE/6, uiElement);
-      el.style.width = '' + SIZE + 'px';
-      el.style.height = '' + (SIZE - 2*SIZE/6) + 'px';
+      var el =  makeDiv(px - tilesize/2, py - tilesize/3 + tilesize/6, uiElement);
+      el.style.width = '' + tilesize + 'px';
+      el.style.height = '' + (tilesize - 2*tilesize/6) + 'px';
       var closure_x = x;
       var closure_y = y;
       el.onclick = bind(function(x, y) { if (mapClickFun) mapClickFun(x, y); }, x, y);
@@ -1590,7 +1592,6 @@ function drawSaveLoadUI(onlyload) {
     el.style.border = '1px solid black';
 
     var area = makeElement(el, 'textarea');
-    area.type = 'text';
     area.style.position = 'absolute';
     area.style.top = 80;
     area.style.left = 20;

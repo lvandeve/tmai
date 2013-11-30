@@ -39,6 +39,8 @@ function saveGameState(includeLog) {
   game.bonustilecoins = clone(bonustilecoins);
   game.roundtiles = clone(roundtiles);
   game.state = clone(state);
+  game.BW = BW;
+  game.BH = BH;
   if(includeLog) game.logText = logText;
   return game;
 }
@@ -56,6 +58,8 @@ function loadGameState(game) {
   bonustilecoins = game.bonustilecoins;
   roundtiles = game.roundtiles;
   state = game.state;
+  BW = game.BW;
+  BH = game.BH;
   if(game.logText) {
     logText = game.logText;
     logEl.innerHTML = logText;
@@ -95,23 +99,23 @@ function serializeGameState(game) {
   var comma = false;
   
   result += 'size:\n';
-  result += '' + BW + ',' + BH;
+  result += '' + game.BW + ',' + game.BH;
   result += '\n';
   
   result += '\nlandscape:\n';
 
-  for(var y = 0; y < BH; y++) {
+  for(var y = 0; y < game.BH; y++) {
     if(y % 2 == 1) result += ' ';
-    for(var x = 0; x < BW; x++) {
+    for(var x = 0; x < game.BW; x++) {
       result += colorCodeName[getWorld(x, y)] + ',';
     }
     result += '\n';
   }
   
   result += '\nbuildings:\n';
-  for(var y = 0; y < BH; y++) {
+  for(var y = 0; y < game.BH; y++) {
     if(y % 2 == 1) result += ' ';
-    for(var x = 0; x < BW; x++) {
+    for(var x = 0; x < game.BW; x++) {
       result += buildingCodeName[getBuilding(x, y)[0]] + ',';
     }
     result += '\n';
@@ -119,13 +123,13 @@ function serializeGameState(game) {
   
   result += '\nbridges:\n';
   comma = false;
-  for(var y = 0; y < BH; y++) {
-    for(var x = 0; x < BW; x++) {
+  for(var y = 0; y < game.BH; y++) {
+    for(var x = 0; x < game.BW; x++) {
       for(var z = 0; z < 3; z++) {
-        if(bridges[arCo(x, y)][z] != N) {
+        if(bridges[arCo2(x, y, game.BW)][z] != N) {
           var co = bridgeCo(x, y, [D_N, D_NE, D_SE][z]);
           if (comma) result += ',';
-          result += printCo(x, y) + printCo(co[0], co[1]) + colorCodeName[bridges[arCo(x, y)][z]];
+          result += printCo(x, y) + printCo(co[0], co[1]) + colorCodeName[bridges[arCo2(x, y, game.BW)][z]];
           comma = true;
         }
       }
@@ -364,17 +368,16 @@ function deSerializeGameStateNewFormat(text) {
   s = parseLabelPart(text, 'size:');
   el = getCommas(s);
   if(el.length != 2) return null;
-  // TODO: make this not global variables but part of the result
-  BW = parseInt(el[0]);
-  BH = parseInt(el[1]);
+  result.BW = parseInt(el[0]);
+  result.BH = parseInt(el[1]);
 
   s = parseWorldString(text, 'landscape:');
-  if(!s || s.length < BW * BH) return null;
-  for(var i = 0; i < BW * BH; i++) result.world[i] = codeNameToColor[s[i]];
+  if(!s || s.length < result.BW * result.BH) return null;
+  for(var i = 0; i < result.BW * result.BH; i++) result.world[i] = codeNameToColor[s[i]];
 
   s = parseWorldString(text, 'buildings:');
-  if(!s || s.length < BW * BH) return null;
-  for(var i = 0; i < BW * BH; i++) {
+  if(!s || s.length < result.BW * result.BH) return null;
+  for(var i = 0; i < result.BW * result.BH; i++) {
     var building = codeNameToBuilding[s[i]];
     var color = building == B_NONE ? N : result.world[i];
     if(building == B_MERMAIDS) color = B;
@@ -385,10 +388,10 @@ function deSerializeGameStateNewFormat(text) {
   el = getCommas(s);
   //TODO: this bridges init code is already in global namespace and in initBoard(). Don't duplicate it here, have it only once in total.
   result.bridges = [];
-  for(var y = 0; y < BH; y++)
-  for(var x = 0; x < BW; x++)
+  for(var y = 0; y < result.BH; y++)
+  for(var x = 0; x < result.BW; x++)
   {
-    result.bridges[arCo(x, y)] = [ N, N, N ];
+    result.bridges[arCo2(x, y, result.BW)] = [ N, N, N ];
   }
   for(var i = 0; i < el.length; i++) {
     var b = el[i];
@@ -676,8 +679,9 @@ function deSerializeGameStateLegacyFormat(text) {
   s = parseLabelPart(text, 'size:');
   el = getCommas(s);
   if(el.length != 2) return null;
-  BW = parseInt(el[0]);
-  BH = parseInt(el[1]);
+  // board width and height
+  var bw = parseInt(el[0]);
+  var bh = parseInt(el[1]);
 
   var copysection = function(label) {
     result += label + ':\n';
@@ -699,14 +703,14 @@ function deSerializeGameStateLegacyFormat(text) {
   s = parseWorldString(text, 'bridges:');
   result += '\nbridges:\n';
   comma = false;
-  if(!s || s.length < BW * BH) return null;
-  for(var i = 0; i < BW * BH; i++) {
+  if(!s || s.length < bw * bh) return null;
+  for(var i = 0; i < bw * bh; i++) {
     if(s[i].length != 3) return null;
     for(var z = 0; z < 3; z++) {
       var b = legacycolors[s[i].charAt(z)];
       if(!!b && b != 'N') {
-        var x = i % BW;
-        var y = Math.floor(i / BW);
+        var x = i % bw;
+        var y = Math.floor(i / bw);
         var co = bridgeCo(x, y, [D_N, D_NE, D_SE][z]);
         if (comma) result += ',';
         result += printCo(x, y) + printCo(co[0], co[1]) + b;

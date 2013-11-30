@@ -215,8 +215,8 @@ function makeElement(parent, tag) {
 function makeAbsElement(px, py, parent, tag) {
   var el =  document.createElement(tag);
   el.style.position = 'absolute';
-  el.style.left = '' + px + 'px';
-  el.style.top = '' + py + 'px';
+  el.style.left = '' + Math.floor(px) + 'px';
+  el.style.top = '' + Math.floor(py) + 'px';
   parent.appendChild(el);
   return el;
 }
@@ -341,13 +341,16 @@ function RGBToCssColor(rgba, format) {
 
 //adds text vertically and horizontally centered, multiline depending on width.
 //returns the text element
-//not supported in IE8 and below due to making a div a table cell.
 function makeCenteredText(text, width, x, y, parent) {
   var div =  document.createElement('div');
   div.style.position = 'absolute';
   div.style.left = '' + Math.floor(x - width / 2) + 'px';
   div.style.top = '' + Math.floor(y - 50) + 'px';
-  div.style.display = 'table-cell';
+  try {
+    //not supported in IE8 and below due to making a div a table cell.
+    div.style.display = 'table-cell';
+  } catch(e) {
+  }
   div.style.textAlign = 'center';
   div.style.verticalAlign = 'middle';
   div.innerHTML = text;

@@ -50,6 +50,10 @@ function arCo(x, y) {
   return y * BW + x;
 }
 
+function arCo2(x, y, bw) {
+  return y * bw + x;
+}
+
 //returns coordinates of neighbor tile in given direction
 function dirCo(x, y, dir) {
   if(dir == D_NE) result = [y % 2 ? x + 1 : x, y - 1];

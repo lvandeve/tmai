@@ -17,18 +17,21 @@ div {
 
 </style>
 
-<script type="text/javascript" src="util.js?v=20131130" ></script>
-<script type="text/javascript" src="enums.js?v=20131130" ></script>
-<script type="text/javascript" src="world.js?v=20131130" ></script>
-<script type="text/javascript" src="player.js?v=20131130" ></script>
-<script type="text/javascript" src="rules.js?v=20131130" ></script>
-<script type="text/javascript" src="render.js?v=20131130" ></script>
-<script type="text/javascript" src="strategy.js?v=20131130" ></script>
-<script type="text/javascript" src="actor.js?v=20131130" ></script>
-<script type="text/javascript" src="ai.js?v=20131130" ></script>
-<script type="text/javascript" src="human.js?v=20131130" ></script>
-<script type="text/javascript" src="gamestate.js?v=20131130" ></script>
-<script type="text/javascript" src="save.js?v=20131130" ></script>
+<script type="text/javascript" src="util.js?v=20131205"></script>
+<script type="text/javascript" src="enums.js?v=20131205"></script>
+<script type="text/javascript" src="game.js?v=20131205"></script>
+<script type="text/javascript" src="world.js?v=20131205"></script>
+<script type="text/javascript" src="player.js?v=20131205"></script>
+<script type="text/javascript" src="rules.js?v=20131205"></script>
+<script type="text/javascript" src="render.js?v=20131205"></script>
+<script type="text/javascript" src="strategy.js?v=20131205"></script>
+<script type="text/javascript" src="actor.js?v=20131205"></script>
+<script type="text/javascript" src="ai.js?v=20131205"></script>
+<script type="text/javascript" src="human.js?v=20131205"></script>
+<script type="text/javascript" src="state.js?v=20131205"></script>
+<script type="text/javascript" src="snellman.js?v=20131205"></script>
+<script type="text/javascript" src="save.js?v=20131205"></script>
+<script type="text/javascript" src="unittest.js?v=20131205"></script>
 <script>
 /*
 TM AI
@@ -58,8 +61,8 @@ freely, subject to the following restrictions:
 //The main HTML page and game initialization
 
 function beginGame() {
-  BW = 13;
-  BH = 9;
+  game.bw = 13;
+  game.bh = 9;
   clearHumanState();
 
   fastestMode = false;
@@ -67,7 +70,7 @@ function beginGame() {
   autoLeech1 = false;
   autoLeechNo = false;
   drawSaveLoadUI(true);
-  nextState(S_PRE, false);
+  gameLoopNonBlocking(S_PRE, false);
 }
 
 beginGame();

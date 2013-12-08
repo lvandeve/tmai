@@ -47,7 +47,7 @@ function colorFactions(color) {
   if(color == B) return [F_MERMAIDS, F_SWARMLINGS];
   if(color == G) return [F_AUREN, F_WITCHES];
   if(color == S) return [F_ENGINEERS, F_DWARVES];
-  throw 'invalid faction color';
+  throw new Error('invalid faction color');
 }
 
 //Constructor for Player
@@ -134,16 +134,16 @@ Player.prototype.addVP = function(vp, reason, detail) {
   if(vp != 0) this.vp_reason[reason] = incrUndef(this.vp_reason[reason], vp);
   if(vp != 0) this.vp_detail[detail] = incrUndef(this.vp_detail[detail], vp);
   this.vp += vp;
-}
+};
 
 //Get the VP for the given reason
 Player.prototype.getVPFor = function(reason) {
   return undef0(this.vp_reason[reason]);
-}
+};
 
 Player.prototype.getVPForDetail = function(detail) {
   return undef0(this.vp_detail[detail]);
-}
+};
 
 function getShipping(player) {
   var result = player.shipping
@@ -192,7 +192,7 @@ function initCult(player) {
   else if(player.faction == F_ENGINEERS) player.cult =  [0,0,0,0];
   else if(player.faction == F_DWARVES) player.cult =    [0,0,2,0];
   else if(player.faction == F_GENERIC) player.cult =    [0,0,0,0];
-  else throw 'unknown faction';
+  else throw new Error('unknown faction');
 }
 
 //includes starting VP, and mermaids shipping
@@ -341,7 +341,7 @@ function getBuildingCost(faction, building, neighbor /*for TP*/) {
     else if(faction == F_ENGINEERS) return [6,3,0,0,0];
     else return [6,4,0,0,0];
   }
-  else throw 'unknown building';
+  else throw new Error('unknown building');
 }
 
 

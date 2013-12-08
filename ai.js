@@ -95,15 +95,15 @@ function pickWithBestScore(items, scores, distributerandom) {
 
 /*
 Debuggen AI scoring in de chrome console:
-var actions = getPossibleActions(players[1], defaultRestrictions);
+var actions = getPossibleActions(game.players[1], defaultRestrictions);
 var scores = [];
 for(var j = 0; j < actions.length; j++) {
-  scores.push(players[1].actor.scoreActionAI_(players[1], actions[j], 0));
+  scores.push(game.players[1].actor.scoreActionAI_(game.players[1], actions[j], 0));
 }
 for(var i = 0; i < actions.length; i++) console.log(actionsToString(actions[i]) + ' ' + scores[i]);
 */
 AI.prototype.doAction = function(playerIndex, callback) {
-  var player = players[playerIndex];
+  var player = game.players[playerIndex];
 
   this.updateScoreActionValues_(player, state.round);
   
@@ -126,33 +126,33 @@ AI.prototype.doAction = function(playerIndex, callback) {
 
   if(!chosen) {
     var action = new Action(A_PASS);
-    if(state.round != 6) action.bontile = this.getPreferredBonusTile_(players[playerIndex]);
+    if(state.round != 6) action.bontile = this.getPreferredBonusTile_(player);
     chosen = [action];
   }
 
   for(var i = 0; i < chosen.length; i++) {
     for(var j = 0; j < chosen[i].favtiles.length; j++) {
-      var tiles = getPossibleFavorTiles(players[playerIndex], chosen[i].favtiles);
-      chosen[i].favtiles[j] = this.getPreferredFavorTile_(players[playerIndex], tiles);
+      var tiles = getPossibleFavorTiles(player, chosen[i].favtiles);
+      chosen[i].favtiles[j] = this.getPreferredFavorTile_(player, tiles);
     }
     for(var j = 0; j < chosen[i].twtiles.length; j++) {
-      var tiles = getPossibleTownTiles(players[playerIndex], chosen[i].twtiles);
-      chosen[i].twtiles[j] = this.getPreferredTownTile_(players[playerIndex], tiles);
+      var tiles = getPossibleTownTiles(player, chosen[i].twtiles);
+      chosen[i].twtiles[j] = this.getPreferredTownTile_(player, tiles);
       updateWToPConversionAfterDarklingsSHTownTile(player, chosen[i]);
     }
   }
 
-  var error = callback(players[playerIndex], chosen);
+  var error = callback(playerIndex, chosen);
   if(error != '') {
     addLog('ERROR: AI tried invalid action. Error: ' + error);
 
     //instead, pass.
     var action = new Action(A_PASS);
-    action.bontile = this.getPreferredBonusTile_(players[playerIndex]);
+    action.bontile = this.getPreferredBonusTile_(player);
     chosen = [action];
-    callback(players[playerIndex], chosen);
+    callback(playerIndex, chosen);
     
-    throw 'AI tried invalid action: ' + error;
+    throw new Error('AI tried invalid action: ' + error);
   }
 };
 
@@ -395,7 +395,7 @@ AI.prototype.getPreferredBonusTile_ = function(player) {
 
   var avtiles = [];
   for(var i = T_BON_BEGIN + 1; i < T_BON_END; i++) {
-    if(bonustiles[i]) avtiles.push(i);
+    if(game.bonustiles[i]) avtiles.push(i);
   }
 
   var scores = [];
@@ -460,7 +460,7 @@ AI.prototype.scoreBonusTile_ = function(player, tile, roundnum) {
     score += player.shipping * 3 + s.pw * 3;
   }
 
-  score += s.c * undef0(bonustilecoins[tile]);
+  score += s.c * undef0(game.bonustilecoins[tile]);
 
   return score;
 };
@@ -569,23 +569,23 @@ AI.prototype.scoreTownTile_ = function(player, tile, roundnum) {
 };
 
 AI.prototype.chooseInitialBonusTile = function(playerIndex, callback) {
-  var tile = this.getPreferredBonusTile_(players[playerIndex]);
+  var tile = this.getPreferredBonusTile_(game.players[playerIndex]);
 
-  var error = callback(players[playerIndex], tile);
+  var error = callback(playerIndex, tile);
   if(error != '') {
     addLog('ERROR: AI tried invalid bonus tile. Error: ' + error);
-    throw 'AI tried invalid bonus tile';
+    throw new Error('AI tried invalid bonus tile');
   }
 };
 
 AI.prototype.chooseInitialDwelling = function(playerIndex, callback) {
-  var player = players[playerIndex];
+  var player = game.players[playerIndex];
   var chosen = undefined;
 
   var otherDwelling;
   if(player.b_d < 8) {
-    for(var y = 0; y < BH; y++)
-    for(var x = 0; x < BW; x++)
+    for(var y = 0; y < game.bh; y++)
+    for(var x = 0; x < game.bw; x++)
     {
       var building = getBuilding(x, y);
       if(building[0] != B_NONE && building[1] == player.color) {
@@ -596,8 +596,8 @@ AI.prototype.chooseInitialDwelling = function(playerIndex, callback) {
   }
 
   var positions = [];
-  for(var y = 0; y < BH; y++)
-  for(var x = 0; x < BW; x++)
+  for(var y = 0; y < game.bh; y++)
+  for(var x = 0; x < game.bw; x++)
   {
     if(getWorld(x, y) != player.color) continue;
     if(getBuilding(x, y)[0] != B_NONE) continue;
@@ -626,10 +626,10 @@ AI.prototype.chooseInitialDwelling = function(playerIndex, callback) {
   var i = pickWithBestScore(positions, scores, false);
   var chosen = positions[i];
 
-  var error = callback(players[playerIndex], chosen[0], chosen[1]);
+  var error = callback(playerIndex, chosen);
   if(error != '') {
     addLog('ERROR: AI tried invalid initial dwelling. Error: ' + error);
-    throw 'AI tried invalid initial dwelling';
+    throw new Error('AI tried invalid initial dwelling');
   }
 };
 
@@ -646,7 +646,7 @@ AI.prototype.chooseFaction = function(playerIndex, callback) {
 
   var scores = [];
   for(var i = 0; i < possible.length; i++) {
-    scores[i] = this.scoreFaction_(players[playerIndex], already, possible[i]);
+    scores[i] = this.scoreFaction_(game.players[playerIndex], already, possible[i]);
   }
 
   //The scores will be used as probability distribution function for random race choice.
@@ -657,10 +657,10 @@ AI.prototype.chooseFaction = function(playerIndex, callback) {
 
   var faction = possible[pickWithBestScore(possible, scores, true)];
 
-  var error = callback(players[playerIndex], faction);
+  var error = callback(playerIndex, faction);
   if(error != '') {
     addLog('ERROR: AI chose invalid faction. Error: ' + error);
-    throw 'AI chose invalid faction';
+    throw new Error('AI chose invalid faction');
   }
 };
 
@@ -696,37 +696,37 @@ AI.prototype.scoreFaction_ = function(player, already, faction) {
 };
 
 AI.prototype.leechPower = function(playerIndex, fromPlayer, amount, vpcost, roundnum, already, still, callback) {
-  var player = players[playerIndex];
-  if(players[fromPlayer].faction == F_CULTISTS && !already && roundnum >= 5) {
-    callback(player, false);
+  var player = game.players[playerIndex];
+  if(game.players[fromPlayer].faction == F_CULTISTS && !already && roundnum >= 5) {
+    callback(playerIndex, false);
     return;
   }
 
   if(vpcost == 0) {
-    callback(player, true);
+    callback(playerIndex, true);
     return;
   }
 
   if(vpcost == 1) {
-    callback(player, roundnum < 5);
+    callback(playerIndex, roundnum < 5);
     return;
   }
 
   if(vpcost == 2) {
-    callback(player, roundnum < 3);
+    callback(playerIndex, roundnum < 3);
     return;
   }
 
   if(vpcost == 3) {
-    callback(player, roundnum < 2 && player.vp > 20);
+    callback(playerIndex, roundnum < 2 && player.vp > 20);
     return;
   }
 
-  callback(player, false);
+  callback(playerIndex, false);
 };
 
 AI.prototype.doRoundBonusSpade = function(playerIndex, num, callback) {
-  var player = players[playerIndex];
+  var player = game.players[playerIndex];
   var result = [];
   var dummy = [];
   var locations = [];
@@ -737,20 +737,22 @@ AI.prototype.doRoundBonusSpade = function(playerIndex, num, callback) {
     result.push([transformDirAction(player, getWorld(x, y), player.color), x, y]);
   }
 
-  var error = callback(players[playerIndex], result);
+  var error = callback(playerIndex, result);
   if(error != '') {
     addLog('ERROR: AI chose invalid round bonus dig. Error: ' + error);
-    throw 'AI chose invalid round bonus dig';
+    throw new Error('AI chose invalid round bonus dig');
   }
 };
 
 AI.prototype.chooseCultistTrack = function(playerIndex, callback) {
-  var besttrack = this.getBestCultTrack_(players[playerIndex], 1);
+  var player = game.players[playerIndex];
+  this.updateScoreActionValues_(player, state.round);
+  var besttrack = this.getBestCultTrack_(player, 1);
 
-  var error = callback(players[playerIndex], besttrack);
+  var error = callback(playerIndex, besttrack);
   if(error != '') {
     addLog('ERROR: AI chose invalid cult track. Error: ' + error);
-    throw 'AI chose invalid cult track';
+    throw new Error('AI chose invalid cult track');
   }
 };
 
@@ -807,9 +809,9 @@ AI.prototype.scoreCultTrackVP_ = function(player, cult, num, cap) {
   var result = 0;
   
   var highestother = -1; //highest value other players have on this track
-  for(var i = 0; i < players.length; i++) {
+  for(var i = 0; i < game.players.length; i++) {
     if(i == player.index) continue; //don't count self
-    if(players[i].cult[cult] > highestother) highestother = players[i].cult[cult];
+    if(game.players[i].cult[cult] > highestother) highestother = game.players[i].cult[cult];
   }
 
   //TODO: take into account whether other players can/will actually still go there
@@ -820,7 +822,7 @@ AI.prototype.scoreCultTrackVP_ = function(player, cult, num, cap) {
 
   // Pure score difference, most important in last round
   /*var pcult = [];
-  for(var i = 0; i < players.length; i++) pcult[i] = players[i].cult[cult];
+  for(var i = 0; i < game.players.length; i++) pcult[i] = game.players[i].cult[cult];
   var fromcultvp = getDistributedPoints(player.index, pcult, [8,4,2], 1);
   pcult[player.index] += num;
   var tocultvp = getDistributedPoints(player.index, pcult, [8,4,2], 1);

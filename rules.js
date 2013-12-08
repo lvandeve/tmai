@@ -62,6 +62,12 @@ function spadesDifference(player, action) {
   return 0;
 }
 
+function actionsSpadesDifference(player, actions) {
+  var result = 0;
+  for(var i = 0; i < actions.length; i++) result += spadesDifference(player, actions[i]);
+  return result;
+}
+
 //returns the amount of transforms needed from one color to another with shortest distance dist, given action A_TRANSFORM_CW, A_TRANSFORM_CCW or A_GIANTS_TRANSFORM
 function transformsReq(dist, type) {
   if(dist == 0) return 0;
@@ -79,11 +85,11 @@ function isUpgradeAction(action) {
 
 //any build action that can be involved in founding a town, includes dwelling and mermaids watertown tile
 function isTownyBuildAction(action) {
-  return action.type == A_BUILD || action.type == A_WITCHES_D || action.type == A_CONNECT_WATER_TOWN;
+  return action.type == A_BUILD || (action.type == A_WITCHES_D && action.co != null) || action.type == A_CONNECT_WATER_TOWN;
 }
 
 function isBuildDwellingAction(action) {
-  return action.type == A_BUILD || action.type == A_WITCHES_D;
+  return action.type == A_BUILD || (action.type == A_WITCHES_D && action.co != null);
 }
 
 //any build action that can be involved in founding a town, includes dwelling and mermaids watertown tile
@@ -128,58 +134,13 @@ function isBonusTilePromo2013Tile(tile) {
 
 // how much of that tile are placed at game setup
 function getTileInitialCount(tile) {
-  if(isFavorTile(tile)) return tile <= T_FAV_3W ? 1 : 3;
+  if(isFavorTile(tile)) return tile <= T_FAV_3A ? 1 : 3;
   if(isTownTile(tile)) return (tile == T_TW_2VP_2CULT || tile == T_TW_11VP) ? 1 : 2;
   return 0; //function not relevant for others.
 }
 
-//not yet taken tiles
-var favortiles = {};
-for(var i = T_FAV_BEGIN + 1; i < T_FAV_END; i++) favortiles[i] = i <= T_FAV_3W ? 1 : 3;
-var towntiles = {};
-for(var i = T_TW_BEGIN + 1; i < T_TW_END; i++) towntiles[i] = 2;
-var bonustiles = {};
-for(var i = T_BON_BEGIN + 1; i < T_BON_END; i++) bonustiles[i] = 1;
-
-//the extra coins that appear on non-taken tiles
-var bonustilecoins = [];
 function addBonusTileCoins() {
-  for(var i = T_BON_BEGIN + 1; i < T_BON_END; i++) if(bonustiles[i]) bonustilecoins[i] = incrUndef(bonustilecoins[i], 1);
-}
-
-//remove some, depending on amount of players
-//this function is not used anymore because of the preset bonus tile options
-function randomizeBonusTiles() {
-  bonustilecoins = [];
-  for(var i = T_BON_BEGIN + 1; i < T_BON_END; i++) bonustiles[i] = 1;
-  var keep = players.length + 3;
-  var remove = T_BON_END - T_BON_BEGIN - 1 - keep;
-  for(var i = 0; i < remove; i++) {
-    while(true) {
-      var index = T_BON_BEGIN + 1 + randomInt(T_BON_END - T_BON_BEGIN - 1);
-      if(!bonustiles[index]) continue; //already gone;
-      bonustiles[index] = 0;
-      addLog('eliminated bonus tile ' + getTileCodeName(index));
-      break;
-    }
-  }
-}
-
-//for rounds 1-6
-//this function is not used anymore because of the preset round tile options
-var roundtiles = [];
-function randomizeRoundTiles() {
-  var taken = {};
-  for(var i = 6; i > 0; i--) {
-    while(true) {
-      var index = T_ROUND_BEGIN + 1 + randomInt(T_ROUND_END - T_ROUND_BEGIN - 1);
-      if(i >= 5 && index == T_ROUND_DIG2VP_1E1C) continue; //no digging VP's in the last two rounds due to halflings abuse
-      if(taken[index]) continue; //no duplicate round tiles
-      taken[index] = true;
-      roundtiles[i] = index;
-      break;
-    }
-  }
+  for(var i = T_BON_BEGIN + 1; i < T_BON_END; i++) if(game.bonustiles[i]) game.bonustilecoins[i] = incrUndef(game.bonustilecoins[i], 1);
 }
 
 function isFactionOctogonAction(type) {
@@ -199,24 +160,20 @@ function isOctogonAction(type) {
   return isFactionOctogonAction(type) || isPowerOctogonAction(type) || isTileOctogonAction(type);
 }
 
-//global octogons. Octogons is a map, where undefined means the action is free, 1 means the action is taken. There are global octogons and per-player octogons.
-var octogons = {};
+//init both game and player octogons
 function initOctogons() {
-  octogons = {};
-  for(var j = 0; j < players.length; j++) {
-    players[j].octogons = {};
+  game.octogons = {};
+  for(var j = 0; j < game.players.length; j++) {
+    game.players[j].octogons = {};
   }
 }
-
-//The players
-var players = [];
 
 var colorToPlayerMap = {}; //map to the index of the player (cannot point to the player objects themselves due to their backup cloning that changes their addresses)
 
 function createColorToPlayerMap() {
   colorToPlayerMap = {};
-  for(var i = 0; i < players.length; i++) {
-    colorToPlayerMap[players[i].color] = i;
+  for(var i = 0; i < game.players.length; i++) {
+    colorToPlayerMap[game.players[i].color] = i;
   }
 }
 
@@ -234,12 +191,6 @@ var Action = function(type) {
   this.twtiles = []; //town tiles. Can be multiple (e.g. when taking 6 town size tile)
   this.cult = C_NONE; //for cult track actions
 };
-
-//priests sent to each cult track. The main array is for each track.
-//The sub array is the 4 priest places, the first being the value 3 one, the others the value 2 ones.
-//value N means no player is there, otherwise it's the player color
-//the '2' spots are filled in from left to right, so checking if cultp[C_F][3] == 'N' is enough to see that there's a free '2' spot left there.
-var cultp = [[N,N,N,N],[N,N,N,N],[N,N,N,N],[N,N,N,N]];
 
 function getTownReqPower(player) {
   return player.favortiles[T_FAV_2F_6TW] > 0 ? 6 : 7;
@@ -444,7 +395,7 @@ function canDoRoundBonusDig(player, type, x, y) {
   if(isOccupied(x, y)) return 'tile occupied';
   var tile = getWorld(x, y);
   if(tile == I || tile == N) return 'invalid tile type';
-  var dist = digDist(player, tile);
+  var dist = digDist(player, tile, player.color);
   if(dist == 0 && type == A_GIANTS_TRANSFORM) return 'tile already your color';
   return '';
 }
@@ -461,24 +412,31 @@ function canDoRoundBonusDigs(player, digs) {
   return '';
 }
 
+function getColorAfterTransformAction(incolor, playercolor, type) {
+  if(type == A_GIANTS_TRANSFORM || type == A_SANDSTORM) {
+    //could as well say of course that giants transform is red, sandstorm is yellow. But let's be generic with player colors.
+    return playercolor;
+  }
+  else if(type == A_TRANSFORM_CW) {
+    var color = incolor + 1;
+    if(color == S + 1) color = R;
+    return color;
+  }
+  else if(type == A_TRANSFORM_CCW) {
+    var color = incolor - 1;
+    if(color == R - 1) color = S;
+    return color;
+  }
+  return incolor;
+}
+
 //non destructive if it fails. Returns error string.
 //type is e.g. A_TRANSFORM_CCW, ...
 function tryRoundBonusDig(player, type, x, y) {
   var error = canDoRoundBonusDig(player, type, x, y);
   if(error != '') return error;
   var tile = getWorld(x, y);
-
-  if(type == A_GIANTS_TRANSFORM) setWorld(x, y, player.color);
-  else if(type == A_TRANSFORM_CW) {
-      color = tile + 1;
-      if(color == S + 1) color = R;
-      setWorld(x, y, color);
-  }
-  else if(type == A_TRANSFORM_CCW) {
-      color = tile - 1;
-      if(color == R - 1) color = S;
-      setWorld(x, y, color);
-  }
+  setWorld(x, y, getColorAfterTransformAction(tile, player.color, type));
 
   if(player.faction == F_HALFLINGS) { player.addVP(1, 'faction', 'faction') }
   if(player.faction == F_ALCHEMISTS && built_sh(player)) addPower(player, 2);
@@ -500,7 +458,7 @@ function getUpgradeActionOutputBuilding(action) {
 }
 
 function getRoundTile() {
-  return roundtiles[state.round];
+  return game.roundtiles[state.round];
 }
 
 function tryUpgradeAction(player, action) {
@@ -556,7 +514,7 @@ function tryUpgradeAction(player, action) {
     if(player.faction == F_DARKLINGS) {
       player.darklingconverts = 3;
     }
-    
+
   }
   else if(b_out == B_SA) {
     player.b_te++;
@@ -601,7 +559,7 @@ function giveCult(player, cult, num) {
 
 function tryCultPriestAction(player, action) {
   if(player.p < 1) return 'not enough priests';
-  var cp = cultp[action.cult];
+  var cp = game.cultp[action.cult];
   if(action.cult < 0 || action.cult > 3) return 'invalid cult';
   if(action.type == A_CULT_PRIEST3 && cp[0] != N) return 'the 3 is full';
   if(action.type == A_CULT_PRIEST2 && cp[1] != N && cp[2] != N && cp[3] != N) return 'the 2s are full';
@@ -611,7 +569,7 @@ function tryCultPriestAction(player, action) {
   player.p--;
 
   if(action.type != A_CULT_PRIEST1) {
-    if(player.pp <= 0) throw 'priest pool went wrong';
+    if(player.pp <= 0) throw new Error('priest pool went wrong');
     player.pp--;
   }
 
@@ -620,7 +578,7 @@ function tryCultPriestAction(player, action) {
     if(cp[1] == N) cp[1] = player.color;
     else if(cp[2] == N) cp[2] = player.color;
     else if(cp[3] == N) cp[3] = player.color;
-    else throw 'already full';
+    else throw new Error('already full');
   }
 
   return '';
@@ -628,7 +586,7 @@ function tryCultPriestAction(player, action) {
 
 function tryCultAction(player, action) {
 
-  var cp = cultp[action.cult];
+  var cp = game.cultp[action.cult];
   if(action.cult < 0 || action.cult > 3) return 'invalid cult';
   var num = action.type == A_AUREN_CULT ? 2 : 1;
 
@@ -666,7 +624,7 @@ function addExtrasForAction(player, action) {
       player.addVP(3, 'round', getTileCodeName(getRoundTile()));
     }
   }
-  
+
   if(action.type == A_BUILD || action.type == A_WITCHES_D) {
     if(player.favortiles[T_FAV_1E_DVP]) {
       player.addVP(2, 'favor', getTileCodeName(T_FAV_1E_DVP));
@@ -735,7 +693,7 @@ function addExtrasForAction(player, action) {
 //amount of digs from the round end based on cult track
 function getRoundBonusDigsForCults(cult, round) {
   if(round == 0) return 0;
-  var t = roundtiles[round];
+  var t = game.roundtiles[round];
   if(!t) return 0;
   if(t == T_ROUND_TP3VP_4W1DIG) {
     return Math.floor(cult[C_W] / 4);
@@ -757,7 +715,7 @@ function getRoundBonusDigs(player, round) {
 //amount of resources from the round end based on cult track
 function getRoundBonusResourcesForCults(cult, round) {
   if(round == 0) return [0,0,0,0,0];
-  var t = roundtiles[round];
+  var t = game.roundtiles[round];
   if(!t) return [0,0,0,0,0];
   if(t == T_ROUND_D2VP_4W1P) {
     return [0,0,Math.floor(cult[C_W] / 4),0,0];
@@ -795,22 +753,22 @@ function getEngineersPassScore(player) {
 
   var result = 0;
 
-  for(var y = 0; y < BH; y++)
-  for(var x = 0; x < BW; x++)
+  for(var y = 0; y < game.bh; y++)
+  for(var x = 0; x < game.bw; x++)
   {
-    var bridge = bridges[arCo(x, y)];
+    var bridges = game.bridges[arCo(x, y)];
 
-    if(bridge[0] == player.color) {
+    if(bridges[0] == player.color) {
       var co = bridgeCo(x, y, D_N);
       if(outOfBounds(co[0], co[1])) continue;
       if(isOccupiedBy(x, y, player.color) && isOccupiedBy(co[0], co[1], player.color)) result += 3;
     }
-    if(bridge[1] == player.color) {
+    if(bridges[1] == player.color) {
       var co = bridgeCo(x, y, D_NE);
       if(outOfBounds(co[0], co[1])) continue;
       if(isOccupiedBy(x, y, player.color) && isOccupiedBy(co[0], co[1], player.color)) result += 3;
     }
-    if(bridge[2] == player.color) {
+    if(bridges[2] == player.color) {
       var co = bridgeCo(x, y, D_SE);
       if(outOfBounds(co[0], co[1])) continue;
       if(isOccupiedBy(x, y, player.color) && isOccupiedBy(co[0], co[1], player.color)) result += 3;
@@ -837,6 +795,7 @@ function tryAction(player, action /*Action object*/) {
           'can only take 1 turn action (or 2 after chaosmag double action)' :
           'can only take 1 turn action';
       player.numactions--;
+      player.built = false; //reset for chaos magicians, otherwise the following action order breaks: chaosdouble. build. dig. transform. build.
     }
   }
 
@@ -848,8 +807,8 @@ function tryAction(player, action /*Action object*/) {
   // Check favor tiles
   if(action.favtiles.length < actionGivesFavorTile(player, action)) return action.favtiles.length == 0 ? 'no favor tile chosen' : 'too few favor tiles chosen';
   if(action.favtiles.length > actionGivesFavorTile(player, action)) return 'too many favor tiles chosen';
-  
-  
+
+
   if(action.type == A_BURN) {
     if(player.pw1 < 2) return 'not enough power to burn';
     burnPower(player, 1);
@@ -884,7 +843,7 @@ function tryAction(player, action /*Action object*/) {
     I shall put it this way:
     You can dig in any direction, but you have to stop at your home terrain (after all the primary goal of terraforming is to reach your hometerrain), so in one action the maximum could be six steps.
     You may change your hometerrain, but only, if the landscape is your hometerrain at the beginning of your turn. In this case again six steps is the maximum per action.
-    I know Frank suggested something different a while ago Possible imbalance, but now the only limitation is, you have to stop at your hometerrain or you have to start at your hometerrain and the maximum is 6 steps of terraforming per action. 
+    I know Frank suggested something different a while ago Possible imbalance, but now the only limitation is, you have to stop at your hometerrain or you have to start at your hometerrain and the maximum is 6 steps of terraforming per action.
     */
     if(player.spades >= 6) return 'max 6 spades per turn';
     player.mayaddmorespades = true;
@@ -902,15 +861,15 @@ function tryAction(player, action /*Action object*/) {
       player.spades++;
     }
     else if(action.type == A_POWER_SPADE) {
-      if(octogons[A_POWER_SPADE]) return 'action already taken';
-      octogons[A_POWER_SPADE] = 1;
+      if(game.octogons[A_POWER_SPADE]) return 'action already taken';
+      game.octogons[A_POWER_SPADE] = 1;
       if(player.pw2 < 4) return 'not enough resources for ' + getActionName(action.type);
       usePower(player, 4);
       player.spades++;
     }
     else if(action.type == A_POWER_2SPADE) {
-      if(octogons[A_POWER_2SPADE]) return 'action already taken';
-      octogons[A_POWER_2SPADE] = 1;
+      if(game.octogons[A_POWER_2SPADE]) return 'action already taken';
+      game.octogons[A_POWER_2SPADE] = 1;
       if(player.pw2 < 6) return 'not enough resources for ' + getActionName(action.type);
       usePower(player, 6);
       player.spades += 2;
@@ -939,7 +898,7 @@ function tryAction(player, action /*Action object*/) {
     if(isOccupied(x, y)) return 'tile occupied';
     var tile = getWorld(x, y);
     if(tile == I || tile == N) return 'invalid tile type';
-    
+
     if(player.transformco) {
       var equal = (x == player.transformco[0] && y == player.transformco[1]);
       var oldTile = getWorld(player.transformco[0], player.transformco[1]);
@@ -971,18 +930,9 @@ function tryAction(player, action /*Action object*/) {
     player.transformed = true;
     player.transformco = [x, y];
     player.transformcoset[arCo(x, y)] = true;
-    if(action.type == A_GIANTS_TRANSFORM || action.type == A_SANDSTORM) setWorld(x, y, player.color);
-    else if(action.type == A_TRANSFORM_CW) {
-      color = tile + 1;
-      if(color == S + 1) color = R;
-      setWorld(x, y, color);
-    }
-    else if(action.type == A_TRANSFORM_CCW) {
-      color = tile - 1;
-      if(color == R - 1) color = S;
-      setWorld(x, y, color);
-    }
-    else return 'unknown transform action';
+    var newcolor = getColorAfterTransformAction(tile, player.color, action.type);
+    if(newcolor == tile) return 'unknown transform action';
+    setWorld(x, y, newcolor);
   }
   else if(action.type == A_BUILD) {
     error = tryBuild(player, action);
@@ -1007,8 +957,8 @@ function tryAction(player, action /*Action object*/) {
   }
   else if(action.type == A_POWER_BRIDGE || action.type == A_ENGINEERS_BRIDGE) {
     if(action.type == A_POWER_BRIDGE) {
-      if(octogons[A_POWER_BRIDGE]) return 'action already taken';
-      octogons[A_POWER_BRIDGE] = 1;
+      if(game.octogons[A_POWER_BRIDGE]) return 'action already taken';
+      game.octogons[A_POWER_BRIDGE] = 1;
       if(player.pw2 < 3) return 'not enough resources for ' + getActionName(action.type);
       usePower(player, 3);
     }
@@ -1017,14 +967,14 @@ function tryAction(player, action /*Action object*/) {
       if(player.w < 2) return 'not enough resources for ' + getActionName(action.type);
       player.w -= 2;
     }
-    
+
     if(player.bridges <= 0) return 'not enough bridges';
     var x0 = action.cos[0][0];
     var y0 = action.cos[0][1];
     var x1 = action.cos[1][0];
     var y1 = action.cos[1][1];
     if(!canHaveBridge(x0, y0, x1, y1, player.color)) return 'invalid bridge location';
-    
+
     addBridge(x0, y0, x1, y1, player.color);
     player.bridges--;
   }
@@ -1033,8 +983,8 @@ function tryAction(player, action /*Action object*/) {
   else if(action.type == A_UPGRADE_SH) error = tryUpgradeAction(player, action);
   else if(action.type == A_UPGRADE_SA) error = tryUpgradeAction(player, action);
   else if(action.type == A_POWER_1P) {
-    if(octogons[A_POWER_1P]) return 'action already taken';
-    octogons[A_POWER_1P] = 1;
+    if(game.octogons[A_POWER_1P]) return 'action already taken';
+    game.octogons[A_POWER_1P] = 1;
     if(usePower(player, 3)) {
       addIncome(player, [0,0,1,0,0]);
     } else {
@@ -1042,8 +992,8 @@ function tryAction(player, action /*Action object*/) {
     }
   }
   else if(action.type == A_POWER_2W) {
-    if(octogons[A_POWER_2W]) return 'action already taken';
-    octogons[A_POWER_2W] = 1;
+    if(game.octogons[A_POWER_2W]) return 'action already taken';
+    game.octogons[A_POWER_2W] = 1;
     if(usePower(player, 4)) {
       addIncome(player, [0,2,0,0,0]);
     } else {
@@ -1051,8 +1001,8 @@ function tryAction(player, action /*Action object*/) {
     }
   }
   else if(action.type == A_POWER_7C) {
-    if(octogons[A_POWER_7C]) return 'action already taken';
-    octogons[A_POWER_7C] = 1;
+    if(game.octogons[A_POWER_7C]) return 'action already taken';
+    game.octogons[A_POWER_7C] = 1;
     if(usePower(player, 4)) {
       addIncome(player, [7,0,0,0,0]);
     } else {
@@ -1068,7 +1018,7 @@ function tryAction(player, action /*Action object*/) {
 
     //pass bonuses
     applyPassBonus(player, player);
-    
+
     if(!finalround) error = giveBonusTile(player, action.bontile);
     else error = giveBonusTile(player, T_NONE);
     if(error) return error;
@@ -1103,6 +1053,9 @@ function tryAction(player, action /*Action object*/) {
   else if(action.type == A_DEBUG_STEP) {
     //nothing
   }
+  else if(action.type == A_CHEAT_PW) {
+    addPower(player, 1);
+  }
   else if(action.type == A_CULT_PRIEST1) error = tryCultPriestAction(player, action);
   else if(action.type == A_CULT_PRIEST2) error = tryCultPriestAction(player, action);
   else if(action.type == A_CULT_PRIEST3) error = tryCultPriestAction(player, action);
@@ -1128,14 +1081,17 @@ function tryAction(player, action /*Action object*/) {
     if(player.b_sh != 0) return 'flying the broom requires SH';
     if(player.octogons[A_WITCHES_D]) return 'witches ride already used';
     player.octogons[A_WITCHES_D] = 1;
-    if(!action.co) return 'build action must have coordinate';
-    if(player.b_d == 0) return 'no dwellings left';
-    var x = action.co[0];
-    var y = action.co[1];
-    if(getWorld(x, y) != player.color) return 'can only fly to forest';
-    if(isOccupied(x, y)) return 'already occupied';
-    player.b_d--;
-    setBuilding(x, y, B_D, player.color);
+    // empty coordinates allowed, when using the SH actions, the witches MAY, not must, build a dwelling
+    //TODO: also allow these empty coordinates for some other actions, e.g. swarmlings TP, but don't forget to test it out as functions like actionRequiresTownClusterRecalc need to be adapted as well
+    if(action.co) {
+      if(player.b_d == 0) return 'no dwellings left';
+      var x = action.co[0];
+      var y = action.co[1];
+      if(getWorld(x, y) != player.color) return 'can only fly to forest';
+      if(isOccupied(x, y)) return 'already occupied';
+      player.b_d--;
+      setBuilding(x, y, B_D, player.color);
+    }
   }
   else return 'unknown action';
 
@@ -1171,7 +1127,7 @@ var backupGameState = null;
 function tryActions(player, actions /*array of Action objects*/) {
   var error = '';
 
-  backupGameState = saveGameState(false);
+  backupGameState = saveGameState(game, state, undefined);
 
   //Prepare temporary turn state
   initPlayerTemporaryTurnState(player);
@@ -1292,14 +1248,14 @@ function giveCultForTakingFavorTile(player, tile) {
 //Does NOT handle the T_FAV_2F_6TW town formation, actionCreatesTown does that.
 function giveFavorTile(player, tile) {
   if(tile > T_FAV_BEGIN && tile < T_FAV_END) {
-    if(favortiles[tile] <= 0) {
+    if(game.favortiles[tile] <= 0) {
       return 'this favor tile is no longer available';
     }
     if(player.favortiles[tile]) {
       return 'already has this favor tile';
     }
     player.favortiles[tile] = 1;
-    favortiles[tile]--;
+    game.favortiles[tile]--;
     giveCultForTakingFavorTile(player, tile);
     return '';
   } else {
@@ -1317,13 +1273,13 @@ function getTownTileResources(tile) {
   if(tile == T_TW_8VP_CULT) return [0,0,0,0,8];
   if(tile == T_TW_9VP_P) return [0,0,1,0,9];
   if(tile == T_TW_11VP) return [0,0,0,0,11];
-  throw 'invalid town tile';
+  throw new Error('invalid town tile');
 }
 
 //also adds the necessary resources and VPs
 function giveTownTile(player, tile) {
   if(tile > T_TW_BEGIN && tile < T_TW_END) {
-    if(towntiles[tile] <= 0) {
+    if(game.towntiles[tile] <= 0) {
       return 'this town tile is no longer available';
     }
     player.towntiles[tile] = incrUndef(player.towntiles[tile], 1);
@@ -1336,7 +1292,7 @@ function giveTownTile(player, tile) {
 
       //TODO: make this hack smarter for T_TW_2VP_2CULT
       //If there are multiple nines and not enough keys to go up all of them, in theory the player should have the choice. That code is not implemented yet, instead automatically choose the most threatened ones.
-      //to quickly debug this, type in console: players[1].cult[2] = 5; players[0].cult[0] = 9; players[0].cult[1] = 9; players[0].cult[2] = 9; players[0].cult[3] = 9; 
+      //to quickly debug this, type in console: players[1].cult[2] = 5; players[0].cult[0] = 9; players[0].cult[1] = 9; players[0].cult[2] = 9; players[0].cult[3] = 9;
       var nines = 0;
       for(var i = C_F; i <= C_A; i++) {
         if(player.cult[i] < 10 && player.cult[i] >= nine) nines++;
@@ -1348,13 +1304,13 @@ function giveTownTile(player, tile) {
         nines--;
       }
       //End of "most threatened cult track" hack.
-      
+
       for(var i = C_F; i <= C_A; i++) {
         giveCult(player, i, num);
       }
     }
-    
-    towntiles[tile]--;
+
+    game.towntiles[tile]--;
     return '';
   } else {
     return 'invalid town tile';
@@ -1373,18 +1329,18 @@ function giveBonusTile(player, tile) {
         player.bonusshipping++;
       }
     }
-    
-    if(player.bonustile > T_BON_BEGIN) bonustiles[player.bonustile]++;
+
+    if(player.bonustile > T_BON_BEGIN) game.bonustiles[player.bonustile]++;
 
     if(tile == T_NONE) {
       // this is during the last round
       player.bonustile = T_NONE;
     } else {
-      if(bonustiles[tile] <= 0) return 'this bonus tile is no longer available';
-      bonustiles[tile]--;
+      if(game.bonustiles[tile] <= 0) return 'this bonus tile is no longer available';
+      game.bonustiles[tile]--;
       player.bonustile = tile;
-      if(bonustilecoins[tile]) player.c += bonustilecoins[tile];
-      bonustilecoins[tile] = 0;
+      if(game.bonustilecoins[tile]) player.c += game.bonustilecoins[tile];
+      game.bonustilecoins[tile] = 0;
     }
     return '';
   } else {
@@ -1414,7 +1370,7 @@ function isActionArray(action) {
 function favorTilesAvailable(player, num) {
   var result = 0;
   for(var tile =  T_FAV_BEGIN + 1; tile < T_FAV_END; tile++) {
-    if(!player.favortiles[tile] && favortiles[tile] > 0) result++;
+    if(!player.favortiles[tile] && game.favortiles[tile] > 0) result++;
     if(result >= num) return result;
   }
   return result;
@@ -1424,7 +1380,7 @@ function favorTilesAvailable(player, num) {
 function townTilesAvailable(num) {
   var result = 0;
   for(var tile =  T_TW_BEGIN + 1; tile < T_TW_END; tile++) {
-    if(towntiles[tile] > 0) result++;
+    if(game.towntiles[tile] > 0) result++;
     if(result >= num) return result;
   }
   return result;
@@ -1447,17 +1403,15 @@ function actionGivesFavorTile(player, action) {
 //if it's for a A_CONNECT_WATER_TOWN action, you SHOULD give the whole actions array, not just that one mermaids action, otherwise it will not take just built buildings into account
 //previousActions is only used if it's the mermaids A_CONNECT_WATER_TOWN action, and may be the whole array (the previous part, that is, everything before the mermaids action, is used)
 function actionCreatesTown(player, action, previousActions) {
-
   if(previousActions) {
     var numHeavy = 0;
     for(var i = 0; i < previousActions.length; i++) {
       if(actionMightFormTown(previousActions[i])) numHeavy++;
     }
     if(numHeavy > 1) {
-      return actionsMakeTown(player, previousActions, action);
+      return actionsCreateTown(player, previousActions, action);
     }
   }
-
 
   var reqpower = getTownReqPower(player);
   var involved = []; //the indices of the clusters involved in the towns (to avoid duplicates, e.g when both upgrading to SA and taking 6 town size tile)
@@ -1501,7 +1455,7 @@ function actionCreatesTown(player, action, previousActions) {
     var used = {};
     var result = 0;
     for(var i = 0; i < involved.length; i++) {
-      if(involved[i].length == 0) throw 'wrong length during town calculation';
+      if(involved[i].length == 0) throw new Error('wrong length during town calculation');
       var ok = true;
       for(var j = 0; j < involved[i].length; j++) {
         var index = involved[i][j];
@@ -1518,9 +1472,9 @@ function actionCreatesTown(player, action, previousActions) {
 
 function getAlreadyChosenColors() {
   var already = [false /*N*/, false,false,false,false,false,false,false]; //already chosen colors
-  for(var i = 0; i < players.length; i++) {
-    if(players[i].faction != F_NONE /*if already has chosen*/) {
-      already[factionColor(players[i].faction)] = true;
+  for(var i = 0; i < game.players.length; i++) {
+    if(game.players[i].faction != F_NONE /*if already has chosen*/) {
+      already[factionColor(game.players[i].faction)] = true;
     }
   }
   return already;
@@ -1560,8 +1514,8 @@ function getLeechEffect(playerIndex, actions) {
         leechers[index] = incrUndef(leechers[index], power);
       }
       if(leechers.length > 0) {
-        for(var j = 0; j < players.length; j++) {
-          var k = wrap(playerIndex + j + 1, 0, players.length); //start with next player
+        for(var j = 0; j < game.players.length; j++) {
+          var k = wrap(playerIndex + j + 1, 0, game.players.length); //start with next player
           var power = leechers[k];
           if(power) {
             var amount = leechers[k];
@@ -1583,18 +1537,21 @@ function actualLeechAmount(player, amount) {
 }
 
 //it is actually gamestate.js that checks validity of whether the player can leech any power
+//if amount is greater than the player can accept, it will simply accept the max
 function leechPower(player, amount) {
-  if(amount <= 0) throw 'invalid leech amount';
+  amount = actualLeechAmount(player, amount);
+  if(amount <= 0) throw new Error('invalid leech amount');
   if(player.vp - amount + 1 < 0) return 'not enough vp';
   player.addVP(-(amount - 1), 'leech', 'leech');
   addPower(player, amount);
   return '';
 }
 
-function digDist(player, tileColor) {
-  if(tileColor == player.color) return 0;
-  if(player.faction == F_GIANTS) return 2;
-  else return colorDist(tileColor, player.color);
+//For giants, toColor should be player.color. Giants cannot dig to any other color than that.
+function digDist(player, tileColor, toColor) {
+  if(tileColor == toColor) return 0;
+  if(player.faction == F_GIANTS) return 2; //Giants can dig from any other color to their home color with 2 spades, nothing else.
+  else return colorDist(tileColor, toColor);
 }
 
 //the cost for tunneling or carpets
@@ -1713,11 +1670,11 @@ function getDistributedPoints(playerIndex, values, scores, minValue) {
 //returns array of a cult track end score per player
 function getCultEndScores(track) {
   var result = [];
-  for(var i = 0; i < players.length; i++) result[i] = 0;
+  for(var i = 0; i < game.players.length; i++) result[i] = 0;
 
   var values = [];
-  for(var j = 0; j < players.length; j++) {
-    values[j] = players[j].cult[track];
+  for(var j = 0; j < game.players.length; j++) {
+    values[j] = game.players[j].cult[track];
   }
   var scores = distributePoints(values, [8, 4, 2], 1);
   for(var j = 0; j < scores.length; j++) {
@@ -1732,12 +1689,12 @@ function getCultEndScores(track) {
 //returns array of [network end score][network size] per player
 function getNetworkEndScores() {
   var result = [];
-  for(var i = 0; i < players.length; i++) result[i] = [0, 0];
+  for(var i = 0; i < game.players.length; i++) result[i] = [0, 0];
 
   calculateNetworkClusters();
   var values = [];
-  for(var j = 0; j < players.length; j++) {
-    values[j] = getBiggestNetwork(players[j]);
+  for(var j = 0; j < game.players.length; j++) {
+    values[j] = getBiggestNetwork(game.players[j]);
   }
   var scores = distributePoints(values, [18, 12, 6], 0);
   for(var j = 0; j < scores.length; j++) {
@@ -1753,10 +1710,10 @@ function getNetworkEndScores() {
 //returns resource score per player
 function getResourceEndScores() {
   var result = [];
-  for(var i = 0; i < players.length; i++) result[i] = 0;
+  for(var i = 0; i < game.players.length; i++) result[i] = 0;
 
-  for(var i = 0; i < players.length; i++) {
-    result[i] += getResourceEndGameScoring(players[i]);
+  for(var i = 0; i < game.players.length; i++) {
+    result[i] += getResourceEndGameScoring(game.players[i]);
   }
 
   return result;
@@ -1770,7 +1727,10 @@ function applyPassBonus(playerin, playerout) {
     playerout.addVP(built_tp(playerin) * 2, 'bonus', getTileCodeName(T_BON_PASSTPVP_1W));
   }
   if(playerin.bonustile == T_BON_PASSSHSAVP_2W) {
-    playerout.addVP(built_sh(playerin) + built_sa(playerin) * 4, 'bonus', getTileCodeName(T_BON_PASSSHSAVP_2W));
+    playerout.addVP(built_sh(playerin) * 4 + built_sa(playerin) * 4, 'bonus', getTileCodeName(T_BON_PASSSHSAVP_2W));
+  }
+  if(playerin.bonustile == T_BON_PASSSHIPVP_3PW) {
+    playerout.addVP(playerin.shipping * 3, 'bonus', getTileCodeName(T_BON_PASSSHIPVP_3PW));
   }
   if(playerin.favortiles[T_FAV_1A_PASSTPVP]) {
     var vp = [0,2,3,3,4][built_tp(playerin)];
@@ -1780,12 +1740,12 @@ function applyPassBonus(playerin, playerout) {
 
 function getPassBonusEndScores() {
   var result = [];
-  for(var i = 0; i < players.length; i++) result[i] = 0;
+  for(var i = 0; i < game.players.length; i++) result[i] = 0;
 
-  for(var i = 0; i < players.length; i++) {
+  for(var i = 0; i < game.players.length; i++) {
     var dummy = new Player();
     dummy.vp = 0;
-    applyPassBonus(players[i], dummy);
+    applyPassBonus(game.players[i], dummy);
     result[i] += dummy.vp;
   }
 
@@ -1806,15 +1766,15 @@ function projectEndGameScores() {
   var passscores = getPassBonusEndScores();
 
   var result = [];
-  for(var i = 0; i < players.length; i++) result[i] = [players[i].vp, 0, 0, 0, 0];
-  
-  for(var i = 0; i < players.length; i++) {
+  for(var i = 0; i < game.players.length; i++) result[i] = [game.players[i].vp, 0, 0, 0, 0];
+
+  for(var i = 0; i < game.players.length; i++) {
     for(var j = C_F; j <= C_A; j++) {
       result[i][1] += cultscores[j - C_F][i];
     }
     result[i][2] = networkscores[i][0];
     result[i][3] = resourcescores[i];
-    if(!players[i].passed) result[i][4] = passscores[i];
+    if(!game.players[i].passed) result[i][4] = passscores[i];
     for(var j = 1; j < result[i].length; j++) result[i][0] += result[i][j];
   }
 
@@ -1825,39 +1785,28 @@ function initBoard() {
   waterDistanceCalculated = [];
   state.round = 0;
 
-  buildings = [];
-  for(var y = 0; y < BH; y++)
-  for(var x = 0; x < BW; x++)
-  {
-    buildings[arCo(x, y)] = [ B_NONE, N ];
-  }
+  initBuildings(game.buildings, game.bw, game.bh);
+  initBridges(game.bridges, game.bw, game.bh);
 
-  bridges = [];
-  for(var y = 0; y < BH; y++)
-  for(var x = 0; x < BW; x++)
-  {
-    bridges[arCo(x, y)] = [ N, N, N ];
-  }
-
-  favortiles = {};
-  for(var i = T_FAV_BEGIN + 1; i < T_FAV_END; i++) favortiles[i] = getTileInitialCount(i);
-  towntiles = {};
+  game.favortiles = {};
+  for(var i = T_FAV_BEGIN + 1; i < T_FAV_END; i++) game.favortiles[i] = getTileInitialCount(i);
+  game.towntiles = {};
   for(var i = T_TW_BEGIN + 1; i < T_TW_END; i++) {
     if (state.towntilepromo2013 || !isTownTilePromo2013Tile(i)) {
-      towntiles[i] = getTileInitialCount(i);
+      game.towntiles[i] = getTileInitialCount(i);
     }
   }
-  //TODO: the bonus tiles below make no sense, this is filling all of them instead of random. gamestate.js does the actual work. Remove this.
-  bonustiles = {};
+  //This fills in all bonus tiles. Some will be removed later. E.g. the snellman log loader depends on this.
+  game.bonustiles = {};
   for(var i = T_BON_BEGIN + 1; i < T_BON_END; i++) {
     if (state.bonustilepromo2013 || !isBonusTilePromo2013Tile(i)) {
-      bonustiles[i] = 1;
+      game.bonustiles[i] = 1;
     }
   }
-  bonustilecoins = [];
+  game.bonustilecoins = [];
 
-  cultp = [[N,N,N,N],[N,N,N,N],[N,N,N,N],[N,N,N,N]];
-  octogons = {};
+  game.cultp = [[N,N,N,N],[N,N,N,N],[N,N,N,N],[N,N,N,N]];
+  game.octogons = {};
 
   calculateTownClusters();
 }

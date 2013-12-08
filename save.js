@@ -25,45 +25,25 @@ freely, subject to the following restrictions:
 
 //serialization of gamestate, backing it up, and Undo
 
-function saveGameState(includeLog) {
-  var game = {};
-  game.world = clone(world);
-  game.buildings = clone(buildings);
-  game.bridges = clone(bridges);
-  game.players = clone(players); //all the players (restoring the player parameter would do nothing outside of this function)
-  game.octogons = clone(octogons);
-  game.cultp = clone(cultp);
-  game.towntiles = clone(towntiles);
-  game.favortiles = clone(favortiles);
-  game.bonustiles = clone(bonustiles);
-  game.bonustilecoins = clone(bonustilecoins);
-  game.roundtiles = clone(roundtiles);
-  game.state = clone(state);
-  game.BW = BW;
-  game.BH = BH;
-  if(includeLog) game.logText = logText;
-  return game;
+// Creates a clone of the Game object, and adds state and, optionally, log as fields (set logText to undefined to not have it)
+function saveGameState(game, state, logText) {
+  var result = clone(game);
+  result.state = clone(state);
+  if(logText) result.logText = logText;
+  return result;
 }
 
-function loadGameState(game) {
-  world = game.world;
-  players = game.players;
-  buildings = game.buildings;
-  bridges = game.bridges;
-  octogons = game.octogons;
-  cultp = game.cultp;
-  towntiles = game.towntiles;
-  favortiles = game.favortiles;
-  bonustiles = game.bonustiles;
-  bonustilecoins = game.bonustilecoins;
-  roundtiles = game.roundtiles;
-  state = game.state;
-  BW = game.BW;
-  BH = game.BH;
-  if(game.logText) {
-    logText = game.logText;
+// Loads the gamestate from the given saveGameState result, puts it in the various global variables and recalculates some global variables
+function loadGameState(fromgame) {
+  game = clone(fromgame);
+  state = fromgame.state;
+  if(fromgame.logText) {
+    logText = fromgame.logText;
     logEl.innerHTML = logText;
   }
+  // These objects were only in the save object, but should not be in the game object.
+  game.state = undefined;
+  game.logText = undefined;
 
   waterDistanceCalculated = [];
   createColorToPlayerMap();
@@ -71,87 +51,82 @@ function loadGameState(game) {
   //calculateNetworkClusters();
 }
 
-//also reinits
+//same as loadGameState, but also reinits
 function loadGameStateHard(game) {
-  // Make any previous callbacks finish fully
-  window.setTimeout(function() {
-    loadGameState(game);
-    clearHumanState();
-    clearPopupElementNow();
-    showingNextButtonPanel = false;
-    pactions = [];
+  loadGameState(game);
+  clearHumanState();
+  showingNextButtonPanel = false;
+  pactions = [];
 
-    state.executeState();
+  popupElement.innerHTML = '';
+  uiElement.innerHTML = '';
+  drawMap();
+  drawMapClick();
+  drawSaveLoadUI(false);
+  drawHud();
+  displayLog();
 
-    uiElement.innerHTML = '';
-    drawMap();
-    drawMapClick();
-    drawSaveLoadUI(false);
-    drawHud();
-
-    //nextState(state.type, true); //this is an alternative rather than doing state.executeState() above, but requires player to press "Next"
-  }, 0);
+  gameLoopNonBlocking(state.type, false); //this is an alternative rather than doing state.executeActor() above, but requires player to press "Next"
 }
 
 //returns it as a string
-function serializeGameState(game) {
+function serializeGameState(fromgame) {
   var result = '';
   var comma = false;
-  
-  result += 'size:\n';
-  result += '' + game.BW + ',' + game.BH;
-  result += '\n';
-  
-  result += '\nlandscape:\n';
 
-  for(var y = 0; y < game.BH; y++) {
-    if(y % 2 == 1) result += ' ';
-    for(var x = 0; x < game.BW; x++) {
-      result += colorCodeName[getWorld(x, y)] + ',';
-    }
-    result += '\n';
+  result += 'size:\n';
+  result += '' + fromgame.bw + ',' + fromgame.bh;
+  result += '\n';
+
+  result += '\nlandscape:\n';
+  for (var i = 0; i < fromgame.world.length; i++) {
+    var y = Math.floor(i / fromgame.bw);
+    var x = i % fromgame.bw;
+    if(x == 0 && y % 2 == 1) result += ' ';
+    result += colorCodeName[fromgame.world[i]] + ',';
+    if(x == fromgame.bw - 1) result += '\n';
   }
-  
+
   result += '\nbuildings:\n';
-  for(var y = 0; y < game.BH; y++) {
-    if(y % 2 == 1) result += ' ';
-    for(var x = 0; x < game.BW; x++) {
-      result += buildingCodeName[getBuilding(x, y)[0]] + ',';
-    }
-    result += '\n';
+  for (var i = 0; i < fromgame.buildings.length; i++) {
+    var y = Math.floor(i / fromgame.bw);
+    var x = i % fromgame.bw;
+    if(x == 0 && y % 2 == 1) result += ' ';
+    result += buildingCodeName[fromgame.buildings[i][0]] + ',';
+    if(x == fromgame.bw - 1) result += '\n';
   }
-  
+
   result += '\nbridges:\n';
   comma = false;
-  for(var y = 0; y < game.BH; y++) {
-    for(var x = 0; x < game.BW; x++) {
+  for(var y = 0; y < fromgame.bh; y++) {
+    for(var x = 0; x < fromgame.bw; x++) {
       for(var z = 0; z < 3; z++) {
-        if(bridges[arCo2(x, y, game.BW)][z] != N) {
+        if(fromgame.bridges[arCo2(x, y, fromgame.bw)][z] != N) {
           var co = bridgeCo(x, y, [D_N, D_NE, D_SE][z]);
           if (comma) result += ',';
-          result += printCo(x, y) + printCo(co[0], co[1]) + colorCodeName[bridges[arCo2(x, y, game.BW)][z]];
+          result += printCo(x, y) + printCo(co[0], co[1]) + colorCodeName[fromgame.bridges[arCo2(x, y, fromgame.bw)][z]];
           comma = true;
         }
       }
     }
   }
   result += '\n';
-  
+
   result += '\ncultpriests:\n';
   for(var i = 0; i < 16; i++) {
-    result += colorCodeName[game.cultp[Math.floor(i / 4)][i % 4]];
+    result += colorCodeName[fromgame.cultp[Math.floor(i / 4)][i % 4]];
     if(i < 15) result += ',';
   }
   result += '\n';
-  
+
   result += '\ntiles:\n';
 
   result += 'bon=';
   comma = false;
   for(var i = T_BON_BEGIN + 1; i < T_BON_END; i++) {
-    if(game.bonustiles[i]) {
+    if(fromgame.bonustiles[i]) {
       if (comma) result += ',';
-      result += getTileCodeName(i) + ' ' + undef0(game.bonustilecoins[i]);
+      result += getTileCodeName(i) + ' ' + undef0(fromgame.bonustilecoins[i]);
       comma = true;
     }
   }
@@ -160,9 +135,9 @@ function serializeGameState(game) {
   result += 'fav=';
   comma = false;
   for(var i = T_FAV_BEGIN + 1; i < T_FAV_END; i++) {
-    if(game.favortiles[i]) {
+    if(fromgame.favortiles[i]) {
       if (comma) result += ',';
-      result += getTileCodeName(i) + ' ' + undef0(game.favortiles[i]);
+      result += getTileCodeName(i) + ' ' + undef0(fromgame.favortiles[i]);
       comma = true;
     }
   }
@@ -171,38 +146,38 @@ function serializeGameState(game) {
   result += 'tw=';
   comma = false;
   for(var i = T_TW_BEGIN + 1; i < T_TW_END; i++) {
-    if(game.towntiles[i]) {
+    if(fromgame.towntiles[i]) {
       if (comma) result += ',';
-      result += getTileCodeName(i) + ' ' + undef0(game.towntiles[i]);
+      result += getTileCodeName(i) + ' ' + undef0(fromgame.towntiles[i]);
       comma = true;
     }
   }
   result += '\n';
 
   result += 'rnd=';
-  for(var i = 1; i <= 6; i++) result += '' + getTileCodeName(game.roundtiles[i]) + (i == 6 ? '\n' : ',');
-  
+  for(var i = 1; i <= 6; i++) result += '' + getTileCodeName(fromgame.roundtiles[i]) + (i == 6 ? '\n' : ',');
+
   result += 'oct=';
   comma = false;
   for(var j = A_BEGIN + 1; j < A_END; j++) {
-    if(game.octogons[j]) {
+    if(fromgame.octogons[j]) {
       if (comma) result += ',';
       result += getActionCodeName(j);
       comma = true;
     }
   }
   result += '\n';
-  
+
   result += '\ngamestate:\n';
-  result += 'state=' + getGameStateCodeName(game.state.type) + ',' + game.state.round + ',' + game.state.startPlayer + ',' + game.state.currentPlayer + '\n';
-  result += 'leech=' + game.state.leechi + ',' + game.state.leechtaken;
-  for(var i = 0; i < game.state.leecharray.length; i++) {
-      result += ',' + game.state.leecharray[i][0] + ' ' + game.state.leecharray[i][1];
+  result += 'state=' + getGameStateCodeName(fromgame.state.type) + ',' + fromgame.state.round + ',' + fromgame.state.startPlayer + ',' + fromgame.state.currentPlayer + '\n';
+  result += 'leech=' + fromgame.state.leechi + ',' + fromgame.state.leechtaken;
+  for(var i = 0; i < fromgame.state.leecharray.length; i++) {
+      result += ',' + fromgame.state.leecharray[i][0] + ' ' + fromgame.state.leecharray[i][1];
   }
   result += '\n';
 
-  for(var i = 0; i < players.length; i++) {
-    var p = players[i];
+  for(var i = 0; i < fromgame.players.length; i++) {
+    var p = fromgame.players[i];
     result += '\nplayer:\n';
 
     result += 'bio=';
@@ -281,9 +256,9 @@ function serializeGameState(game) {
     result += vpbreakdown + '\n';
   }
 
-  if(game.logText) {
+  if(fromgame.logText) {
     result += '\nlog:\n';
-    result += game.logText.replace(/<br\/>/g, '\n');
+    result += fromgame.logText.replace(/<br\/>/g, '\n');
   }
 
   return result;
@@ -307,7 +282,7 @@ function parseLabelPart(text, label, n) {
 }
 
 
-//returns array of BW * BH strings
+//returns array of bw * bh strings
 function parseWorldString(text, label, n) {
   var s = parseLabelPart(text, label, n);
   if(!s) return null;
@@ -329,15 +304,17 @@ function getNonEmptyLines(text) {
   return lines;
 }
 
+// Get the words separated by commas
 function getCommas(text) {
-  if(text == '') return [];
+  if(text == '' || !text) return [];
   var result = text.split(',');
   for(var i = 0; i < result.length; i++) result[i] = result[i].trim();
   return result;
 }
 
+// Get the words separated by spaces
 function getSpaces(text) {
-  if(text == '') return [];
+  if(text == '' || !text) return [];
   var s = text.split(' ');
   var result = [];
   for(var i = 0; i < s.length; i++) {
@@ -346,19 +323,36 @@ function getSpaces(text) {
   return result;
 }
 
+//get anything that is separated by whitespace or punctuation
+function getWords(text) {
+  if(text == '' || !text) return [];
+  return text.trim().split(/[,.]*\s+/);
+}
+
 function decomposeEqualsLine(text) {
   return text.split('=');
 }
 
 function deSerializeGameState(text) {
   var result = deSerializeGameStateNewFormat(text);
-  if(!result) return deSerializeGameStateLegacyFormat(text);
-  else return result;
+  if (result) return result;
+
+  if(stringContains(text, 'landscape:')) {
+    result = deSerializeGameStateLegacyFormat(text);
+    if (result) return result;
+  }
+
+  if(stringContains(text, 'List players') || stringContains(text, 'show history') || stringContains(text, 'Removing tile')) {
+    result = deSerializeGameStateSnellmanLog(text);
+    if (result) return result;
+  }
+
+  return null;
 }
 
 //returns null on fail (invalid text, ...)
 function deSerializeGameStateNewFormat(text) {
-  var result = saveGameState(false); //a way to get an initialized object
+  var result = saveGameState(new Game(), new State(), undefined); //a way to get an initialized object
 
   var s;
   var d;
@@ -368,16 +362,16 @@ function deSerializeGameStateNewFormat(text) {
   s = parseLabelPart(text, 'size:');
   el = getCommas(s);
   if(el.length != 2) return null;
-  result.BW = parseInt(el[0]);
-  result.BH = parseInt(el[1]);
+  result.bw = parseInt(el[0]);
+  result.bh = parseInt(el[1]);
 
   s = parseWorldString(text, 'landscape:');
-  if(!s || s.length < result.BW * result.BH) return null;
-  for(var i = 0; i < result.BW * result.BH; i++) result.world[i] = codeNameToColor[s[i]];
+  if(!s || s.length < result.bw * result.bh) return null;
+  for(var i = 0; i < result.bw * result.bh; i++) result.world[i] = codeNameToColor[s[i]];
 
   s = parseWorldString(text, 'buildings:');
-  if(!s || s.length < result.BW * result.BH) return null;
-  for(var i = 0; i < result.BW * result.BH; i++) {
+  if(!s || s.length < result.bw * result.bh) return null;
+  for(var i = 0; i < result.bw * result.bh; i++) {
     var building = codeNameToBuilding[s[i]];
     var color = building == B_NONE ? N : result.world[i];
     if(building == B_MERMAIDS) color = B;
@@ -386,13 +380,8 @@ function deSerializeGameStateNewFormat(text) {
 
   s = parseLabelPart(text, 'bridges:');
   el = getCommas(s);
-  //TODO: this bridges init code is already in global namespace and in initBoard(). Don't duplicate it here, have it only once in total.
-  result.bridges = [];
-  for(var y = 0; y < result.BH; y++)
-  for(var x = 0; x < result.BW; x++)
-  {
-    result.bridges[arCo2(x, y, result.BW)] = [ N, N, N ];
-  }
+  initBridges(result.bridges, result.bw, result.bh);
+
   for(var i = 0; i < el.length; i++) {
     var b = el[i];
     if(b.length < 5) return null; //expected format something like A1B2R, or larger like A11B12R
@@ -406,7 +395,7 @@ function deSerializeGameStateNewFormat(text) {
     var co0 = parsePrintCo(b.substring(0, secondletterpos));
     var co1 = parsePrintCo(b.substring(secondletterpos, b.length - 1));
     var color = codeNameToColor[b[b.length - 1]];
-    addBridgeTo(co0[0], co0[1], co1[0], co1[1], color, result.bridges);
+    addBridgeTo(co0[0], co0[1], co1[0], co1[1], result.bw, color, result.bridges);
   }
 
   s = parseLabelPart(text, 'cultpriests:');
@@ -429,7 +418,7 @@ function deSerializeGameStateNewFormat(text) {
     result.bonustiles[codeNameToTile(t[0])] = 1;
     result.bonustilecoins = parseInt(t[1]);
   }
-  
+
   d = decomposeEqualsLine(lines[1]);
   if(d[0] != 'fav') return null;
   el = getCommas(d[1]);
@@ -438,7 +427,7 @@ function deSerializeGameStateNewFormat(text) {
     var t = getSpaces(el[i]);
     result.favortiles[codeNameToTile(t[0])] = parseInt(t[1]);
   }
-  
+
   d = decomposeEqualsLine(lines[2]);
   if(d[0] != 'tw') return null;
   el = getCommas(d[1]);
@@ -447,7 +436,7 @@ function deSerializeGameStateNewFormat(text) {
     var t = getSpaces(el[i]);
     result.towntiles[codeNameToTile(t[0])] = parseInt(t[1]);
   }
-  
+
   d = decomposeEqualsLine(lines[3]);
   if(d[0] != 'rnd') return null;
   el = getCommas(d[1]);
@@ -456,7 +445,7 @@ function deSerializeGameStateNewFormat(text) {
     result.roundtiles[i + 1] = codeNameToTile(el[i]);
   }
   result.roundtiles[0] = T_NONE;
-  
+
   d = decomposeEqualsLine(lines[4]);
   if(d[0] != 'oct') return null;
   el = getCommas(d[1]);
@@ -468,7 +457,7 @@ function deSerializeGameStateNewFormat(text) {
   s = parseLabelPart(text, 'gamestate:');
   lines = getNonEmptyLines(s);
   if(lines.length != 2) return null;
-  
+
   d = decomposeEqualsLine(lines[0]);
   if(d[0] != 'state') return null;
   el = getCommas(d[1]);
@@ -516,7 +505,7 @@ function deSerializeGameStateNewFormat(text) {
     player.faction = codeNameToFaction(el[2]);
     player.color = codeNameToColor[el[3]];
     initPlayerFactionStats(player);
-    
+
     d = decomposeEqualsLine(lines[1]);
     if(d[0] != 'passed') return null;
     player.passed = (d[1] == 'true');
@@ -624,7 +613,7 @@ function deSerializeGameStateNewFormat(text) {
 
     index++;
   }
-  
+
   var logPos = text.indexOf('log:');
   if(logPos > 0) {
     logPos += 4;
@@ -633,7 +622,7 @@ function deSerializeGameStateNewFormat(text) {
     for(var i = 0; i < lines.length; i++) result.logText += lines[i] + '<br/>';
   }
 
-  
+
   return result;
 }
 
@@ -686,7 +675,7 @@ function deSerializeGameStateLegacyFormat(text) {
   var copysection = function(label) {
     result += label + ':\n';
     result += parseLabelPart(text, label + ':');
-  }
+  };
 
   result +='size:\n';
   result += parseLabelPart(text, 'size:');
@@ -719,7 +708,7 @@ function deSerializeGameStateLegacyFormat(text) {
     }
   }
   result += '\n';
-  
+
   s = parseLabelPart(text, 'cultpriests:');
   result += 'cultpriests:\n';
   el = getCommas(s);
@@ -773,7 +762,7 @@ function deSerializeGameStateLegacyFormat(text) {
   el = getCommas(lines[4]);
   if(el.length != 6) return null;
   for(var i = 0; i < 6; i++) result += getTileCodeName(legacytiles[parseInt(el[i]) + (promo ? 38 : 35)]) + (i == el.length - 1 ? '\n' : ',');
-  
+
   s = parseLabelPart(text, 'octogons:');
   result += 'oct=';
   el = getCommas(lines[0]);
@@ -813,19 +802,19 @@ function deSerializeGameStateLegacyFormat(text) {
     result += 'player:\n';
     lines = getNonEmptyLines(s);
     if(lines.length != 10) return null;
-    
+
     el = getCommas(lines[0]);
     if(el.length != 5) return null;
     result += 'bio=' + el[0] + ',' + (el[1] == 'true' ? 'human' : 'ai') + ',' +
         getFactionCodeName(legacyfactions[parseInt(el[2])]) + ',' +
     legacycolors[el[3]] + '\n';
     result += 'passed=' + el[4] + '\n';
-    
+
     result += 'res=' + lines[1] + '\n';
     result += 'buildings=' + lines[2] + '\n';
 
     result += 'bon=' + getTileCodeName(legacytiles[parseInt(lines[3])]) + '\n';
-    
+
     result += 'fav=';
     el = getCommas(lines[4]);
     comma = false;
@@ -861,7 +850,7 @@ function deSerializeGameStateLegacyFormat(text) {
       }
       if(i == 17) result += '\n';
     }
-    
+
     result += 'cult=' + lines[7] + '\n';
 
     el = getCommas(lines[8]);
@@ -885,11 +874,123 @@ function deSerializeGameStateLegacyFormat(text) {
 
     index++;
   }
-  
+
   var logPos = text.indexOf('log:');
   if(logPos > 0) {
     result += text.substr(logPos);
   }
 
   return deSerializeGameStateNewFormat(result);
+}
+
+var snellmanunittesttext = '';
+
+function deSerializeGameStateSnellmanLog_(text) {
+  // Remove "show history"
+  text = text.replace(/show history/g, '');
+  // It contains the commands as typed by players, so be case-insensitive
+  text = text.toLowerCase();
+
+  globalSnellmanParseDone = false;
+  snellmanunittesttext = 'show history\n';
+
+  game = new Game();
+  state = new State();
+  logText = '';
+  state.newcultistsrule = stringContains(text, 'errata-cultist-power');
+  state.towntilepromo2013 = stringContains(text, 'mini-expansion-1');
+  state.bonustilepromo2013 = stringContains(text, 'shipping-bonus');
+
+  if(state.newcultistsrule) snellmanunittesttext += 'option errata-cultist-power\n';
+  if(state.towntilepromo2013) snellmanunittesttext += 'option mini-expansion-1\n';
+  if(state.bonustilepromo2013) snellmanunittesttext += 'option shipping-bonus\n';
+
+  initStandardWorld();
+  initBoard();
+
+  var players = findSnellmanPlayersAndFactions(text);
+  
+  players.length;
+  game.players.length = players.length;
+
+  for(var i = 0; i < players.length; i++) {
+    var player = new Player();
+    player.index = i;
+    player.name = players[i][1];
+    player.human = false;
+    var actor = new SnellmanActor();
+    player.actor = actor;
+    actor.factionkey = toSnellmanFaction(players[i][0]);
+
+    game.players[i] = player;
+  }
+
+  var lines = getNonEmptyLines(text);
+
+  var removed = false;
+  for(var i = 0; i < lines.length; i++) {
+    if(stringContains(lines[i], 'removing tile')) {
+      var words = getWords(lines[i]);
+      for(var j = 0; j < words.length; j++) {
+        if(words[j] == 'removing') game.bonustiles[fromSnellmanTile[words[j + 2]]] = 0;
+      }
+      removed = true;
+      snellmanunittesttext += lines[i].trim() + '\n';
+    }
+    else if(removed) break; //done
+  }
+
+  for(var i = 1; i <= 6; i++) {
+    var pos = text.indexOf('round ' + i + ' scoring: score');
+    game.roundtiles[i] = fromSnellmanTile['score' + text.charAt(pos + 22)];
+    snellmanunittesttext += 'round ' + i + ' scoring: ' + toSnellmanTile[game.roundtiles[i]] + '\n';
+  }
+
+  for(var i = 0; i < players.length; i++) snellmanunittesttext += 'player ' + (i + 1) + ': ' + game.players[i].name + '\n';
+  for(var i = 0; i < players.length; i++) snellmanunittesttext += toSnellmanFaction(players[i][0]) + ' income_for_faction\n';
+
+  var pointer = [snellmanunittesttext];
+  var moves = filterSnellmanMoves(text, players, pointer);
+  snellmanunittesttext = pointer[0];
+  for(var i = 0; i < players.length; i++) game.players[i].actor.lines = moves[i];
+
+  initialGameLogMessage();
+
+  var count = 0;
+  state.type = S_INIT_FACTION;
+  gameLoopBlocking(function() {
+    count++;
+    return globalSnellmanParseDone || count > lines.length;
+  });
+
+  // Make the players human and AI (TODO: which player should become the human? --> The one who is supposed to do an action now. That check can be combined with the isFinishedFun
+  // of gameLoopBlocking: if all lines consumed, that one must be the player supposed to take an action next)
+  for(var i = 0; i < players.length; i++) {
+    var human = true;
+    var player = game.players[i];
+    player.human = human;
+    player.actor = human ? new Human() : new AI();
+  }
+
+  var result = clone(game);
+  result.logText = logText;//text.replace(/\n/g, '<br/>');
+  result.state = state;
+
+  snellmanunittesttext = snellmanunittesttext.replace(/\n/g, '\\n\\\n');
+  
+  return result;
+}
+
+function deSerializeGameStateSnellmanLog(text) {
+  var temp = saveGameState(game, state, logText);
+  try {
+    var result = deSerializeGameStateSnellmanLog_(text)
+    loadGameState(temp);
+    return result;
+  }
+  catch(e) {
+    console.log(e + ' ' + e.stack);
+    loadGameState(temp);
+    return null;
+  }
 }

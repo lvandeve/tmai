@@ -25,9 +25,6 @@ freely, subject to the following restrictions:
 
 //hex math and world map, and some rules related to buildings and towns
 
-var BW = 13; //board width
-var BH = 9; //board height
-
 //returns the power value of a building
 //given building may not be B_NONE or undefined.
 function getBuildingPower(building) {
@@ -47,7 +44,7 @@ function getBuildingTownSize(building) {
 
 //Grid coordinates to array coordinates
 function arCo(x, y) {
-  return y * BW + x;
+  return y * game.bw + x;
 }
 
 function arCo2(x, y, bw) {
@@ -78,45 +75,50 @@ function bridgeCo(x, y, dir) {
   return [x, y]; //ERROR
 }
 
-//The world array has the color of each hex. It is inited with the standard world map.
-var world = [];
+var standardWorld = [U,S,G,B,Y,R,U,K,R,G,B,R,K,
+                      Y,I,I,U,K,I,I,Y,K,I,I,Y,N,
+                     I,I,K,I,S,I,G,I,G,I,S,I,I,
+                      G,B,Y,I,I,R,B,I,R,I,R,U,N,
+                     K,U,R,B,K,U,S,Y,I,I,G,K,B,
+                      S,G,I,I,Y,G,I,I,I,U,S,U,N,
+                     I,I,I,S,I,R,I,G,I,Y,K,B,Y,
+                      Y,B,U,I,I,I,B,K,I,S,U,S,N,
+                     R,K,S,B,R,G,Y,U,S,I,B,G,R];
 
+//The world array has the color of each hex. It is inited with the standard world map.
 function initStandardWorld() {
-  BW = 13;
-  BH = 9;
-  world = [U,S,G,B,Y,R,U,K,R,G,B,R,K,
-            Y,I,I,U,K,I,I,Y,K,I,I,Y,N,
-           I,I,K,I,S,I,G,I,G,I,S,I,I,
-            G,B,Y,I,I,R,B,I,R,I,R,U,N,
-           K,U,R,B,K,U,S,Y,I,I,G,K,B,
-            S,G,I,I,Y,G,I,I,I,U,S,U,N,
-           I,I,I,S,I,R,I,G,I,Y,K,B,Y,
-            Y,B,U,I,I,I,B,K,I,S,U,S,N,
-           R,K,S,B,R,G,Y,U,S,I,B,G,R];
+  game.bw = 13;
+  game.bh = 9;
+  game.world = clone(standardWorld);
 }
 
 function randomizeWorld(small) {
+  var world = game.world;
+
   var NUMISLANDS = 5;
   var NUMPERCOLOR = 11;
   if(small) {
-    BH = 7;
-    BW = 11;
+    game.bh = 7;
+    game.bw = 11;
     NUMISLANDS = 4;
     NUMPERCOLOR = 7;
   } else {
-    BW = 13;
-    BH = 9;
+    game.bw = 13;
+    game.bh = 9;
   }
 
-  for(var y = 0; y < BH; y++)
-  for(var x = 0; x < BW; x++)
+  for(var y = 0; y < game.bh; y++)
+  for(var x = 0; x < game.bw; x++)
   {
-    world[y * BW + x] = outOfBounds(x, y) ? N : I;
+    world[y * game.bw + x] = outOfBounds(x, y) ? N : I;
   }
 
   var done = 0;
   while(done < NUMISLANDS) {
-    var r = done == 0 ? 0 : done == 1 ? (BW - 1) : done == 2 ? (BW * BH - 1) : done == 3 ? (BW * BH - BW) : Math.floor((BW * BH / 2));
+    var r = done == 0 ? 0 : done == 1 ?
+        (game.bw - 1) : done == 2 ?
+        (game.bw * game.bh - 1) : done == 3 ?
+        (game.bw * game.bh - game.bw) : Math.floor((game.bw * game.bh / 2));
     if(world[r] != I) continue;
     world[r] = R + done;
     done++;
@@ -126,10 +128,10 @@ function randomizeWorld(small) {
   var attempt = 0;
   while(done < NUMPERCOLOR * 7 - NUMISLANDS) {
     attempt++;
-    var r = randomInt(BW * BH);
+    var r = randomInt(game.bw * game.bh);
     if(world[r] != I) continue;
-    var x = r % BW;
-    var y = Math.floor(r / BW);
+    var x = r % game.bw;
+    var y = Math.floor(r / game.bw);
     var neighbors = getNeighborTiles(x, y);
     var c = I;
     var ok = true;
@@ -157,10 +159,10 @@ function randomizeWorld(small) {
 
   //give all land tiles a temporary unexisting color
   var landtiles = [];
-  for(var y = 0; y < BH; y++)
-  for(var x = 0; x < BW; x++)
+  for(var y = 0; y < game.bh; y++)
+  for(var x = 0; x < game.bw; x++)
   {
-    var i = y * BW + x;
+    var i = y * game.bw + x;
     if(world[i] != I && world[i] != N) {
       world[i] = 999;
       landtiles.push(i);
@@ -206,8 +208,8 @@ function randomizeWorld(small) {
     while(done < NUMPERCOLOR) {
       var i = randomIndex(landtiles);
       var r = landtiles[i];
-      var x = r % BW;
-      var y = Math.floor(r / BW);
+      var x = r % game.bw;
+      var y = Math.floor(r / game.bw);
       if(world[r] == I || world[r] == N) continue;
       attempt++;
       var color = colors[c];
@@ -231,25 +233,24 @@ function randomizeWorld(small) {
       if(getWorld(neighbors[i][0], neighbors[i][1]) == I) return false;
     }
     return true;
-  }
-  for(var y = 0; y < BH; y++)
-  for(var x = 0; x < BW; x++)
+  };
+  for(var y = 0; y < game.bh; y++)
+  for(var x = 0; x < game.bw; x++)
   {
     if(isPond(x, y)) bad.push(arCo(x, y));
   }
 
-  
   //fix up bad ones, e.g. for the last color it did it's likely there are bad positions
   for(var i = 0; i < bad.length; i++) {
-    for(var i2 = 0; i2 < BW * BH; i2++) {
+    for(var i2 = 0; i2 < game.bw * game.bh; i2++) {
       var i1 = bad[i];
       if(i1 == i2) continue;
       var color1 = world[i1];
-      var x1 = i1 % BW;
-      var y1 = Math.floor(i1 / BW);
+      var x1 = i1 % game.bw;
+      var y1 = Math.floor(i1 / game.bw);
       var color2 = world[i2];
-      var x2 = i2 % BW;
-      var y2 = Math.floor(i2 / BW);
+      var x2 = i2 % game.bw;
+      var y2 = Math.floor(i2 / game.bw);
       if(color1 == N || color2 == N || color2 == I) continue;
       if(hexDist(x1, y1, x2, y2) < 3) continue; //posok function needs to know exact neighborhood closer than this, cannot use it when swapping nearby tiles
       if(posok(x1, y1, color2, false) && posok(x2, y2, color1, false)) {
@@ -262,36 +263,39 @@ function randomizeWorld(small) {
 }
 
 function setWorld(x, y, color) {
-  world[arCo(x, y)] = color;
+  game.world[arCo(x, y)] = color;
 }
 
 function getWorld(x, y) {
-  return world[arCo(x, y)];
+  return game.world[arCo(x, y)];
 }
 
-//the 3 values are: N bridge, NE bridge, SE bridge
-//the value interpretation is bridge color, or N for none
-var bridges = [];
-for(var y = 0; y < BH; y++)
-for(var x = 0; x < BW; x++)
-{
-  bridges[arCo(x, y)] = [ N, N, N ];
+function initBridges(bridges, bw, bh) {
+  bridges.length = 0;
+  for(var y = 0; y < bh; y++)
+  for(var x = 0; x < bw; x++)
+  {
+    bridges[arCo2(x, y, bw)] = [ N, N, N ];
+  }
 }
+initBridges(game.bridges, game.bw, game.bh);
 
-//the 2 values are: building type, color
-var buildings = [];
-for(var y = 0; y < BH; y++)
-for(var x = 0; x < BW; x++)
-{
-  buildings[arCo(x, y)] = [ B_NONE, N ];
+function initBuildings(buildings, bw, bh) {
+  buildings.length = 0;
+  for(var y = 0; y < game.bh; y++)
+  for(var x = 0; x < game.bw; x++)
+  {
+    buildings[arCo2(x, y, bw)] = [ B_NONE, N ];
+  }
 }
+initBuildings(game.buildings, game.bw, game.bh);
 
 function setBuilding(x, y, building, color) {
-  buildings[arCo(x, y)] = [building, color];
+  game.buildings[arCo(x, y)] = [building, color];
 }
 
 function getBuilding(x, y) {
-  return buildings[arCo(x, y)];
+  return game.buildings[arCo(x, y)];
 }
 
 //returns tiles connected to the given tile by bridge or direct adjacency (that is, everything that connects towns or allows power leeching), as array of [x,y] coordinates
@@ -341,8 +345,8 @@ function getTilesWithinRadius(x, y, radius) {
 var TOWNWAMOUNT = 4; //number of buildings required to form a town (an SA counts for two)
 
 function calculateClustersGeneric(clusters, clustermap, isBuildingFun, getConnectedTilesFun) {
-  for(var y = 0; y < BH; y++)
-  for(var x = 0; x < BW; x++)
+  for(var y = 0; y < game.bh; y++)
+  for(var x = 0; x < game.bw; x++)
   {
     clustermap[arCo(x, y)] = 0;
   }
@@ -353,8 +357,8 @@ function calculateClustersGeneric(clusters, clustermap, isBuildingFun, getConnec
   clusters[0].townamount = 0;
   clusters[0].networkamount = 0;
 
-  for(var y = 0; y < BH; y++)
-  for(var x = 0; x < BW; x++)
+  for(var y = 0; y < game.bh; y++)
+  for(var x = 0; x < game.bw; x++)
   {
     if(clustermap[arCo(x, y)] != 0) continue;
     var b = getBuilding(x, y);
@@ -368,9 +372,9 @@ function calculateClustersGeneric(clusters, clustermap, isBuildingFun, getConnec
     cluster.townamount = 0;
     cluster.networkamount = 0;
     cluster.color = b[1];
-    var player = players[colorToPlayerMap[cluster.color]];
+    var player = game.players[colorToPlayerMap[cluster.color]];
     if(!player) {
-      throw 'no player for building color';
+      throw new Error('no player for building color');
     }
     while(stack.length > 0) {
       var t = stack.pop();
@@ -663,24 +667,27 @@ function updateTestClusters(action, testclusters, testmap, testconnections, colo
   else if (isUpgradeAction(action) && getUpgradeActionOutputBuilding(action) != B_TE) {
     var c = testmap[arCo(action.co[0], action.co[1])];
     var cluster = testclusters[c];
-    cluster.power++;
-    if(getUpgradeActionOutputBuilding(action) == B_SA) cluster.townamount++;
-    return [c, [], 1, 0];
+    var extrapower = 1;
+    var extramount = (getUpgradeActionOutputBuilding(action) == B_SA) ? 1 : 0;
+    cluster.power += extrapower;
+    cluster.townamount += extramount;
+    return [c, [], extrapower, extramount];
   }
 
   return [0, [], 0, 0];
 }
 
-//if multiple actions in the same sequence together form a town, the above functions miss it. This is a heavy duty one for those cases.
+//if multiple actions in the same sequence together form a town, actionCreatesTown misses it. This is a heavy duty one for those cases.
 //For example for:
 //-placing mermaids tile after upgrading or building something.
 //-chaos magicians double action
 //-halflings upgrade to SH, then dig and build dwelling next to it
-//It returns the cluster indices of towns formed by the given action.
+//It returns the amount of towns formed by the given action.
 //It only returns towns formed by action. It takes previous actions from the actions array into account (e.g. building size increases they make),
 //but will not return towns already completely formed by those earlier actions.
-function actionsMakeTown(player, actions, action) {
+function actionsCreateTown(player, actions, action) {
   // TODO! make a copy of all the cluster information and virtually work on them
+  //TODO: I think this function does not work correct if in this action sequence, a previous action also creates a town, and townTilesAvailable is 1.
   var testclusters = clone(townclusters);
   var testmap = clone(townmap);
   var testconnections = {};
@@ -744,6 +751,78 @@ function actionsMakeTown(player, actions, action) {
   return Math.min(num, townTilesAvailable(num));
 }
 
+//numactions = where to stop testing (set to actions.length to do all)
+//TODO: after extensive testing (scenarios with A_DOUBLE, mermaid town, bridges, fav6, ...), use this function in actionsCreateTown to remove code duplication
+function actionsCreateTowns(player, actions, numactions) {
+  var result = [];
+  for(var i = 0; i < numactions; i++) result[i] = 0;
+
+  var testclusters = clone(townclusters);
+  var testmap = clone(townmap);
+  var testconnections = {};
+
+  var reqpower = getTownReqPower(player);
+  var involved = {}; //the indices of the clusters involved in the towns (to avoid duplicates, e.g when both upgrading to SA and taking 6 town size tile)
+
+  //if there are no more town tiles left, it does not count, not even for extra VP bonus, swarmlings 2 workers, etc...
+  var tilesleft = townTilesAvailable(999);
+
+  for(var i = 0; i < numactions; i++) {
+    var a = actions[i];
+
+    //favtiles must be checked first, for when you pick fav tile for town size 6 and at the same time upgrade to SA making some town size 6.
+    for(var j = 0; j < a.favtiles.length; j++) {
+      if(a.favtiles[j] == T_FAV_2F_6TW) {
+        reqpower = 6; //from now on for next actions this reqpower is used
+        var tw = getPlayerTownsOfSize6(player.color, testclusters);
+        for(var k = 0; k < tw.length; k++) {
+          involved[tw[k]] = 1;
+          result[i]++;
+          tilesleft--;
+          if(tilesleft <= 0) return result;
+        }
+      }
+    }
+
+    var updated = updateTestClusters(a, testclusters, testmap, testconnections, player.color);
+    var c = updated[0];
+    
+    if(c != 0 && testclusters[c].power >= reqpower && testclusters[c].townamount >= 4) {
+      var oldc = updated[1]; //removed clusters (if any)
+      var extrapower = updated[2];
+      var extraamount = updated[3];
+
+      if(oldc.length == 0) {
+        var oldpower = testclusters[c].power - extrapower;
+        var oldamount = testclusters[c].townamount - extraamount;
+        if(oldpower < reqpower || oldamount < 4) {
+          if(!involved[c]) {
+            involved[c] = 1;
+            result[i]++;
+            tilesleft--;
+            if(tilesleft <= 0) return result;
+          }
+        }
+      } else {
+        var already = false; //was one of the old clusters already a town?
+        for(var j = 0; j < oldc.length; j++) {
+          if(testclusters[oldc[j]].power >= reqpower && testclusters[oldc[j]].townamount >= 4) {
+            already = true;
+          }
+        }
+        if(!already&& !involved[c]) {
+          involved[c] = 1;
+          result[i]++;
+          tilesleft--;
+          if(tilesleft <= 0) return result;
+        }
+      }
+    }
+  }
+  
+  return result;
+}
+
 
 //This is for identifying new towns of power 6 after getting that favor tile
 //returns array of cluster indices
@@ -764,14 +843,14 @@ function isInTown(x, y) {
   if(!index) return false;
   var cluster = townclusters[index];
   var color = getTownClusterColor(index);
-  var player = players[colorToPlayerMap[color]];
+  var player = game.players[colorToPlayerMap[color]];
   return cluster && cluster.power >= getTownReqPower(player) && cluster.townamount >= 4;
 }
 
 
 //out of range of the hex board
 function outOfBounds(x, y) {
-  return x < 0 || y < 0 || x >= BW || y >= BH || (y % 2 == 1 && x == BW - 1);
+  return x < 0 || y < 0 || x >= game.bw || y >= game.bh || (y % 2 == 1 && x == game.bw - 1);
 }
 
 //costly: whether to include connections with extra cost: dwarves tunneling and fakirs carpets
@@ -798,7 +877,7 @@ function inReach(player, x, y, costly) {
   for(tx = x - extra - 1; tx <= x + extra + 1; tx++)
   for(ty = y - extra - 1; ty <= y + extra + 1; ty++) {
     if(outOfBounds(tx, ty)) continue;
-    var building = buildings[arCo(tx, ty)];
+    var building = getBuilding(tx, ty);
     if(building[0] == B_NONE || building[0] == B_MERMAIDS || building[1] != color) continue;
     if(networkConnected(player, x, y, tx, ty, costly)) {
       return true;
@@ -842,10 +921,10 @@ function onlyReachableThroughFactionSpecial(player, x, y) {
 
 function onlyReachableThroughFactionSpecialWithBackupWorldBuildings(player, x, y, backupbuildings) {
   if(player.faction != F_FAKIRS && player.faction != F_DWARVES) return false;
-  var backup2 = buildings;
-  buildings = backupbuildings;
+  var backup2 = game.buildings;
+  game.buildings = backupbuildings;
   var result = onlyReachableThroughFactionSpecial(player, x, y);
-  buildings = backup2;
+  game.buildings = backup2;
   return result;
 }
 
@@ -871,7 +950,7 @@ function getBridgeDir(x0, y0, x1, y1) {
   return D_INVALID;
 }
 
-function addBridgeTo(x0, y0, x1, y1, color, bridges) {
+function addBridgeTo(x0, y0, x1, y1, bw, color, bridges) {
   if(y0 < y1) {
     var temp;
     temp = x0; x0 = x1; x1 = temp;
@@ -880,19 +959,19 @@ function addBridgeTo(x0, y0, x1, y1, color, bridges) {
   var dir = getBridgeDir(x0, y0, x1, y1);
 
   if(dir == D_NE) {
-    bridges[arCo(x0, y0)][1] = color;
+    bridges[arCo2(x0, y0, bw)][1] = color;
   }
   else if(dir == D_NW) {
     var co = dirCo(x0 - 1, y0, D_NW);
-    bridges[arCo(co[0], co[1])][2] = color;
+    bridges[arCo2(co[0], co[1], bw)][2] = color;
   }
   else if(dir == D_N) {
-    bridges[arCo(x0, y0)][0] = color;
+    bridges[arCo2(x0, y0, bw)][0] = color;
   }
 }
 
 function addBridge(x0, y0, x1, y1, color) {
-  addBridgeTo(x0, y0, x1, y1, color, bridges);
+  addBridgeTo(x0, y0, x1, y1, game.bw, color, game.bridges);
 }
 
 //returns the bridge color at that area, or N if no bridge
@@ -905,14 +984,14 @@ function getBridge(x0, y0, x1, y1, color) {
   var dir = getBridgeDir(x0, y0, x1, y1);
 
   if(dir == D_NE) {
-    return bridges[arCo(x0, y0)][1];
+    return game.bridges[arCo(x0, y0)][1];
   }
   else if(dir == D_NW) {
     var co = dirCo(x0 - 1, y0, D_NW);
-    return bridges[arCo(co[0], co[1])][2];
+    return game.bridges[arCo(co[0], co[1])][2];
   }
   else if(dir == D_N) {
-    return bridges[arCo(x0, y0)][0];
+    return game.bridges[arCo(x0, y0)][0];
   }
   return N;
 }
@@ -971,14 +1050,14 @@ function canHaveBridge(x0, y0, x1, y1, color) {
 
   if(!co1 || !co2) return false; //vertical at edge of map
   
-  return world[arCo(co1[0], co1[1])] == I && world[arCo(co2[0], co2[1])] == I
-   && world[arCo(x0, y0)] != I && world[arCo(x1, y1)] != I;
+  return getWorld(co1[0], co1[1]) == I && getWorld(co2[0], co2[1]) == I
+   && getWorld(x0, y0) != I && getWorld(x1, y1) != I;
 }
 
-//init an array to become an array of size BH*BW with the given value in each element
+//init an array to become an array of size game.bh*game.bw with the given value in each element
 function initWorldArray(array, value) {
-  for(var y = 0; y < BH; y++)
-  for(var x = 0; x < BW; x++)
+  for(var y = 0; y < game.bh; y++)
+  for(var x = 0; x < game.bw; x++)
   {
     array[arCo(x, y)] = value;
   }
@@ -1011,11 +1090,11 @@ function waterDistance(x0, y0, x1, y1) {
         var nx = neighbors[i][0];
         var ny = neighbors[i][1];
         if(visited[arCo(nx, ny)]) continue;
-        if(world[arCo(nx, ny)] == I || world[arCo(x, y)] == I)
+        if(getWorld(nx, ny) == I || getWorld(x, y) == I)
         {
           visited[arCo(nx, ny)] = true;
 
-          if(world[arCo(nx, ny)] == I) {
+          if(getWorld(nx, ny) == I) {
             dist[arCo(nx, ny)] = d + 1;
             queue.push([nx, ny]);
           } else {
@@ -1090,3 +1169,43 @@ function hasOwnNeighborNoBridge(x, y, color) {
   co = dirCo(x, y, D_NW);
   if(co != null && isOccupiedBy(co[0], co[1], color)) return true;
 }
+
+//Returns coordinates [x,y] of tile between the two given coordinates
+//The given coordinates are supposed to have distance 2 (so there is 1 tile between them).
+//Sometimes there is a single good answer. E.g. between G8 and I9.
+//It can also happen that there are two equally valid tiles between them (e.g. betwen G6 and I6 or H10 and G12)
+//For that reason, the returned result is an array of possible locations. It can have size 1 or 2.
+//If distance is not 2, it returns empty array.
+function getTileBetween(x0, y0, x1, y1) {
+  var result = [];
+  var neighbors = getNeighborTiles(x0, y0);
+  for(var i = 0; i < neighbors.length; i++) {
+    if(hexDist(x1, y1, neighbors[i][0], neighbors[i][1]) == 1) result.push(neighbors[i]);
+    if(result.length >= 2) break; //can never become larger
+  }
+  return result;
+}
+
+//Like getTileBetween, but returns only a single value (or null if invalid), which is,
+//a tile from the result of getTileBetween that is a water tile
+function getWaterTileBetween(x0, y0, x1, y1) {
+  var cos = getTileBetween(x0, y0, x1, y1);
+  for(var i = 0; i < cos.length; i++) {
+    if(getWorld(cos[i][0], cos[i][1]) == I) return cos[i];
+  }
+  return null;
+}
+
+//Similar to getTileBetween but for between 3 tiles, each distance 2 apart.
+//Here is only one possible good answer, so returns single coordinate
+//Returns null if the tiles don't have the exact required configuration
+function getTileBetween3(x0, y0, x1, y1, x2, y2) {
+  var neighbors = getNeighborTiles(x0, y0);
+  for(var i = 0; i < neighbors.length; i++) {
+    if(hexDist(x1, y1, neighbors[i][0], neighbors[i][1]) == 1 && hexDist(x2, y2, neighbors[i][0], neighbors[i][1]) == 1) {
+      return neighbors[i];
+    }
+  }
+  return null;
+}
+

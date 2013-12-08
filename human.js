@@ -56,7 +56,7 @@ function humanStateBusy() {
 
 function setHumanState(state, helptext, fun) {
   if(humanStateBusy()) {
-    throw 'should not set callback if one is already active';
+    throw new Error('should not set callback if one is already active');
   }
   humanstate = state;
   if(helptext) setHelp(helptext);
@@ -75,7 +75,7 @@ function clearHumanState() {
   mapClickFun = null;
   tileClickFun = null;
   cultClickFun = null;
-  if(players.length > 0) drawHud();
+  if(game.players.length > 0) drawHud();
   // notify the clearHumanState listeners and clear onClearHumanState.
   var temp = onClearHumanState;
   onClearHumanState = [];
@@ -100,8 +100,10 @@ function prepareAction(action) {
     return; //not supposed to do actions while gamestate is in another state
   }
 
+  var player = getCurrentPlayer();
+
   //automatically add tunneling/carpet if needed
-  if(players[0].faction == F_FAKIRS || players[0].faction == F_DWARVES) {
+  if(player.faction == F_FAKIRS || player.faction == F_DWARVES) {
     if(isBuildDwellingAction(action) || isTransformAction(action)) {
       var hastunnel = false;
       for(var i = 0; i < pactions.length; i++) {
@@ -109,8 +111,8 @@ function prepareAction(action) {
           hastunnel = true;
         }
       }
-      if(!hastunnel && onlyReachableThroughFactionSpecial(players[0], action.co[0], action.co[1])) {
-        var a = new Action(players[0].faction == F_DWARVES ? A_TUNNEL : A_CARPET);
+      if(!hastunnel && onlyReachableThroughFactionSpecial(player, action.co[0], action.co[1])) {
+        var a = new Action(player.faction == F_DWARVES ? A_TUNNEL : A_CARPET);
         a.co = action.co;
         pactions.push(a);
       }
@@ -119,12 +121,12 @@ function prepareAction(action) {
 
   pactions.push(action);
 
-  if(players[0].faction == F_DARKLINGS && action.type == A_UPGRADE_SH) {
+  if(player.faction == F_DARKLINGS && action.type == A_UPGRADE_SH) {
     //take the conversions into account
-    var testres = testConvertSequence(players[0], pactions);
+    var testres = testConvertSequence(player, pactions);
     //don't include converting 3pw into workers as well: the AI can extend this action sequence afterwards if it wants to do that.
     var num = Math.min(3, testres[1] - 4);
-    num = Math.min(num, players[0].pp - testres[2]);
+    num = Math.min(num, player.pp - testres[2]);
     for(var i = 0; i < num; i++) pactions.push(new Action(A_CONVERT_1W_1P));
   }
 
@@ -142,7 +144,7 @@ function prepareAction(action) {
       };
       setHumanState(HS_BONUS_TILE, 'choose a bonus tile for passing', fun);
     }
-    else if(action.favtiles.length < actionGivesFavorTile(players[0], action)) {
+    else if(action.favtiles.length < actionGivesFavorTile(player, action)) {
       setHelp('choose a favor tile', true);
       var fun = function(tile) {
         if(!isFavorTile(tile)) return;
@@ -153,17 +155,17 @@ function prepareAction(action) {
       setHumanState(HS_FAVOR_TILE, 'choose a favor tile', fun);
     }
     //town tiles MUST be checked after favor tiles! This because there is a favor tile that can turn the action into a town-creation action.
-    else if(action.twtiles.length < actionCreatesTown(players[0], action, pactions)) {
+    else if(action.twtiles.length < actionCreatesTown(player, action, pactions)) {
       var fun = function(tile) {
         if(!isTownTile(tile)) return;
         action.twtiles.push(tile);
-        updateWToPConversionAfterDarklingsSHTownTile(players[0], pactions);
+        updateWToPConversionAfterDarklingsSHTownTile(player, pactions);
         clearHumanState();
         tryPrepareAction(action);
       };
       setHumanState(HS_TOWN_TILE, 'that will form a town! choose a town tile', fun);
     }
-    else if(action.type == A_UPGRADE_SH && players[0].faction == F_HALFLINGS) {
+    else if(action.type == A_UPGRADE_SH && player.faction == F_HALFLINGS) {
       letClickMapForHalflingsStrongholdDigs();
     }
   }
@@ -191,7 +193,7 @@ function letClickMapForBridge(action) {
 }
 
 function isHandlingActionInput() {
-  return state.type == S_ACTION && humanstate == HS_MAIN && state.currentPlayer == 0 && !showingNextButtonPanel;
+  return state.type == S_ACTION && humanstate == HS_MAIN && getCurrentPlayer().human && !showingNextButtonPanel;
 }
 
 var executeButtonFun_ = null;
@@ -208,16 +210,16 @@ var executeButtonClearFun = function() {
 
 function saveUndoState(undoGameState) {
   if(undoIndex + 1 < undoGameStates.length) undoGameStates.length = undoIndex + 1; //lose the redo states
-  if(undoGameStates.length > 100) undoGameStates = undoGameStates.splice(50); //ensure it doesn't grow too extreme
+  if(undoGameStates.length > 100) undoGameStates = undoGameStates.splice(50, 1); //ensure it doesn't grow too extreme
   undoGameStates.push(undoGameState);
   undoIndex = undoGameStates.length - 1;
 }
 
 Human.prototype.doAction = function(playerIndex, callback) {
   executeButtonFun_ = function() {
-    var undoGameState = saveGameState(true)
+    var undoGameState = saveGameState(game, state, logText)
     actionEl.innerHTML = '';
-    var error = callback(players[playerIndex], pactions);
+    var error = callback(playerIndex, pactions);
     pactions = [];
     if(error != '') {
       setHelp('Execute action error: ' + error);
@@ -236,7 +238,7 @@ Human.prototype.doAction = function(playerIndex, callback) {
 
 Human.prototype.chooseInitialBonusTile = function(playerIndex, callback) {
   var fun = function(tile) {
-    var error = callback(players[playerIndex], tile);
+    var error = callback(playerIndex, tile);
     if(error == '') clearHumanState();
     else setHelp('invalid bonus tile, please try again');
   }
@@ -245,7 +247,7 @@ Human.prototype.chooseInitialBonusTile = function(playerIndex, callback) {
 
 //returns true if successful, false if house could not be placed there
 function humanPlaceInitialDwelling(x, y) {
-  var player = players[0];
+  var player = getCurrentPlayer();
   if(getWorld(x, y) != player.color) return false;
   if(getBuilding(x, y)[0] != B_NONE) return false;
   if(player.b_d <= 0) return false;
@@ -258,8 +260,8 @@ function humanPlaceInitialDwelling(x, y) {
 
 Human.prototype.chooseInitialDwelling = function(playerIndex, callback) {
   var fun = function(x, y) {
-    undoGameState = saveGameState(false);
-    var error = callback(players[playerIndex], x, y);
+    undoGameState = saveGameState(game, state, undefined);
+    var error = callback(playerIndex, [x, y]);
     if(error == '') {
       clearHumanState();
       saveUndoState(undoGameState);
@@ -269,20 +271,11 @@ Human.prototype.chooseInitialDwelling = function(playerIndex, callback) {
   setHumanState(HS_MAP, null, fun);
 };
 
-//TODO: the popup element is a maintanance nightmare. Do not use it anymore, make everything work with drawHud() so UI state does not depend on presence of things in the DOM
-function clearPopupElement() {
-  window.setTimeout(clearPopupElementNow, 0);
-}
-function clearPopupElementNow() {
-  popupElement.innerHTML = '';
-}
-
 Human.prototype.chooseFaction = function(playerIndex, callback) {
   var buttonClickFun = function(faction) {
-    var error = callback(players[playerIndex], faction);
+    var error = callback(playerIndex, faction);
     if(error != '') setHelp('invalid faction: ' + error + ' - Please try again');
-    else clearPopupElement(); //otherwise the choice screen stays forever
-  }
+  };
 
   var already = getAlreadyChosenColors();
   var j = 0;
@@ -316,7 +309,7 @@ Human.prototype.leechPower = function(playerIndex, fromPlayer, amount, vpcost, r
   }
 
   if(autoLeechNo) {
-    callback(players[playerIndex], false);
+    callback(playerIndex, false);
     return;
   }
 
@@ -325,8 +318,8 @@ Human.prototype.leechPower = function(playerIndex, fromPlayer, amount, vpcost, r
     return;
   }
 
-  if(autoLeech1 && amount <= 1 && players[fromPlayer].race != F_CULTISTS) {
-    callback(players[playerIndex], true);
+  if(autoLeech1 && amount <= 1 && game.players[fromPlayer].race != F_CULTISTS) {
+    callback(playerIndex, true);
     return;
   }
 
@@ -335,24 +328,22 @@ Human.prototype.leechPower = function(playerIndex, fromPlayer, amount, vpcost, r
   //drawHud();
   var bg = makeSizedDiv(ACTIONPANELX, ACTIONPANELY, ACTIONPANELW, ACTIONPANELH, popupElement);
   bg.style.backgroundColor = '#fff';
-  bg.innerHTML = 'leech ' + amount + ' power from ' + getFullName(players[fromPlayer]) + '?';
+  bg.innerHTML = 'leech ' + amount + ' power from ' + getFullName(game.players[fromPlayer]) + '?';
   bg.style.border = '1px solid black';
 
   var yes = makeLinkButton(ACTIONPANELX + 5, ACTIONPANELY + 30, 'yes', popupElement);
   leechYesFun = function() {
-    clearPopupElement();
     leechNoFun = null;
     leechYesFun = null;
-    callback(players[playerIndex], true);
+    callback(playerIndex, true);
   }
   yes.onclick = leechYesFun;
 
   var no = makeLinkButton(ACTIONPANELX + 5, ACTIONPANELY + 55, 'no', popupElement);
   leechNoFun = function() {
-    clearPopupElement();
     leechNoFun = null;
     leechYesFun = null;
-    callback(players[playerIndex], false);
+    callback(playerIndex, false);
   }
   no.onclick = leechNoFun;
 
@@ -360,18 +351,16 @@ Human.prototype.leechPower = function(playerIndex, fromPlayer, amount, vpcost, r
     var a = makeLinkButton(ACTIONPANELX + 5, ACTIONPANELY + 80, 'auto for 1', popupElement);
     a.title = 'automatically leech if it is 1 power and not from cultists';
     a.onclick = function() {
-      clearPopupElement(); //otherwise the choice screen stays forever
       autoLeech1 = true;
       leechNoFun = null;
       leechYesFun = null;
-      callback(players[playerIndex], true);
+      callback(playerIndex, true);
     }
   }
 
   var a2 = makeLinkButton(ACTIONPANELX + 5, ACTIONPANELY + 128, 'auto "smart"', popupElement);
   a2.onclick = function() {
     a2.title = 'Automatically decide whether to accept or decline leeching based on amount and round number. Never see the leech question again this game!';
-    clearPopupElement(); //otherwise the choice screen stays forever
     autoLeech = true;
     leechNoFun = null;
     leechYesFun = null;
@@ -381,9 +370,8 @@ Human.prototype.leechPower = function(playerIndex, fromPlayer, amount, vpcost, r
   var a3 = makeLinkButton(ACTIONPANELX + 480, ACTIONPANELY + 128, 'never', popupElement);
   a3.style.color = '#eee';
   a3.onclick = function() {
-    clearPopupElement(); //otherwise the choice screen stays forever
     autoLeechNo = true;
-    callback(players[playerIndex], false);
+    callback(playerIndex, false);
   }
 };
 
@@ -403,13 +391,13 @@ function humanAntiTransformDirAction(player, fromcolor, tocolor) {
 }
 
 Human.prototype.doRoundBonusSpade = function(playerIndex, num, callback) {
-  if(num < 2 && players[playerIndex].faction == F_GIANTS) {
-    callback(players[playerIndex], []);
+  if(num < 2 && game.players[playerIndex].faction == F_GIANTS) {
+    callback(playerIndex, []);
     return;
   }
 
   var result = [];
-  var player = players[playerIndex];
+  var player = game.players[playerIndex];
 
   actionEl.innerHTML = 'rounddig';
 
@@ -433,7 +421,7 @@ Human.prototype.doRoundBonusSpade = function(playerIndex, num, callback) {
   setHumanState(HS_DIG, 'You got ' + num + '  bonus spades from the cult track. Click on map to dig, press execute when done.', fun);
 
   executeButtonFun_ = function() {
-    var error = callback(players[playerIndex], result);
+    var error = callback(playerIndex, result);
     if(error != '') {
       setHelp('Round bonus spade error: ' + error);
       result = [];
@@ -455,7 +443,7 @@ Human.prototype.doRoundBonusSpade = function(playerIndex, num, callback) {
 
 Human.prototype.chooseCultistTrack = function(playerIndex, callback) {
   var fun = function(cult) {
-    var error = callback(players[playerIndex], cult);
+    var error = callback(playerIndex, cult);
     if(error == '') clearHumanState();
     else {
       setHelp('invalid cult. Please try again');
@@ -485,7 +473,7 @@ function getFreeSpades(player, actions) {
 //This function will add extra A_SPADE actions if needed (to bring a full terrain to your color).
 //If it's about round bonus spades, then not of course.
 function digAndBuildFun(initialMode, helpText) {
-  var player = players[0];
+  var player = getCurrentPlayer();
 
   digAndBuildMode = initialMode;
   
@@ -501,18 +489,8 @@ function digAndBuildFun(initialMode, helpText) {
       if(ptype == A_SANDSTORM) {
         pactions[pactions.length - 1].co = [x, y];
       } else {
-        var dist = digDist(player, getWorld(x, y));
-        if(dist > 0) {
-          var spadesreq = dist - getFreeSpades(player, pactions);
-          for(var i = 0; i < spadesreq; i++) prepareAction(new Action(A_SPADE));
-          var type = transformDirAction(player, getWorld(x, y), player.color);
-          var transformsreq = transformsReq(dist, type);
-          for(var i = 0; i < transformsreq; i++) {
-            var action = new Action(type);
-            action.co = [x, y];
-            prepareAction(action);
-          }
-        }
+        var tactions = getAutoTransformActions(player, x, y, player.color, getFreeSpades(player, pactions), 999);
+        for(var i = 0; i < tactions.length; i++) prepareAction(tactions[i]);
       }
       if(digAndBuildMode == DBM_BUILD) {
         var action = new Action(A_BUILD);
@@ -562,7 +540,7 @@ function upgrade1fun() {
     clearHumanState();
     //Commented out because e.g. chaos magician double action may have turned it to your color before, this just doesn't detect that yet
     //var tile = getWorld(x, y);
-    //if(tile != players[0].color) return;
+    //if(tile != getCurrentPlayer().color) return;
     var b = getBuildingForUpgradeClick(x, y);
     var action = new Action(A_NONE);
     if(b == B_D) action.type = A_UPGRADE_TP;
@@ -579,7 +557,7 @@ function upgrade2fun() {
     clearHumanState();
     //Commented out because e.g. chaos magician double action may have turned it to your color before, this just doesn't detect that yet
     //var tile = getWorld(x, y);
-    //if(tile != players[0].color) return;
+    //if(tile != getCurrentPlayer().color) return;
     var b = getBuildingForUpgradeClick(x, y);
     var action = new Action(A_NONE);
     if(b == B_TP) action.type = A_UPGRADE_TE;

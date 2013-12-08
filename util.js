@@ -150,7 +150,7 @@ function decodeNestedArray(text) {
 
 //wrap value in range [start,end - 1]
 function wrap(v, start, end) {
-  if(end <= start) throw 'invalid range';
+  if(end <= start) throw new Error('invalid range');
   while(v < start) v += (end - start);
   while(v >= end) v -= (end - start);
   return v;
@@ -367,6 +367,11 @@ if (!String.prototype.trim) {
   String.prototype.trim = function () {
     return this.replace(/^\s+|\s+$/g, '');
   };
+}
+
+//does not support regex
+function stringContains(text, subtext) {
+  return text.indexOf(subtext, 0) >= 0;
 }
 
 ////////////////////////////////////////////////////////////////////////////////

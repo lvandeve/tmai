@@ -209,6 +209,7 @@ var A_ENGINEERS_BRIDGE = A_index++;
 //Debug
 var A_DEBUG_SKIP = A_index++; //skip a whole round for debug purposes (such as watching AI's)
 var A_DEBUG_STEP = A_index++; //skip an action for debug purposes (such as watching AI's)
+var A_CHEAT_PW = A_index++; //get 1pw
 var A_END = A_index++; //Not an action, last enum value
 
 
@@ -262,6 +263,7 @@ function getActionCodeName(type) {
     case A_CARPET: return 'carpet';
     case A_DEBUG_SKIP: return 'debugskip';
     case A_DEBUG_STEP: return 'debugstep';
+    case A_CHEAT_PW: return 'cheat1pw';
     default: return 'unknown';
   }
 }
@@ -400,12 +402,12 @@ function tileToStringLong(tile, prefix) {
   else if(tile == T_BON_CULT_4C) result += 'cult 4c';
   else if(tile == T_BON_6C) result += '6c';
   else if(tile == T_BON_3PW_SHIP) result += '3pw ship';
-  else if(tile == T_BON_3PW_1W) result += '3pw 2w';
+  else if(tile == T_BON_3PW_1W) result += '3pw 1w';
   else if(tile == T_BON_PASSDVP_2C) result += 'pass:d=1vp 2c';
   else if(tile == T_BON_PASSTPVP_1W) result += 'pass:tp=2vp 1w';
   else if(tile == T_BON_PASSSHSAVP_2W) result += 'pass:sh/sa=4vp 2w';
   else if(tile == T_BON_1P) result += '1p';
-  else if(tile == T_BON_1P) result += 'pass:ship=3vp 3pw';
+  else if(tile == T_BON_PASSSHIPVP_3PW) result += 'pass:ship=3vp 3pw';
   else if(tile == T_FAV_3F) result += '3F';
   else if(tile == T_FAV_3W) result += '3W';
   else if(tile == T_FAV_3E) result += '3E';
@@ -453,7 +455,7 @@ function tileToHelpString(tile, prefix) {
   else if(tile == T_BON_CULT_4C) result += 'free cult action + 4c income';
   else if(tile == T_BON_6C) result += '6c income';
   else if(tile == T_BON_3PW_SHIP) result += '3pw income + temporary shiping distance increase';
-  else if(tile == T_BON_3PW_1W) result += '3pw + 2w income';
+  else if(tile == T_BON_3PW_1W) result += '3pw + 1w income';
   else if(tile == T_BON_PASSDVP_2C) result += '1vp per d when passing + 2c income';
   else if(tile == T_BON_PASSTPVP_1W) result += '2vp per tp when passing + 1w income';
   else if(tile == T_BON_PASSSHSAVP_2W) result += '4vp per sh/sa when passing + 2w income';

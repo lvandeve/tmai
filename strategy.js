@@ -32,15 +32,17 @@ freely, subject to the following restrictions:
 
 //returns reachable land tiles that aren't occupied by any player
 //reachable for that player with adjecency, shipping, bridges.
+//either transformable by the player, or already their color
+//alsobuildable: if false, only tiles that can be *transformed* (through spades, sandstorm, fire factions, ...). If true, also tiles of the players color on which they can *build*.
 //costly determines whether to also include tunneling and carpet destinatins (they cost extra resources)
-function getReachableFreeTiles(player, costly) {
+function getReachableTransformableTiles(player, costly, alsobuildable) {
   var result = [];
   for(var y = 0; y < game.bh; y++)
   for(var x = 0; x < game.bw; x++)
   {
     var tile = getWorld(x, y);
     if(tile == I || tile == N) continue;
-    if(!isOccupied(x, y) && inReach(player, x, y, costly)) {
+    if(!isOccupied(x, y) && inReach(player, x, y, costly) && (canTransform(player, x, y) || (alsobuildable && canBuildOn(player, x, y)))) {
       result.push([x,y]);
     }
   }
@@ -55,7 +57,7 @@ function getTouchedWaterTiles(player) {
   {
     var tile = getWorld(x, y);
     if(tile != I) continue;
-    if(hasOwnNeighborNoBridge(x, y, player.color)) {
+    if(hasOwnNeighborNoBridge(x, y, player.woodcolor)) {
       result.push([x,y]);
     }
   }
@@ -80,7 +82,7 @@ function getOccupiedTiles(player) {
   for(var x = 0; x < game.bw; x++)
   {
     var building = getBuilding(x, y);
-    if(building[0] != B_NONE && building[1] == player.color) result.push([x,y]);
+    if(building[0] != B_NONE && building[1] == player.woodcolor) result.push([x,y]);
   }
   return result;
 }
@@ -211,7 +213,7 @@ function useCheapestResourceForCoin(av, pr, actions) {
   return bestcost;
 }
 
-//returns whether player can get the given resources (income array [c,w,p,pw,vp], but vp is ignored, is never output, only used as input for alchemists from player.vp).
+//returns whether player can get the given resources (income array [c,w,p,pw,vp, .....], but vp is ignored, is never output, only used as input for alchemists from player.vp).
 // If actions are needed for that (only non-turn taking actions), they're appended to actions array. Non turn taking actions involved in this can be: convert p->w, 3pw->w, burn
 //restrictions has form {w_cost, p_cost, pw_cost, burn_cost, max_burn} --> implicitely, VP cost is 1 and C cost is 0.33.
 //Will not burn if only max_burn pw left in players bowls.
@@ -231,8 +233,15 @@ testRes([15, 4, 0, 0, 0]);
 testRes([15, 5, 0, 0, 0]);
 */
 function canGetResources(player, resources, restrictions, actions) {
-  if(player.c >= resources[0] && player.w >= resources[1] && player.p >= resources[2] && player.pw2 >= resources[3]) {
+  if(resources.length < 6 /*classic array*/ && player.c >= resources[0] && player.w >= resources[1] && player.p >= resources[2] && player.pw2 >= resources[3]) {
     return true; //has all resources, no actions needed
+  }
+
+  // extra resources such as cult etc... present
+  if(resources.length >= 6) {
+    var cloned = resources.slice(0);
+    for(var i = 0; i < 5; i++) cloned[i] = 0;
+    if(!canConsume(player, cloned)) return false; //does not have cult or so
   }
 
   /*
@@ -396,15 +405,25 @@ function addPossibleDigBuildAction(resources, player, restrictions, co, dist, dw
   var actions = [];
   if(canGetResources(player, resources, restrictions, actions)) {
     if(costly) {
-      var a = new Action(player.faction == F_DWARVES ? A_TUNNEL : A_CARPET);
+      var a;
+      if(player.getFaction().canTakeFactionAction(player, A_TUNNEL)) a = new Action(A_TUNNEL);
+      else if(player.getFaction().canTakeFactionAction(player, A_CARPET)) a = new Action(A_CARPET);
+      else throw 'costly not possible';
       a.co = co;
       actions.push(a);
     }
     if(dist > 0) {
-      if(type == A_SANDSTORM) {
+      if(type == A_SANDSTORM || type == A_TRANSFORM_SPECIAL2) {
         // No spades needed for sandstorm
         var action2 = new Action(type);
         action2.co = co;
+        if(resources[R_CULT]) {
+          //TODO: allow to choose cult track, or output all possibilities for cult tracks
+          if(player.cult[C_F] >= resources[R_CULT]) action2.cult = C_F;
+          else if(player.cult[C_W] >= resources[R_CULT]) action2.cult = C_W;
+          else if(player.cult[C_E] >= resources[R_CULT]) action2.cult = C_E;
+          else action2.cult = C_A;
+        }
         actions.push(action2);
       } else {
         //Spades
@@ -417,9 +436,9 @@ function addPossibleDigBuildAction(resources, player, restrictions, co, dist, dw
         for(var i = 0; i < extra; i++) actions.push(new Action(A_SPADE));
 
         //Transforms
-        var numtransforms = player.faction == F_GIANTS && dist > 0 ? 1 : dist;
-        for(var i = 0; i < numtransforms; i++) {
-          var action2 = new Action(transformDirAction(player, getWorld(co[0], co[1]), player.color));
+        var actiontypes = transformDirAction(player, getWorld(co[0], co[1]), player.getMainDigColor());
+        for(var i = 0; i < actiontypes.length; i++) {
+          var action2 = new Action(actiontypes[i]);
           action2.co = co;
           actions.push(action2);
         }
@@ -435,13 +454,14 @@ function addPossibleDigBuildAction(resources, player, restrictions, co, dist, dw
   }
 }
 
+//potentially adds a possible dig action sequence, and potentially adds a (dig if needed) and build action sequence
 //destructively alters cost (adds the dwelling cost)
 //resources MAY NOT include costly cost
 function addPossibleDigBuildActions(cost, player, restrictions, co, dist, type, costly, result) {
   if(costly) sumIncome(cost, getTunnelCarpetCost(player));
   if(dist > 0) addPossibleDigBuildAction(cost, player, restrictions, co, dist, false, type, costly, result);
   if(player.b_d > 0) {
-    sumIncome(cost, getBuildingCost(player.faction, B_D, false));
+    sumIncome(cost, player.getFaction().getBuildingCost(B_D, false));
     addPossibleDigBuildAction(cost, player, restrictions, co, dist, true, type, costly, result);
   }
 }
@@ -450,8 +470,8 @@ function addPossibleDigBuildActions(cost, player, restrictions, co, dist, type, 
 function shUpgradeWithHalflings(player, restrictions, co, dwelling, result) {
   if(dwelling && player.b_d == 0) return;
 
-  var resources = getBuildingCost(player.faction, B_SH, false);
-  if(dwelling) sumIncome(resources, getBuildingCost(player.faction, B_D, false));
+  var resources = player.getFaction().getBuildingCost(B_SH, false);
+  if(dwelling) sumIncome(resources, player.getFaction().getBuildingCost(B_D, false));
   
   var actions = [];
   if(canGetResources(player, resources, restrictions, actions)) {
@@ -461,11 +481,16 @@ function shUpgradeWithHalflings(player, restrictions, co, dwelling, result) {
 
     var digco = [];
     var buildco = [];
-    restrictions.digFun(player, 3, dwelling ? 1 : 0, getBuildingCost(player.faction, B_D, false), digco, buildco);
+    restrictions.digFun(player, 3, dwelling ? 1 : 0, player.getFaction().getBuildingCost(B_D, false), digco, buildco);
     for(var i = 0; i < digco.length; i++) {
-      var a = new Action(transformDirAction(player, getWorld(digco[i][0], digco[i][1]), player.color));
-      a.co = digco[i];
-      actions.push(a);
+      var types = transformDirAction(player, getWorld(digco[i][0], digco[i][1]), player.getMainDigColor());
+      if(types.length > 0) {
+        var a = new Action(types[0]);
+        a.co = digco[i];
+        actions.push(a);
+      } else {
+        throw 'expected some dig actions';
+      }
     }
 
     if(dwelling && buildco.length == 0) return; //because no dwelling present
@@ -537,11 +562,11 @@ function addPossibleSimpleAction(resources, player, restrictions, type, result) 
 //numbuild must be 0 or 1 and <= numdig
 //is allowed to return less coordinates than num says (e.g. if no dig spots available, or no resources for building)
 function digLocationChoiceSimple(player, numdig, numbuild, buildcost, digco, buildco) {
-  var tiles = getReachableFreeTiles(player, false /*this is for extra digs, so no tunneling and carpets*/);
+  var tiles = getReachableTransformableTiles(player, false /*this is for extra digs, so no tunneling and carpets*/, false);
   for(var i = 0; i < tiles.length; i++) {
     if(player.faction == F_GIANTS && numdig == 1) break; //nothing can be done with one dig for giants.
     var color = getWorld(tiles[i][0], tiles[i][1]);
-    var dist = digDist(player, color, player.color);
+    var dist = digDist(player, color, player.getMainDigColor());
     while(dist > 0 && digco.length < numdig) {
       digco.push(tiles[i]);
       dist--;
@@ -556,16 +581,20 @@ function digLocationChoiceSimple(player, numdig, numbuild, buildcost, digco, bui
 //maxnum is max amount of transformations allowed to do (again set to 999 or so if infinite)
 //returns array of actions
 function getAutoTransformActions(player, x, y, tocolor, freespades, maxnum) {
+  var fromcolor = getWorld(x, y);
+  if(tocolor == O) {
+    if(fromcolor == O) return [];
+    else return [makeActionWithXY(A_TRANSFORM_SPECIAL2, x, y)];
+  }
   var result = [];
-  var dist = digDist(player, getWorld(x, y), tocolor);
+  var dist = digDist(player, fromcolor, tocolor);
   if(dist > maxnum) dist = maxnum;
   if(dist > 0) {
     var spadesreq = (freespades > dist ? 0 : dist - freespades);
     for(var i = 0; i < spadesreq; i++) result.push(new Action(A_SPADE));
-    var type = transformDirAction(player, getWorld(x, y), player.color);
-    var transformsreq = transformsReq(dist, type);
-    for(var i = 0; i < transformsreq; i++) {
-      var action = new Action(type);
+    var types = transformDirAction(player, fromcolor, tocolor);
+    for(var i = 0; i < types.length; i++) {
+      var action = new Action(types[i]);
       action.co = [x, y];
       result.push(action);
     }
@@ -608,7 +637,7 @@ function reorderDigBuildActionsToNotStartWithIncompleteTransforms(player, action
         count++;
       }
       transformactions[co].push([action, i]);
-      virtualworld[co] = getColorAfterTransformAction(virtualworld[co], player.color, action.type);
+      virtualworld[co] = getColorAfterTransformAction(virtualworld[co], player, action.type);
     }
   }
 
@@ -616,7 +645,7 @@ function reorderDigBuildActionsToNotStartWithIncompleteTransforms(player, action
 
   var hasincomplete = false;
   for(var co in virtualworld) {
-    if(virtualworld[co] != player.color) {
+    if(virtualworld[co] != player.getMainDigColor()) {
       hasincomplete = true;
       break;
     }
@@ -629,7 +658,7 @@ function reorderDigBuildActionsToNotStartWithIncompleteTransforms(player, action
     var action = actions[i];
     if(isTransformAction(action) && action.type != A_SANDSTORM) {
       var co = printCo(action.co);
-      if(virtualworld[co] == player.color) lastcomplete = i;
+      if(virtualworld[co] == player.getMainDigColor()) lastcomplete = i;
     }
   }
 
@@ -639,7 +668,7 @@ function reorderDigBuildActionsToNotStartWithIncompleteTransforms(player, action
     var action = actions[i];
     if(isTransformAction(action) && action.type != A_SANDSTORM) {
       var co = printCo(action.co);
-      if(virtualworld[co] != player.color) {
+      if(virtualworld[co] != player.getMainDigColor()) {
         actions.splice(i, 1);
         actions.splice(lastcorrect, 0, action);
       }
@@ -693,20 +722,25 @@ function getPossibleActions(player, restrictions) {
   var result = [];
   var tiles;
 
+  var orange = (player.getFaction().getActionIncome(player, A_POWER_SPADE)[R_SPADE] == 0); //orange factions (fire) don't get or use spades. Detect it in this more generic way rather than "player.woodcolor == O".
+
   //dig&build
-  tiles = getReachableFreeTiles(player, true /*costly: also support the tunneling and carpets*/);
+  tiles = getReachableTransformableTiles(player, true /*costly: also support the tunneling and carpets*/, true);
   for(var t = 0; t < tiles.length; t++) {
-    var tile = getWorld(tiles[t][0], tiles[t][1]);
-    var dist = digDist(player, tile, player.color);
+    var tile = getWorld(tiles[t][0], tiles[t][1]); //this is the color
+    var dist = digDist(player, tile, player.getMainDigColor());
     var costly = onlyReachableThroughFactionSpecial(player, tiles[t][0], tiles[t][1]);
 
     //Try digging in different ways
     var resources; //todo: support darklings priests, house of different price
-    //TODO: check if power action is not already taken
-    if(!game.octogons[A_POWER_2SPADE] && dist > 1) {
-      var cost = getDigCost(player, Math.max(0, dist - 2));
-      sumIncome(cost, [0,0,0,6,0]);
-      addPossibleDigBuildActions(cost, player, restrictions, tiles[t], dist, A_POWER_2SPADE, costly, result);
+
+    if(canTakeOctogonAction(player, A_POWER_2SPADE)) {
+      if(orange) {
+      } else if(dist > 1) {
+        var cost = mulIncome(player.getActionCost(A_SPADE), Math.max(0, dist - 2));
+        sumIncome(cost, player.getActionCost(A_POWER_2SPADE));
+        addPossibleDigBuildActions(cost, player, restrictions, tiles[t], dist, A_POWER_2SPADE, costly, result);
+      }
     }
 
     if(player.faction == F_GIANTS && player.b_sh == 0 && !player.octogons[A_GIANTS_2SPADE] && dist == 2) {
@@ -714,33 +748,37 @@ function getPossibleActions(player, restrictions) {
       addPossibleDigBuildActions(cost, player, restrictions, tiles[t], dist, A_GIANTS_2SPADE, costly, result);
     }
 
-    if(player.faction == F_NOMADS && player.b_sh == 0 && !player.octogons[A_SANDSTORM] && hasOwnNeighborNoBridge(tiles[t][0], tiles[t][1], player.color)) {
+    if(player.faction == F_NOMADS && player.b_sh == 0 && !player.octogons[A_SANDSTORM] && hasOwnNeighborNoBridge(tiles[t][0], tiles[t][1], player.woodcolor)) {
       var cost = [0,0,0,0,0];
       addPossibleDigBuildActions(cost, player, restrictions, tiles[t], dist, A_SANDSTORM, costly, result);
     }
 
-    if(!game.octogons[A_POWER_SPADE] && dist > 0) {
-      var cost = getDigCost(player, Math.max(0, dist - 1));
-      sumIncome(cost, [0,0,0,4,0]);
-      addPossibleDigBuildActions(cost, player, restrictions, tiles[t], dist, A_POWER_SPADE, costly, result);
+    if(canTakeOctogonAction(player, A_POWER_SPADE)) {
+      if(orange) {
+      } else if(dist > 0) {
+        var cost = mulIncome(player.getActionCost(A_SPADE), Math.max(0, dist - 1));
+        sumIncome(cost, player.getActionCost(A_POWER_SPADE));
+        addPossibleDigBuildActions(cost, player, restrictions, tiles[t], dist, A_POWER_SPADE, costly, result);
+      }
     }
 
-    if(!player.octogons[A_BONUS_SPADE] && player.bonustile == T_BON_SPADE_2C && dist > 0) {
-      var cost = getDigCost(player, Math.max(0, dist - 1));
-      addPossibleDigBuildActions(cost, player, restrictions, tiles[t], dist, A_BONUS_SPADE, costly, result);
+    if(!player.octogons[A_BONUS_SPADE] && player.bonustile == T_BON_SPADE_2C) {
+      if(orange) {
+      } else if(dist > 0) {
+        var cost = mulIncome(player.getActionCost(A_SPADE), Math.max(0, dist - 1));
+        addPossibleDigBuildActions(cost, player, restrictions, tiles[t], dist, A_BONUS_SPADE, costly, result);
+      }
     }
 
-    if(dist > 0) {
-      var cost = getDigCost(player, dist);
-      if(costly) sumIncome(cost, getTunnelCarpetCost(player));
-      addPossibleDigBuildAction(cost, player, restrictions, tiles[t], dist, false, A_SPADE, costly, result);
+    if(orange) {
+      //var cost = [0,0,0,0,0];
+      var cost = player.getFaction().getTransformActionCost(player, A_TRANSFORM_SPECIAL2, tile);
+      addPossibleDigBuildActions(cost, player, restrictions, tiles[t], dist, A_TRANSFORM_SPECIAL2, costly, result);
+    } else {
+      var cost = mulIncome(player.getActionCost(A_SPADE), dist);
+      addPossibleDigBuildActions(cost, player, restrictions, tiles[t], dist, A_SPADE, costly, result);
     }
-    if(player.b_d > 0) {
-      var cost = getDigCost(player, dist);
-      sumIncome(cost, getBuildingCost(player.faction, B_D, false));
-      if(costly) sumIncome(cost, getTunnelCarpetCost(player));
-      addPossibleDigBuildAction(cost, player, restrictions, tiles[t], dist, true, A_SPADE, costly, result);
-    }
+
     //The ones without dwelling are dangerous unless the tile is out of reach of other players. But that is up to the AI to figure out.
   }
 
@@ -749,29 +787,29 @@ function getPossibleActions(player, restrictions) {
   for(var t = 0; t < tiles.length; t++) {
     var b = getBuilding(tiles[t][0], tiles[t][1])[0];
     if(b == B_D && player.b_tp > 0) {
-      var neighbor = hasNeighbor(tiles[t][0], tiles[t][1], player.color);
-      addPossibleUpgradeAction(getBuildingCost(player.faction, B_TP, neighbor), player, restrictions, tiles[t], A_UPGRADE_TP, result);
+      var neighbor = hasNeighbor(tiles[t][0], tiles[t][1], player.woodcolor);
+      addPossibleUpgradeAction(player.getFaction().getBuildingCost(B_TP, neighbor), player, restrictions, tiles[t], A_UPGRADE_TP, result);
       if(player.faction == F_SWARMLINGS && player.b_sh < 1 && !player.octogons[A_SWARMLINGS_TP]) addPossibleUpgradeAction([0,0,0,0,0], player, restrictions, tiles[t], A_SWARMLINGS_TP, result);
     } else if(b == B_TP) {
-      if(player.b_te > 0) addPossibleUpgradeAction(getBuildingCost(player.faction, B_TE, false), player, restrictions, tiles[t], A_UPGRADE_TE, result);
-      if(player.b_sh > 0) addPossibleUpgradeAction(getBuildingCost(player.faction, B_SH, false), player, restrictions, tiles[t], A_UPGRADE_SH, result);
+      if(player.b_te > 0) addPossibleUpgradeAction(player.getFaction().getBuildingCost(B_TE, false), player, restrictions, tiles[t], A_UPGRADE_TE, result);
+      if(player.b_sh > 0) addPossibleUpgradeAction(player.getFaction().getBuildingCost(B_SH, false), player, restrictions, tiles[t], A_UPGRADE_SH, result);
     } else if(b == B_TE) {
-      if(player.b_sa > 0) addPossibleUpgradeAction(getBuildingCost(player.faction, B_SA, false), player, restrictions, tiles[t], A_UPGRADE_SA, result);
+      if(player.b_sa > 0) addPossibleUpgradeAction(player.getFaction().getBuildingCost(B_SA, false), player, restrictions, tiles[t], A_UPGRADE_SA, result);
     }
   }
 
   //bridge
   //TODO: the engineers version A_ENGINEERS_BRIDGE
   var bactions = [];
-  if(!game.octogons[A_POWER_BRIDGE] && player.bridges > 0 && canGetResources(player, [0,0,0,3,0], restrictions, bactions)) {
+  if(!game.octogons[A_POWER_BRIDGE] && player.bridges > 0 && canGetResources(player, player.getActionCost(A_POWER_BRIDGE), restrictions, bactions)) {
     tiles = getOccupiedTiles(player);
     var dirs = [D_N, D_NE, D_SE, D_S, D_SW, D_NW];
     for(var t = 0; t < tiles.length; t++) {
       for (var d = 0; d < dirs.length; d++) {
         var co2 = bridgeCo(tiles[t][0], tiles[t][1], dirs[d]);
         if(outOfBounds(co2[0], co2[1])) continue;
-        if(getBuilding(co2[0], co2[1])[1] == player.color && co2[1] > tiles[t][1]) continue; //avoid adding twice the same action with just swapped tiles
-        if (canHaveBridge(tiles[t][0], tiles[t][1], co2[0], co2[1], player.color)) {
+        if(getBuilding(co2[0], co2[1])[1] == player.woodcolor && co2[1] > tiles[t][1]) continue; //avoid adding twice the same action with just swapped tiles
+        if (canHaveBridge(tiles[t][0], tiles[t][1], co2[0], co2[1], player.woodcolor)) {
           var action = new Action();
           action.type = A_POWER_BRIDGE;
           action.cos.push(tiles[t]);
@@ -785,13 +823,13 @@ function getPossibleActions(player, restrictions) {
   }
 
   //resource power actions
-  if(!game.octogons[A_POWER_1P]) addPossibleSimpleAction([0,0,0,3,0], player, restrictions, A_POWER_1P, result);
-  if(!game.octogons[A_POWER_2W]) addPossibleSimpleAction([0,0,0,4,0], player, restrictions, A_POWER_2W, result);
-  if(!game.octogons[A_POWER_7C]) addPossibleSimpleAction([0,0,0,4,0], player, restrictions, A_POWER_7C, result);
+  if(!game.octogons[A_POWER_1P]) addPossibleSimpleAction(player.getActionCost(A_POWER_1P), player, restrictions, A_POWER_1P, result);
+  if(!game.octogons[A_POWER_2W]) addPossibleSimpleAction(player.getActionCost(A_POWER_2W), player, restrictions, A_POWER_2W, result);
+  if(!game.octogons[A_POWER_7C]) addPossibleSimpleAction(player.getActionCost(A_POWER_7C), player, restrictions, A_POWER_7C, result);
 
   //advance actions
-  if(canAdvanceShip(player)) addPossibleSimpleAction(getAdvanceShipCost(player.faction), player, restrictions, A_ADV_SHIP, result);
-  if(canAdvanceDig(player)) addPossibleSimpleAction(getAdvanceDigCost(player.faction), player, restrictions, A_ADV_DIG, result);
+  if(canAdvanceShip(player)) addPossibleSimpleAction(player.getActionCost(A_ADV_SHIP), player, restrictions, A_ADV_SHIP, result);
+  if(canAdvanceDig(player)) addPossibleSimpleAction(player.getActionCost(A_ADV_DIG), player, restrictions, A_ADV_DIG, result);
 
   //priests to cults
   for(var c = C_F; c <= C_A; c++) {
@@ -814,7 +852,7 @@ function getPossibleActions(player, restrictions) {
 
   //witches
   if(player.faction == F_WITCHES && player.b_sh == 0 && player.b_d > 0 && !player.octogons[A_WITCHES_D]) {
-    var tiles = getFreeTilesOfSameColor(player.color);
+    var tiles = getFreeTilesOfSameColor(player.getMainDigColor());
     for(var i = 0; i < tiles.length; i++) {
       var a = new Action(A_WITCHES_D);
       a.co = tiles[i];
@@ -844,7 +882,7 @@ function getPossibleActions(player, restrictions) {
       if(alreadyMakesTown) continue;
       if(!tiles) tiles = getTouchedWaterTiles(player);
       for(var j = 0; j < tiles.length; j++) {
-        var tw = makesNewTownByBuilding(tiles[j][0], tiles[j][1], B_MERMAIDS, reqpower, player.color);
+        var tw = makesNewTownByBuilding(tiles[j][0], tiles[j][1], B_MERMAIDS, reqpower, player.woodcolor);
         if(tw.length > 0) {
           var a = new Action(A_CONNECT_WATER_TOWN);
           a.co = tiles[j];
@@ -914,7 +952,7 @@ function getAllComingCultRoundBonuses(from, to) {
 }
 
 function goesTowardsNewTown(x, y, player) {
-  var cluster = mostPowerfulTouchedCluster(x, y, player.color);
+  var cluster = mostPowerfulTouchedCluster(x, y, player.woodcolor);
   if(!cluster) return false;
   if(cluster.power < 3) return false;
   if(cluster.power + 1 >= getTownReqPower(player)) return false; //also return false if it actually does form a town, because other type of scoring is used for that
@@ -1034,7 +1072,7 @@ function scoreAction(player, actions, values, roundnum) {
       res[3] -= 4;
       res[0] += 7;
     } else if(type == A_SPADE) {
-      subtractIncome(res, getDigCost(player, 1));
+      subtractIncome(res, player.getActionCost(A_SPADE));
       spades++;
       workerdig++;
     } else if(type == A_BONUS_SPADE) {
@@ -1045,20 +1083,20 @@ function scoreAction(player, actions, values, roundnum) {
     } else if(type == A_POWER_2SPADE) {
       res[3] -= 6;
       spades += 2;
-    } else if(type == A_TRANSFORM_CW || type == A_TRANSFORM_CCW) {
+    } else if(type == A_TRANSFORM_CW || type == A_TRANSFORM_CCW || type == A_TRANSFORM_SPECIAL) {
       dig++;
-    } else if(type == A_GIANTS_TRANSFORM) {
+    } else if(type == A_GIANTS_TRANSFORM || type == A_TRANSFORM_SPECIAL2) {
       dig += 2; //TODO: use color distance
     } else if(type == A_SANDSTORM) {
       dig++; //TODO: use color distance
-      if(touchesExistingTown(action.co[0], action.co[1], player.color)) existingtown++;
+      if(touchesExistingTown(action.co[0], action.co[1], player.woodcolor)) existingtown++;
       if(goesTowardsNewTown(action.co[0], action.co[1], player)) towardstown++;
     } else if(type == A_BUILD || type == A_WITCHES_D) {
-      if(type == A_BUILD) subtractIncome(res, getBuildingCost(player.faction, B_D, false));
+      if(type == A_BUILD) subtractIncome(res, player.getFaction().getBuildingCost(B_D, false));
       b_d++;
-      if(touchesExistingTown(action.co[0], action.co[1], player.color)) existingtown++;
+      if(touchesExistingTown(action.co[0], action.co[1], player.woodcolor)) existingtown++;
       if(goesTowardsNewTown(action.co[0], action.co[1], player)) towardstown++;
-      if(hasNeighbor(action.co[0], action.co[1], player.color)) interacts++;
+      if(hasNeighbor(action.co[0], action.co[1], player.woodcolor)) interacts++;
       if(values.forbridge != 0) {
         var x = action.co[0];
         var y = action.co[1];
@@ -1066,31 +1104,31 @@ function scoreAction(player, actions, values, roundnum) {
         for(var j = 0; j < dirs.length; j++) {
           var co = bridgeCo(x, y, dirs[j]);
           if(outOfBounds(co[0], co[1])) continue;
-          if(canHaveBridge(x, y, co[0], co[1], player.color) && isOccupiedBy(co[0], co[1], player.color)) forbridge++;
+          if(canHaveBridge(x, y, co[0], co[1], player.color) && isOccupiedBy(co[0], co[1], player.woodcolor)) forbridge++;
         }
       }
     } else if(type == A_UPGRADE_TP) {
-      subtractIncome(res, getBuildingCost(player.faction, B_TP, hasNeighbor(action.co[0], action.co[1], player.color)));
+      subtractIncome(res, player.getFaction().getBuildingCost(B_TP, hasNeighbor(action.co[0], action.co[1], player.woodcolor)));
       b_tp++;
-      if(touchesExistingTown(action.co[0], action.co[1], player.color)) existingtown++;
+      if(touchesExistingTown(action.co[0], action.co[1], player.woodcolor)) existingtown++;
       if(goesTowardsNewTown(action.co[0], action.co[1], player)) towardstown++;
     } else if(type == A_SWARMLINGS_TP) {
       b_tp++;
-      if(touchesExistingTown(action.co[0], action.co[1], player.color)) existingtown++;
+      if(touchesExistingTown(action.co[0], action.co[1], player.woodcolor)) existingtown++;
       if(goesTowardsNewTown(action.co[0], action.co[1], player)) towardstown++;
     } else if(type == A_UPGRADE_TE) {
-      subtractIncome(res, getBuildingCost(player.faction, B_TE, false));
+      subtractIncome(res, player.getFaction().getBuildingCost(B_TE, false));
       b_te++;
       //no size increase so no "touchesExistingTown" test here
     } else if(type == A_UPGRADE_SH) {
-      subtractIncome(res, getBuildingCost(player.faction, B_SH, false));
+      subtractIncome(res, player.getFaction().getBuildingCost(B_SH, false));
       b_sh++;
-      if(touchesExistingTown(action.co[0], action.co[1], player.color)) existingtown++;
+      if(touchesExistingTown(action.co[0], action.co[1], player.woodcolor)) existingtown++;
       //if(goesTowardsNewTown(action.co[0], action.co[1], player)) towardstown++;
     } else if(type == A_UPGRADE_SA) {
-      subtractIncome(res, getBuildingCost(player.faction, B_SA, false));
+      subtractIncome(res, player.getFaction().getBuildingCost(B_SA, false));
       b_sa++;
-      if(touchesExistingTown(action.co[0], action.co[1], player.color)) existingtown++;
+      if(touchesExistingTown(action.co[0], action.co[1], player.woodcolor)) existingtown++;
       //if(goesTowardsNewTown(action.co[0], action.co[1], player)) towardstown++;
     } else if(type == A_CULT_PRIEST3) {
       // TODO: power income of those (note that it's half the pw value)
@@ -1111,11 +1149,11 @@ function scoreAction(player, actions, values, roundnum) {
     } else if(type == A_AUREN_CULT) {
       cult[action.cult] += 2;
     } else if(type == A_ADV_SHIP) {
-      subtractIncome(res, getAdvanceShipCost(player.faction));
+      subtractIncome(res, player.getActionCost(A_ADV_SHIP));
       res[4] += getAdvanceShipVP(player);
       shipping++;
     } else if(type == A_ADV_DIG) {
-      subtractIncome(res, getAdvanceDigCost(player.faction));
+      subtractIncome(res, player.getActionCost(A_ADV_DIG));
       res[4] += getAdvanceDigVP(player);
       digging++;
     } else if(type == A_POWER_BRIDGE || type == A_ENGINEERS_BRIDGE) {
@@ -1202,7 +1240,7 @@ function scoreAction(player, actions, values, roundnum) {
   result += forbridge * values.forbridge;
   result += dig * values.dig;
   result += cultspades * values.cultspade;
-  for(var i = C_F; i < C_A; i++) {
+  for(var i = C_F; i <= C_A; i++) {
     var num = cult[i];
     if(num == 1) result += values.cult[0][i];
     else if(num == 2) result += values.cult[1][i];
@@ -1222,7 +1260,7 @@ function scoreAction(player, actions, values, roundnum) {
 //center tile counts if center is true
 //equal ==> +3. 1 dig ==> +2. distance > 1 ==> -(distance - 1)
 //TODO: take giants and nomads into account here, for them these distances don't (always) matter
-function scoreTileDigEnvironment(tx, ty, color, center) {
+function scoreTileDigEnvironment(player, tx, ty, color, center) {
   var score = 0;
   for(var y = ty - 3; y <= ty + 3; y++)
   for(var x = tx - 3; x <= tx + 3; x++)
@@ -1233,7 +1271,7 @@ function scoreTileDigEnvironment(tx, ty, color, center) {
     if(dist > 3) continue;
     var color2 = getWorld(x, y);
     if(color2 != I) {
-      var colordist = colorDist(color, color2);
+      var colordist = digDist(player, color, color2);
       var colorscore = dist == 0 ? 4 : 3 - colordist;
       if(colordist <= 1) score += Math.max(0, colorscore - dist + 1);
     }
@@ -1330,7 +1368,7 @@ function getNumFreeTilesReachableByShipping(player, shipping) {
 
   for(var i = 0; i < tiles.length; i++) {
     var tilecolor = getWorld(tiles[i][0], tiles[i][1]);
-    if(tilecolor != I) result[colorDist(tilecolor, player.color)]++;
+    if(tilecolor != I) result[digDist(player, tilecolor, player.getMainDigColor())]++;
   }
 
   return result;
@@ -1341,12 +1379,12 @@ function getNumFreeTilesReachableByShipping(player, shipping) {
 //costly means the usual (carpets and tunnels)
 //returned as array [0,1,2,3]
 function getNumTilesReachable(player, costly) {
-  var tiles = getReachableFreeTiles(player, false);
+  var tiles = getReachableTransformableTiles(player, false, true);
   var result = [0,0,0,0];
 
   for(var i = 0; i < tiles.length; i++) {
     var tilecolor = getWorld(tiles[i][0], tiles[i][1]);
-    if(tilecolor != I) result[colorDist(tilecolor, player.color)]++;
+    if(tilecolor != I) result[digDist(player, tilecolor, player.getMainDigColor())]++;
   }
 
   return result;
@@ -1361,7 +1399,7 @@ function getNumTilesAround(player, x, y) {
   for(var i = 0; i < tiles.length; i++) {
     if(isOccupied(tiles[i][0], tiles[i][1])) continue;
     var tilecolor = getWorld(tiles[i][0], tiles[i][1]);
-    if(tilecolor != I) result[colorDist(tilecolor, player.color)]++;
+    if(tilecolor != I) result[digDist(player, tilecolor, player.getMainDigColor())]++;
   }
 
   return result;

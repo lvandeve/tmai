@@ -64,13 +64,19 @@ function pickWithBestScore(items, scores, distributerandom) {
   if(distributerandom) {
     var sum = 0;
     for(var i = 0; i < scores.length; i++) sum += scores[i];
+    // Make it work if all scores are 0
+    if(sum <= 0) {
+      sum = scores.length;
+      scores = [];
+      for(var j = 0; j < sum; j++) scores[j] = 1;
+    }
     var r = Math.random() * sum;
     var count = 0;
     for(var i = 0; i < scores.length; i++) {
       count += scores[i];
       if(r < count) return i;
     }
-    return items[items.length - 1];
+    return items.length - 1;
   } else {
     var besti = 0;
     var bestscore = -999999;
@@ -106,7 +112,7 @@ AI.prototype.doAction = function(playerIndex, callback) {
   var player = game.players[playerIndex];
 
   this.updateScoreActionValues_(player, state.round);
-  
+
   var actions = getPossibleActions(player, this.restrictions);
 
   //TODO: support chaos magicians double action
@@ -148,11 +154,10 @@ AI.prototype.doAction = function(playerIndex, callback) {
 
     //instead, pass.
     var action = new Action(A_PASS);
-    action.bontile = this.getPreferredBonusTile_(player);
-    chosen = [action];
-    callback(playerIndex, chosen);
-    
-    throw new Error('AI tried invalid action: ' + error);
+    if(state.round != 6) action.bontile = this.getPreferredBonusTile_(player);
+    callback(playerIndex, [action]);
+
+    throw new Error('AI tried invalid action: Error: ' + error + ', Action: ' + actionsToString(chosen));
   }
 };
 
@@ -205,6 +210,7 @@ AI.prototype.updateScoreActionValues_ = function(player, roundnum) {
 
   s.t_fav = player.favortiles.length > 3 ? 0 : 1;
 
+
   // Round specific
   var FINALRESVAL = player.faction == F_ALCHEMISTS ? 0.5 : 0.33;
   if(roundnum < 3) {
@@ -236,6 +242,9 @@ AI.prototype.updateScoreActionValues_ = function(player, roundnum) {
     s.b_sh = 0;
     s.b_sa = 0;
   }
+
+  var sanctuarytwiddle = 3; //The AIs are not building sanctuaries.... let's add some score
+  s.b_sa += sanctuarytwiddle;
 
   // make SH essential, except for the given power actions
   var makeSHEssential = function(pow_7c, pow_2w, pow_dig1, pow_dig2) {
@@ -414,7 +423,7 @@ AI.prototype.scoreBonusTile_ = function(player, tile, roundnum) {
     var r = getNumTilesReachable(player, true);
     //if there are almost no no-dig tiles, and several 1- or 2-dig tiles, digging is useful
     if(r[0] < 2 && (r[1] > 1 || r[2] > 1)) {
-      var digcost = getDigCost(player, 1);
+      var digcost = player.getActionCost(A_SPADE);
       score += digcost[1] * s.w + digcost[1] * s.p;
       score += s.digging;
     }
@@ -578,6 +587,50 @@ AI.prototype.chooseInitialBonusTile = function(playerIndex, callback) {
   }
 };
 
+AI.prototype.chooseInitialFavorTile = function(playerIndex, callback) {
+  var player = game.players[playerIndex];
+  var tiles = getPossibleFavorTiles(player, {});
+  var tilemap = {};
+  for(var i = 0; i < tiles.length; i++) tilemap[tiles[i]] = true;
+
+  var tile;
+  if(tilemap[T_FAV_1E_DVP]) tile = T_FAV_1E_DVP;
+  else if(tilemap[T_FAV_1E_DVP]) tile = T_FAV_1W_TPVP;
+  else tile = T_FAV_2W_CULT;
+
+  var error = callback(playerIndex, tile);
+  if(error != '') {
+    addLog('ERROR: AI tried invalid favor tile. Error: ' + error);
+    throw new Error('AI tried invalid favor tile');
+  }
+};
+
+//callback result (second paramter) should be the chosen color emum value
+AI.prototype.chooseAuxColor = function(playerIndex, callback) {
+  var colors = [];
+  for(var i = CIRCLE_BEGIN; i <= CIRCLE_END; i++) {
+    if(auxColorToPlayerMap[i] == undefined && colorToPlayerMap[i] == undefined) colors.push(i);
+  }
+
+  var scores = [];
+  for(var i = 0; i < colors.length; i++) {
+    var color = colors[i];
+    var score = 0;
+    if(auxColorToPlayerMap[wrap(color - 1, R, S + 1)] == undefined) score++;
+    if(auxColorToPlayerMap[wrap(color + 1, R, S + 1)] == undefined) score++;
+    scores[i] = score;
+  }
+
+  var i = pickWithBestScore(colors, scores, false);
+  var chosen = colors[i];
+
+  var error = callback(playerIndex, chosen);
+  if(error != '') {
+    addLog('ERROR: AI tried invalid faction color. Error: ' + error);
+    throw new Error('AI tried invalid faction color');
+  }
+};
+
 AI.prototype.chooseInitialDwelling = function(playerIndex, callback) {
   var player = game.players[playerIndex];
   var chosen = undefined;
@@ -588,7 +641,7 @@ AI.prototype.chooseInitialDwelling = function(playerIndex, callback) {
     for(var x = 0; x < game.bw; x++)
     {
       var building = getBuilding(x, y);
-      if(building[0] != B_NONE && building[1] == player.color) {
+      if(building[0] != B_NONE && building[1] == player.woodcolor) {
         otherDwelling = [x,y];
         break;
       }
@@ -599,7 +652,7 @@ AI.prototype.chooseInitialDwelling = function(playerIndex, callback) {
   for(var y = 0; y < game.bh; y++)
   for(var x = 0; x < game.bw; x++)
   {
-    if(getWorld(x, y) != player.color) continue;
+    if(getWorld(x, y) != player.auxcolor) continue;
     if(getBuilding(x, y)[0] != B_NONE) continue;
     positions.push([x, y]);
   }
@@ -609,12 +662,12 @@ AI.prototype.chooseInitialDwelling = function(playerIndex, callback) {
     var x = positions[i][0];
     var y = positions[i][1];
     var score = 0;
-    score += scoreTileDigEnvironment(x, y, player.color, false);
-    score += scoreTileEnemyEnvironment(x, y, player.color, false);
+    score += scoreTileDigEnvironment(player, x, y, player.getMainDigColor(), false);
+    score += scoreTileEnemyEnvironment(x, y, player.getMainDigColor(), false);
 
     var neighbors = getNumTilesAround(player, x, y);
     if(neighbors[0] == 0 && neighbors[1] == 0) score /= 2; //tile touches no other proper tiles, discourage this
-    
+
     if(otherDwelling) {
       var h = hexDist(otherDwelling[0], otherDwelling[1], x, y);
       if(h >= 4 && h <= 6) score += 5; //be near your other dwelling but not too near
@@ -634,19 +687,18 @@ AI.prototype.chooseInitialDwelling = function(playerIndex, callback) {
 };
 
 AI.prototype.chooseFaction = function(playerIndex, callback) {
-  var already = getAlreadyChosenColors();
-  
-  var possible = [];
-  
-  for(var i = LANDSCAPE_BEGIN; i <= LANDSCAPE_END; i++) {
-    if(already[i]) continue;
-    var factions = colorFactions(i);
-    for(var j = 0; j < factions.length; j++) possible.push(factions[j]);
+  var factions2 = getPossibleFactionChoices();
+
+  var factions = [];
+  for(var i = 0; i < factions2.length; i++) {
+    if(factions2[i].color == O || factions2[i].color == X || factions2[i].color == Z) continue; //AIs don't support these yet
+    factions.push(factions2[i]);
   }
 
+  var already = getAlreadyChosenColors();
   var scores = [];
-  for(var i = 0; i < possible.length; i++) {
-    scores[i] = this.scoreFaction_(game.players[playerIndex], already, possible[i]);
+  for(var i = 0; i < factions.length; i++) {
+    scores[i] = this.scoreFaction_(game.players[playerIndex], already, factions[i]);
   }
 
   //The scores will be used as probability distribution function for random race choice.
@@ -655,7 +707,7 @@ AI.prototype.chooseFaction = function(playerIndex, callback) {
   for(var i = 0; i < scores.length; i++) lowest = Math.min(lowest, scores[i]);
   for(var i = 0; i < scores.length; i++) scores[i] -= lowest;
 
-  var faction = possible[pickWithBestScore(possible, scores, true)];
+  var faction = factions[pickWithBestScore(factions, scores, true)];
 
   var error = callback(playerIndex, faction);
   if(error != '') {
@@ -668,29 +720,34 @@ AI.prototype.chooseFaction = function(playerIndex, callback) {
 AI.prototype.scoreFaction_ = function(player, already, faction) {
   var score = 0;
   var color = factionColor(faction);
-  if(!already[wrap(color - 1, R, S + 1)]) score++;
-  if(!already[wrap(color + 1, R, S + 1)]) score++;
+  if(color >= CIRCLE_BEGIN && color <= CIRCLE_END) {
+    if(!already[wrap(color - 1, R, S + 1)]) score++;
+    if(!already[wrap(color + 1, R, S + 1)]) score++;
+  } else {
+    // TODO: better heuristic for expansion colors
+    score++;
+  }
 
   // Based on in percentages of http://terra.snellman.net/stats.html
-  var factionwinpercentages = [
-    0,0,0, //none, generic, start
-    15, //chaosmag
-    10, //giants
-    18, //fakirs
-    25, //nomads
-    28, //halflings
-    13, //cultists
-    24, //alchemists
-    29, //darklings
-    31, //mermaids
-    22, //swarmlings
-    11, //auren
-    14, //witches
-    35, //engineers
-    32, //dwarves
-  ];
+  var factionwinpercentage = 20;
+  var index = faction.index;
+  if(index == F_CHAOS) factionwinpercentage = 15;
+  else if(index == F_GIANTS) factionwinpercentage = 10;
+  else if(index == F_FAKIRS) factionwinpercentage = 18;
+  else if(index == F_NOMADS) factionwinpercentage = 25;
+  else if(index == F_HALFLINGS) factionwinpercentage = 28;
+  else if(index == F_CULTISTS) factionwinpercentage = 13;
+  else if(index == F_ALCHEMISTS) factionwinpercentage = 24;
+  else if(index == F_DARKLINGS) factionwinpercentage = 29;
+  else if(index == F_MERMAIDS) factionwinpercentage = 31;
+  else if(index == F_SWARMLINGS) factionwinpercentage = 22;
+  else if(index == F_AUREN) factionwinpercentage = 11;
+  else if(index == F_WITCHES) factionwinpercentage = 14;
+  else if(index == F_ENGINEERS) factionwinpercentage = 35;
+  else if(index == F_DWARVES) factionwinpercentage = 32;
+  // TODO: update and include fire & ice factions
 
-  score += (factionwinpercentages[faction] - 10) / 20;
+  score += (factionwinpercentage - 10) / 20;
 
   return score;
 };
@@ -725,16 +782,28 @@ AI.prototype.leechPower = function(playerIndex, fromPlayer, amount, vpcost, roun
   callback(playerIndex, false);
 };
 
-AI.prototype.doRoundBonusSpade = function(playerIndex, num, callback) {
+AI.prototype.doRoundBonusSpade = function(playerIndex, callback) {
   var player = game.players[playerIndex];
+  var num = player.spades;
   var result = [];
   var dummy = [];
   var locations = [];
   digLocationChoiceSimple(player, num, 0, [0,0,0,0,0], locations, dummy);
+  var prevx = -2;
+  var prevy = -2;
+  var prevnum = 0;
   for(var i = 0; i < locations.length; i++) {
     var x = locations[i][0];
     var y = locations[i][1];
-    result.push([transformDirAction(player, getWorld(x, y), player.color), x, y]);
+    prevnum = ((prevx == x && prevy == y) ? (prevnum + 1) : 0);
+    prevx = x;
+    prevy = y;
+    var types = transformDirAction(player, getWorld(x, y), player.getMainDigColor());
+    if(types.length > 0) {
+      result.push([types[prevnum], x, y]);
+    } else {
+      throw 'expected some dig actions';
+    }
   }
 
   var error = callback(playerIndex, result);
@@ -807,7 +876,7 @@ AI.prototype.scoreCultTrackVP_ = function(player, cult, num, cap) {
   if(num == 0) return 0;
 
   var result = 0;
-  
+
   var highestother = -1; //highest value other players have on this track
   for(var i = 0; i < game.players.length; i++) {
     if(i == player.index) continue; //don't count self

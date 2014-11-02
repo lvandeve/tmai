@@ -42,11 +42,11 @@ function loadGameState(fromgame) {
     logEl.innerHTML = logText;
   }
   // These objects were only in the save object, but should not be in the game object.
-  game.state = undefined;
-  game.logText = undefined;
+  delete game.state;
+  delete game.logText;
 
   waterDistanceCalculated = [];
-  createColorToPlayerMap();
+  recalculateColorMaps();
   calculateTownClusters();
   //calculateNetworkClusters();
 }
@@ -75,7 +75,7 @@ function serializeGameState(fromgame) {
   var comma = false;
 
   result += 'size:\n';
-  result += '' + fromgame.bw + ',' + fromgame.bh;
+  result += '' + fromgame.bw + ',' + fromgame.bh + ',' + fromgame.btoggle;
   result += '\n';
 
   result += '\nlandscape:\n';
@@ -176,12 +176,25 @@ function serializeGameState(fromgame) {
   }
   result += '\n';
 
+  result += '\noptions:\n';
+  comma = false;
+  if(state.newcultistsrule) { result += 'newcultistsrule'; comma = true; }
+  if(state.towntilepromo2013) { if(comma) result += ','; result += 'towntilepromo2013'; comma = true; }
+  if(state.bonustilepromo2013) { if(comma) result += ','; result += 'bonustilepromo2013'; comma = true; }
+  if(state.fireice) { if(comma) result += ','; result += 'fireice'; comma = true; }
+  result += '\n';
+
+  result += '\nrules:\n';
+  result += 'scoring=' + finalScoringCodeNames[fromgame.finalscoring];
+  result += '\n';
+
   for(var i = 0; i < fromgame.players.length; i++) {
     var p = fromgame.players[i];
     result += '\nplayer:\n';
 
     result += 'bio=';
-    result += p.name + ',' + (p.human ? 'human' : 'ai') + ',' + getFactionCodeName(p.faction) + ',' + colorCodeName[p.color] + '\n'
+    result += p.name + ',' + (p.human ? 'human' : 'ai') + ',' + getFactionCodeName(p.getFaction()) + ',' +
+        colorCodeName[p.color] + ',' + colorCodeName[p.auxcolor] + ',' + colorCodeName[p.woodcolor] + '\n'
 
     result += 'passed=';
     result += p.passed + '\n';
@@ -238,7 +251,7 @@ function serializeGameState(fromgame) {
     result += 'vpreason=';
     comma = false;
     var vpbreakdown = '';
-    for(name in p.vp_reason) {
+    for(var name in p.vp_reason) {
       if(comma) vpbreakdown += ',';
       vpbreakdown += name + ' ' + p.vp_reason[name];
       comma = true;
@@ -248,7 +261,7 @@ function serializeGameState(fromgame) {
     result += 'vpdetail=';
     comma = false;
     vpbreakdown = '';
-    for(name in p.vp_detail) {
+    for(var name in p.vp_detail) {
       if(comma) vpbreakdown += ',';
       vpbreakdown += name + ' ' + p.vp_detail[name];
       comma = true;
@@ -268,14 +281,14 @@ function parseLabelPart(text, label, n) {
   if(!n) n = 0;
   var begin = text.indexOf(label) + label.length;
   if(begin < label.length) return null;
-  while(begin < text.length && text.charCodeAt(begin) < 32) begin++; //skip newlines
   while(n > 0) {
     n--;
     begin = text.indexOf(label, begin) + label.length;
     if(begin < label.length) return null;
   }
   var end = text.indexOf(':', begin + label.length + 1);
-  if(end < 0) end = text.length
+  if(end < 0) end = text.length;
+  while(begin < text.length && text.charCodeAt(begin) < 32) begin++; //skip newlines
   while(text.charCodeAt(end) > 32) end--; //skip to previous line
   if(end <= begin) return '';
   return text.substring(begin, end);
@@ -361,9 +374,10 @@ function deSerializeGameStateNewFormat(text) {
 
   s = parseLabelPart(text, 'size:');
   el = getCommas(s);
-  if(el.length != 2) return null;
+  if(el.length < 2) return null;
   result.bw = parseInt(el[0]);
   result.bh = parseInt(el[1]);
+  result.btoggle = (el[2] == 'true');
 
   s = parseWorldString(text, 'landscape:');
   if(!s || s.length < result.bw * result.bh) return null;
@@ -479,6 +493,27 @@ function deSerializeGameStateNewFormat(text) {
     result.state.leecharray.push([parseInt(t[0]), parseInt(t[1])]);
   }
 
+  s = parseLabelPart(text, 'options:');
+  if(s || s == '' /*empty string is falsy*/) {
+    result.state.newcultistsrule = stringContains(s, 'newcultistsrule');
+    result.state.towntilepromo2013 = stringContains(s, 'towntilepromo2013');
+    result.state.bonustilepromo2013 = stringContains(s, 'bonustilepromo2013');
+    result.state.fireice = stringContains(s, 'fireice');
+  }
+
+  s = parseLabelPart(text, 'rules:');
+  if(s || s == '' /*empty string is falsy*/) {
+    lines = getNonEmptyLines(s);
+    if(lines.length != 1) return null;
+    d = decomposeEqualsLine(lines[0]);
+    if(d[0] != 'scoring') return null;
+    el = getCommas(d[1]);
+    if(el.length == 0) return null;
+    result.finalscoring = nameToFinalScoring[el[0]];
+  } else {
+    result.finalscoring = nameToFinalScoring['network'];
+  }
+
   var index = 0;
   result.players = [];
   while(true) {
@@ -497,14 +532,17 @@ function deSerializeGameStateNewFormat(text) {
     d = decomposeEqualsLine(lines[0]);
     if(d[0] != 'bio') return null;
     el = getCommas(d[1]);
-    if(el.length != 4) return null;
+    if(el.length != 4 && el.length != 5 && el.length != 6) return null;
     player.name = el[0];
     player.human = (el[1] == 'human');
     if(player.human) player.actor = new Human();
     else player.actor = new AI();
-    player.faction = codeNameToFaction(el[2]);
+    player.setFaction(codeNameToFaction(el[2]));
     player.color = codeNameToColor[el[3]];
-    initPlayerFactionStats(player);
+    player.auxcolor = (el.length > 4 ? codeNameToColor[el[4]] : player.color);
+    player.woodcolor = (el.length > 5 ? codeNameToColor[el[5]] : player.color);
+    
+    player.getFaction().setStartSituation(player); //this also inits resources and cults, so ensure that those get loaded after this, not before
 
     d = decomposeEqualsLine(lines[1]);
     if(d[0] != 'passed') return null;
@@ -596,7 +634,14 @@ function deSerializeGameStateNewFormat(text) {
     el = getCommas(d[1]);
     for(var i = 0; i < el.length; i++) {
       var t = getSpaces(el[i]);
-      player.vp_detail[t[0]] = parseInt(t[1]);
+      if(t.length > 1) {
+        var name = '';
+        for(var j = 0; j < t.length - 1; j++) {
+          if(j > 0) name += ' ';
+          name += t[j];
+        }
+        player.vp_detail[name] = parseInt(t[t.length - 1]);
+      }
     }
 
     // values deduced from the rest:
@@ -607,7 +652,7 @@ function deSerializeGameStateNewFormat(text) {
     if(player.faction == F_FAKIRS) {
       player.tunnelcarpetdistance = 1;
       if(built_sh(player)) player.tunnelcarpetdistance++;
-      player.tunnelcarpetdistance += player.towntiles[T_TW_4VP_SHIP];
+      if(player.towntiles[T_TW_4VP_SHIP]) player.tunnelcarpetdistance += player.towntiles[T_TW_4VP_SHIP];
     }
     player.bonusshipping = player.bonustile == T_BON_3PW_SHIP ? 1 : 0;
 
@@ -633,7 +678,7 @@ function deSerializeGameStateLegacyFormat(text) {
 
   var legacycolors = {'n':'N', 'R':'R', 'Y':'Y', 'O':'U', 'K':'K', 'B':'B', 'G':'G', 'E':'S', 'i':'I'};
   // The order (index) of the array is legacy, the contents are the index converted to the current value.
-  var legacyfactions = [F_NONE, F_GENERIC, 0, F_CHAOS, F_GIANTS,
+  var legacyfactions = [F_NONE, F_NONE /*F_GENERIC*/, 0, F_CHAOS, F_GIANTS,
       F_FAKIRS, F_NOMADS, F_HALFLINGS, F_CULTISTS, F_ALCHEMISTS, F_DARKLINGS,
       F_MERMAIDS, F_SWARMLINGS, F_AUREN, F_WITCHES, F_ENGINEERS, F_DWARVES];
   // without the new bonus tiles etc..., these make the numbers differ from the old format
@@ -883,114 +928,3 @@ function deSerializeGameStateLegacyFormat(text) {
   return deSerializeGameStateNewFormat(result);
 }
 
-var snellmanunittesttext = '';
-
-function deSerializeGameStateSnellmanLog_(text) {
-  // Remove "show history"
-  text = text.replace(/show history/g, '');
-  // It contains the commands as typed by players, so be case-insensitive
-  text = text.toLowerCase();
-
-  globalSnellmanParseDone = false;
-  snellmanunittesttext = 'show history\n';
-
-  game = new Game();
-  state = new State();
-  logText = '';
-  state.newcultistsrule = stringContains(text, 'errata-cultist-power');
-  state.towntilepromo2013 = stringContains(text, 'mini-expansion-1');
-  state.bonustilepromo2013 = stringContains(text, 'shipping-bonus');
-
-  if(state.newcultistsrule) snellmanunittesttext += 'option errata-cultist-power\n';
-  if(state.towntilepromo2013) snellmanunittesttext += 'option mini-expansion-1\n';
-  if(state.bonustilepromo2013) snellmanunittesttext += 'option shipping-bonus\n';
-
-  initStandardWorld();
-  initBoard();
-
-  var players = findSnellmanPlayersAndFactions(text);
-  
-  players.length;
-  game.players.length = players.length;
-
-  for(var i = 0; i < players.length; i++) {
-    var player = new Player();
-    player.index = i;
-    player.name = players[i][1];
-    player.human = false;
-    var actor = new SnellmanActor();
-    player.actor = actor;
-    actor.factionkey = toSnellmanFaction(players[i][0]);
-
-    game.players[i] = player;
-  }
-
-  var lines = getNonEmptyLines(text);
-
-  var removed = false;
-  for(var i = 0; i < lines.length; i++) {
-    if(stringContains(lines[i], 'removing tile')) {
-      var words = getWords(lines[i]);
-      for(var j = 0; j < words.length; j++) {
-        if(words[j] == 'removing') game.bonustiles[fromSnellmanTile[words[j + 2]]] = 0;
-      }
-      removed = true;
-      snellmanunittesttext += lines[i].trim() + '\n';
-    }
-    else if(removed) break; //done
-  }
-
-  for(var i = 1; i <= 6; i++) {
-    var pos = text.indexOf('round ' + i + ' scoring: score');
-    game.roundtiles[i] = fromSnellmanTile['score' + text.charAt(pos + 22)];
-    snellmanunittesttext += 'round ' + i + ' scoring: ' + toSnellmanTile[game.roundtiles[i]] + '\n';
-  }
-
-  for(var i = 0; i < players.length; i++) snellmanunittesttext += 'player ' + (i + 1) + ': ' + game.players[i].name + '\n';
-  for(var i = 0; i < players.length; i++) snellmanunittesttext += toSnellmanFaction(players[i][0]) + ' income_for_faction\n';
-
-  var pointer = [snellmanunittesttext];
-  var moves = filterSnellmanMoves(text, players, pointer);
-  snellmanunittesttext = pointer[0];
-  for(var i = 0; i < players.length; i++) game.players[i].actor.lines = moves[i];
-
-  initialGameLogMessage();
-
-  var count = 0;
-  state.type = S_INIT_FACTION;
-  gameLoopBlocking(function() {
-    count++;
-    return globalSnellmanParseDone || count > lines.length;
-  });
-
-  // Make the players human and AI (TODO: which player should become the human? --> The one who is supposed to do an action now. That check can be combined with the isFinishedFun
-  // of gameLoopBlocking: if all lines consumed, that one must be the player supposed to take an action next)
-  for(var i = 0; i < players.length; i++) {
-    var human = true;
-    var player = game.players[i];
-    player.human = human;
-    player.actor = human ? new Human() : new AI();
-  }
-
-  var result = clone(game);
-  result.logText = logText;//text.replace(/\n/g, '<br/>');
-  result.state = state;
-
-  snellmanunittesttext = snellmanunittesttext.replace(/\n/g, '\\n\\\n');
-  
-  return result;
-}
-
-function deSerializeGameStateSnellmanLog(text) {
-  var temp = saveGameState(game, state, logText);
-  try {
-    var result = deSerializeGameStateSnellmanLog_(text)
-    loadGameState(temp);
-    return result;
-  }
-  catch(e) {
-    console.log(e + ' ' + e.stack);
-    loadGameState(temp);
-    return null;
-  }
-}

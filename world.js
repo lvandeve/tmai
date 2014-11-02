@@ -25,14 +25,6 @@ freely, subject to the following restrictions:
 
 //hex math and world map, and some rules related to buildings and towns
 
-//returns the power value of a building
-//given building may not be B_NONE or undefined.
-function getBuildingPower(building) {
-  if(building == B_MERMAIDS) return 0;
-  if(building == B_D) return 1;
-  if(building == B_TP || building == B_TE) return 2;
-  return 3;
-}
 
 //when forming a town, you need 4 buildings in the cluster. However, the mermaids skipped river tile does not count, and the sanctuary counts for 2. This function encapsulates that knowledge.
 //given building may not be B_NONE or undefined.
@@ -75,6 +67,23 @@ function bridgeCo(x, y, dir) {
   return [x, y]; //ERROR
 }
 
+var worldNames = []; // names for the dropdown
+var worldGenerators = []; // array of functions that generate a world: takes parameter "game", sets game.bw, game.bh, game.btoggle and game.world array.
+var worldCodeNames = [];
+var codeNameToWorld = {}; //name to index
+
+function registerWorld(name, codename, fun) {
+  worldNames.push(name);
+  worldCodeNames.push(codename);
+  worldGenerators.push(fun);
+  codeNameToWorld[codename] = worldNames.length - 1;
+}
+
+
+registerWorld('Standard', 'standard', initStandardWorld);
+registerWorld('Randomized*', 'randomized', bind(randomizeWorld, false));
+registerWorld('Randomized Small*', 'randomized_small', bind(randomizeWorld, true));
+
 var standardWorld = [U,S,G,B,Y,R,U,K,R,G,B,R,K,
                       Y,I,I,U,K,I,I,Y,K,I,I,Y,N,
                      I,I,K,I,S,I,G,I,G,I,S,I,I,
@@ -85,15 +94,18 @@ var standardWorld = [U,S,G,B,Y,R,U,K,R,G,B,R,K,
                       Y,B,U,I,I,I,B,K,I,S,U,S,N,
                      R,K,S,B,R,G,Y,U,S,I,B,G,R];
 
+
 //The world array has the color of each hex. It is inited with the standard world map.
-function initStandardWorld() {
+function initStandardWorld(game) {
   game.bw = 13;
   game.bh = 9;
+  game.btoggle = false;
   game.world = clone(standardWorld);
 }
 
 function randomizeWorld(small) {
   var world = game.world;
+  game.btoggle = false;
 
   var NUMISLANDS = 5;
   var NUMPERCOLOR = 11;
@@ -262,6 +274,60 @@ function randomizeWorld(small) {
   }
 }
 
+//slightly different format than in the savegame: semicolons denote the width
+function serializeWorld() {
+  var result = '';
+  for(var y = 0; y < game.bh; y++) {
+    var w = game.bw;
+    if(y % 2 == 1) {
+      result += ' ';
+      w--;
+    }
+    for(var x = 0; x < w; x++) {
+      result += colorCodeName[getWorld(x, y)];
+      result += ((x + 1 < w) ? ',' : ';');
+    }
+    if(y + 1 != game.bh) result += '\n';
+  }
+  return result;
+}
+
+//slightly different format than in the savegame: semicolons denote the width
+function parseWorld(text) {
+  var lines = text.split(';');
+
+  game.bh = lines.length - 1;
+  game.bw = 0;
+  var l = lines[0];
+  for(var j = 0; j < l.length; j++) {
+    var c = l.charAt(j);
+    if(codeNameToColor[c] != undefined) game.bw++;
+  }
+
+  for(var y = 0; y < game.bh; y++)
+  for(var x = 0; x < game.bw; x++)
+  {
+    setWorld(x, y, (y % 2 == 1 && x + 1 >= game.bw) ? N : I);
+  }
+
+  var x = 0;
+  var y = 0;
+  for(var i = 0; i < lines.length; i++) {
+    var l = lines[i];
+    for(var j = 0; j < l.length; j++) {
+      var c = l.charAt(j);
+      if(codeNameToColor[c] != undefined) {
+        setWorld(x, y, codeNameToColor[c]);
+        x++;
+        if(x >= game.bw || (y % 2 == 1 && x + 1 >= game.bw)) break;
+      }
+    }
+    x = 0;
+    y++;
+    if(y >= game.bh) break;
+  }
+}
+
 function setWorld(x, y, color) {
   game.world[arCo(x, y)] = color;
 }
@@ -278,7 +344,6 @@ function initBridges(bridges, bw, bh) {
     bridges[arCo2(x, y, bw)] = [ N, N, N ];
   }
 }
-initBridges(game.bridges, game.bw, game.bh);
 
 function initBuildings(buildings, bw, bh) {
   buildings.length = 0;
@@ -288,12 +353,12 @@ function initBuildings(buildings, bw, bh) {
     buildings[arCo2(x, y, bw)] = [ B_NONE, N ];
   }
 }
-initBuildings(game.buildings, game.bw, game.bh);
 
 function setBuilding(x, y, building, color) {
   game.buildings[arCo(x, y)] = [building, color];
 }
 
+// returns array of [building enum, woodcolor]
 function getBuilding(x, y) {
   return game.buildings[arCo(x, y)];
 }
@@ -351,7 +416,9 @@ function calculateClustersGeneric(clusters, clustermap, isBuildingFun, getConnec
     clustermap[arCo(x, y)] = 0;
   }
   clusters.length = 0; //clear an array while keeping the references to it
+  // TODO: why is this dummy cluster there? Maybe to indicate which tiles belong to no cluster? If so, document that.
   clusters[0] = {};
+  clusters[0].color = N; //Not any player
   clusters[0].tiles = [];
   clusters[0].power = 0;
   clusters[0].townamount = 0;
@@ -372,10 +439,8 @@ function calculateClustersGeneric(clusters, clustermap, isBuildingFun, getConnec
     cluster.townamount = 0;
     cluster.networkamount = 0;
     cluster.color = b[1];
-    var player = game.players[colorToPlayerMap[cluster.color]];
-    if(!player) {
-      throw new Error('no player for building color');
-    }
+    var player = game.players[woodColorToPlayerMap[cluster.color]];
+    if(!player) throw new Error('no player for building color');
     while(stack.length > 0) {
       var t = stack.pop();
       if(clustermap[arCo(t[0], t[1])] != 0) continue; //already handled
@@ -385,7 +450,7 @@ function calculateClustersGeneric(clusters, clustermap, isBuildingFun, getConnec
       cluster.tiles.push(t);
       // The values for forming a town, when power is >= 7 (or >= 6 for some players), and amount >= 4, it's a town (Sanctuary has getBuildingTownSize=2 to represent its ability to form a town with 3 buildings, so 4 always works)
       // NOTE: for the end game network scoring, use "tiles.length" instead (and call this with the reachable rather than connected tiles function)
-      cluster.power += getBuildingPower(b2[0]);
+      cluster.power += player.getFaction().getBuildingPower(b2[0]);
       cluster.townamount += getBuildingTownSize(b2[0]);
       cluster.networkamount += (b2[0] == B_MERMAIDS ? 0 : 1);
       stack = stack.concat(getConnectedTilesFun(player, t[0], t[1]));
@@ -394,6 +459,7 @@ function calculateClustersGeneric(clusters, clustermap, isBuildingFun, getConnec
 }
 
 //for biggest network end game scoring.
+//similar to townclusters and townmap, but for connected networks that span over rivers, dwarve/fakir tunneling, ...
 var networkclusters = [];
 var networkmap = [];
 
@@ -407,7 +473,7 @@ function calculateNetworkClusters() {
 function getBiggestNetwork(player) {
   var result = 0;
   for(var i = 0; i < networkclusters.length; i++) {
-    if(networkclusters[i].color == player.color) result = Math.max(result, networkclusters[i].networkamount);
+    if(networkclusters[i].color == player.woodcolor) result = Math.max(result, networkclusters[i].networkamount);
   }
   return result;
 }
@@ -415,7 +481,8 @@ function getBiggestNetwork(player) {
 
 //clusters and the townmap, for clusters of buildings (potentially forming a town). All buildings touching or connected by bridge form a cluster.
 //The townmap value is an index in the clusters array.
-//An element of the clusters array, is an array of coordinates forming that cluster. Each coordinate itself is of the form [x,y]
+//townclusters is an array with cluster index as index, object with color,tiles(array of[x,y]),power,townamount,netamount as value
+//The townmap is an array with world 1D arco coordinate as index, and cluster index as value
 var townclusters = [];
 var townmap = [];
 
@@ -426,23 +493,26 @@ function calculateTownClusters() {
   });
 }
 
-//index must be > 0
+//index must be > 0. It is an index in the clusters array.
 function getTownClusterColor(index) {
   return townclusters[index].color;
 }
 
 //returns whether new town is formed after an upgrade of an existing building. reqpower = 6 or 7
 //returns empty array if no town is formed, array with the cluster index of which this building was part otherwise (for consistency with the next functions)
-function makesNewTownByUpgrade(x, y, building, reqpower) {
-  if(building == B_TE) return false; //TP->TE keeps same power, no new town can be formed this way
+function makesNewTownByUpgrade(player, x, y, frombuilding, tobuilding, reqpower) {
+  var frompower = player.getFaction().getBuildingPower(frombuilding);
+  var topower = player.getFaction().getBuildingPower(tobuilding);
+  var diff = topower - frompower;
+  if(diff <= 0) return false; //TP->TE keeps same power, no new town can be formed this way
   var index = townmap[arCo(x, y)];
   var cluster = townclusters[index];
-  var power = cluster.power + 1; //all upgrades increase power by one, except to TE which is already canceled out above.
-  var amount = cluster.townamount + (building == B_SA ? 1 : 0); //sanctuary counts for amount 2
+  var power = cluster.power + diff; //all upgrades increase power by one, except to TE which is already canceled out above.
+  var amount = cluster.townamount + (tobuilding == B_SA ? 1 : 0); //sanctuary counts for amount 2
   if(amount >= TOWNWAMOUNT && power >= reqpower) {
     //only if it makes new town, not if it already existed before as town.
     //so either if the power reached exactly the required power, or, in case of SA upgrade, the amount reached the exact required amount
-    if(power == reqpower || (amount == TOWNWAMOUNT && amount != cluster.townamount)) return [index]
+    if((power >= reqpower && (power - diff < reqpower)) || (amount == TOWNWAMOUNT && amount != cluster.townamount)) return [index]
     return [];
   }
   return [];
@@ -485,7 +555,9 @@ function makesNewTownByConnectingTiles(tiles, currentpower, currentamount, reqpo
 //returns empty array if no town is formed, array of all the connected clusters otherwise (can be more than 1 if multiple clusters got joined together, they don't get a new single index at this point however)
 function makesNewTownByBuilding(x, y, building, reqpower, color) {
   var tiles = getConnectedTiles(x, y);
-  return makesNewTownByConnectingTiles(tiles, getBuildingPower(building), getBuildingTownSize(building), reqpower,  color);
+  var player = game.players[woodColorToPlayerMap[color]];
+  if(!player) throw new Error('no player for building color');
+  return makesNewTownByConnectingTiles(tiles, player.getFaction().getBuildingPower(building), getBuildingTownSize(building), reqpower,  color);
 }
 
 //returns whether new town is formed when placing a bridge there. reqpower = 6 or 7
@@ -580,7 +652,7 @@ function updateTestClusters(action, testclusters, testmap, testconnections, colo
 
     addToTestConnections(testconnections, action.cos[0], action.cos[1]);
     addToTestConnections(testconnections, action.cos[1], action.cos[0]);
-    
+
     oldc0.obsolete = newi;
     oldc1.obsolete = newi;
 
@@ -704,15 +776,15 @@ function actionsCreateTown(player, actions, action) {
       if(a.favtiles[j] == T_FAV_2F_6TW) {
         reqpower = 6; //from now on for next actions this reqpower is used
         if(iscurrent) {
-          var tw = getPlayerTownsOfSize6(player.color, testclusters);
+          var tw = getPlayerTownsOfSize6(player.woodcolor, testclusters);
           for(var k = 0; k < tw.length; k++) involved[tw[k]] = 1;
         }
       }
     }
 
-    var result = updateTestClusters(a, testclusters, testmap, testconnections, player.color);
+    var result = updateTestClusters(a, testclusters, testmap, testconnections, player.woodcolor);
     var c = result[0];
-    
+
     if(c != 0 && iscurrent && testclusters[c].power >= reqpower && testclusters[c].townamount >= 4) {
       var oldc = result[1];
       var extrapower = result[2];
@@ -774,7 +846,7 @@ function actionsCreateTowns(player, actions, numactions) {
     for(var j = 0; j < a.favtiles.length; j++) {
       if(a.favtiles[j] == T_FAV_2F_6TW) {
         reqpower = 6; //from now on for next actions this reqpower is used
-        var tw = getPlayerTownsOfSize6(player.color, testclusters);
+        var tw = getPlayerTownsOfSize6(player.woodcolor, testclusters);
         for(var k = 0; k < tw.length; k++) {
           involved[tw[k]] = 1;
           result[i]++;
@@ -784,9 +856,9 @@ function actionsCreateTowns(player, actions, numactions) {
       }
     }
 
-    var updated = updateTestClusters(a, testclusters, testmap, testconnections, player.color);
+    var updated = updateTestClusters(a, testclusters, testmap, testconnections, player.woodcolor);
     var c = updated[0];
-    
+
     if(c != 0 && testclusters[c].power >= reqpower && testclusters[c].townamount >= 4) {
       var oldc = updated[1]; //removed clusters (if any)
       var extrapower = updated[2];
@@ -819,7 +891,7 @@ function actionsCreateTowns(player, actions, numactions) {
       }
     }
   }
-  
+
   return result;
 }
 
@@ -843,43 +915,60 @@ function isInTown(x, y) {
   if(!index) return false;
   var cluster = townclusters[index];
   var color = getTownClusterColor(index);
-  var player = game.players[colorToPlayerMap[color]];
+  var player = game.players[woodColorToPlayerMap[color]];
   return cluster && cluster.power >= getTownReqPower(player) && cluster.townamount >= 4;
 }
 
 
 //out of range of the hex board
 function outOfBounds(x, y) {
-  return x < 0 || y < 0 || x >= game.bw || y >= game.bh || (y % 2 == 1 && x == game.bw - 1);
+  if(x < 0 || y < 0 || x >= game.bw || y >= game.bh) return true;
+
+  // TODO: is this check actually needed? Those tiles are already of type "N".
+  if(game.btoggle ) {
+    if(y % 2 == 0 && x == 0) return true;
+  } else {
+    if(y % 2 == 1 && x == game.bw - 1) return true;
+  }
+
+  return false;
 }
 
-//costly: whether to include connections with extra cost: dwarves tunneling and fakirs carpets
-function networkConnected(player, x0, y0, x1, y1, costly) {
+//Checks if two tiles are connected by the player's land or shipping ability, but does NOT take intermediate jumps using
+//other buildings of the player into account, so does not determine if two far apart buildings are connected to each other through the whole players network.
+//tunnelcarpet: whether to include connections with extra cost: dwarves tunneling and fakirs carpets
+function networkConnected(player, x0, y0, x1, y1, tunnelcarpet) {
   if(landConnected(x0, y0, x1, y1)) {
     return true;
   }
   if(waterDistance(x0, y0, x1, y1) <= getShipping(player) /*this should be always 0 for dwarves and fakirs, hence correctly supporting their non-shipping*/) {
     return true;
   }
-  if(costly && factionConnected(player, x0, y0, x1, y1)) {
+  if(tunnelcarpet && factionConnected(player, x0, y0, x1, y1)) {
     return true;
   }
   return false;
 }
 
 //is this tile in reach by one of the buildings of this color?
-//costly: whether to include connections with extra cost: dwarves tunneling and fakirs carpets
-function inReach(player, x, y, costly) {
-  var color = player.color;
+//tunnelcarpet: whether to include connections with extra cost: dwarves tunneling and fakirs carpets
+function inReach(player, x, y, tunnelcarpet) {
+  return inReachButDontCountCo(player, x, y, tunnelcarpet, null);
+}
+
+//dongcountco: coordinates to exclude for reachability, e.g. because player just built dwelling there. May be null/undefined to allow all coords
+function inReachButDontCountCo(player, x, y, tunnelcarpet, dontcountco) {
+  var color = player.woodcolor;
   var extra = getShipping(player);
   if(player.faction == F_DWARVES || player.faction == F_FAKIRS) extra = player.tunnelcarpetdistance + 1;
   if(extra < 1) extra = 1; //for bridges
-  for(tx = x - extra - 1; tx <= x + extra + 1; tx++)
-  for(ty = y - extra - 1; ty <= y + extra + 1; ty++) {
+  for(var tx = x - extra - 1; tx <= x + extra + 1; tx++)
+  for(var ty = y - extra - 1; ty <= y + extra + 1; ty++) {
     if(outOfBounds(tx, ty)) continue;
+    if(dontcountco && tx == dontcountco[0] && ty == dontcountco[1]) continue;
     var building = getBuilding(tx, ty);
     if(building[0] == B_NONE || building[0] == B_MERMAIDS || building[1] != color) continue;
-    if(networkConnected(player, x, y, tx, ty, costly)) {
+    if(networkConnected(player, x, y, tx, ty, tunnelcarpet)) {
       return true;
     }
   }
@@ -887,17 +976,17 @@ function inReach(player, x, y, costly) {
 }
 
 //get all tiles reachable from x,y for the given player (this assumes the player has a building on x,y), reachable through shipping etc... too.
-//costly: whether to include connections with extra cost: dwarves tunneling and fakirs carpets
-function getReachableTiles(player, x, y, costly) {
+//tunnelcarpet: whether to include connections with extra cost: dwarves tunneling and fakirs carpets
+function getReachableTiles(player, x, y, tunnelcarpet) {
   var result = [];
-  var color = player.color;
+  var color = player.woodcolor;
   var extra = getShipping(player);
   if(player.faction == F_DWARVES || player.faction == F_FAKIRS) extra = player.tunnelcarpetdistance + 1;
   if(extra < 1) extra = 1; //for bridges
   for(tx = x - extra - 1; tx <= x + extra + 1; tx++)
   for(ty = y - extra - 1; ty <= y + extra + 1; ty++) {
     if(outOfBounds(tx, ty)) continue;
-    if(networkConnected(player, x, y, tx, ty, costly)) {
+    if(networkConnected(player, x, y, tx, ty, tunnelcarpet)) {
       result.push([tx,ty]);
     }
   }
@@ -916,7 +1005,7 @@ function factionConnected(player, x0, y0, x1, y1) {
 
 function onlyReachableThroughFactionSpecial(player, x, y) {
   if(player.faction != F_FAKIRS && player.faction != F_DWARVES) return false;
-  return !hasOwnNeighbor(x, y, player.color) && inReach(player, x, y, true);
+  return !hasOwnNeighbor(x, y, player.woodcolor) && inReach(player, x, y, true);
 }
 
 function onlyReachableThroughFactionSpecialWithBackupWorldBuildings(player, x, y, backupbuildings) {
@@ -988,6 +1077,7 @@ function getBridge(x0, y0, x1, y1, color) {
   }
   else if(dir == D_NW) {
     var co = dirCo(x0 - 1, y0, D_NW);
+    if(!co) return N; //out of bounds
     return game.bridges[arCo(co[0], co[1])][2];
   }
   else if(dir == D_N) {
@@ -1011,24 +1101,15 @@ function isOccupiedByOther(x, y, color) {
   return getBuilding(x, y)[0] != B_NONE && getBuilding(x, y)[1] != color;
 }
 
-/*
-conditions for bridge:
-2 tiles distance two with corners towards each other
-water on both bridge sides
-land on both bridge ends
-no other bridge there yet already
-player building of their color on at least one side
-*/
-function canHaveBridge(x0, y0, x1, y1, color) {
+// function testBridge(a, b) { var ac = parsePrintCo(a); var bc = parsePrintCo(b); return worldCanHaveBridge(ac[0], ac[1], bc[0], bc[1]); }
+function worldCanHaveBridge(x0, y0, x1, y1) {
   if(y0 < y1) {
     var temp;
     temp = x0; x0 = x1; x1 = temp;
     temp = y0; y0 = y1; y1 = temp;
   }
   if(outOfBounds(x0, y0) || outOfBounds(x1, y1)) return false;
-  if(!isOccupiedBy(x0, y0, color) && !isOccupiedBy(x1, y1, color)) return false;
   if(getWorld(x0, y0) == N || getWorld(x1, y1) == N) return false;
-  if(getBridge(x0, y0, x1, y1) != N) return false; //already bridge there
   var co1;
   var co2;
 
@@ -1048,10 +1129,35 @@ function canHaveBridge(x0, y0, x1, y1, color) {
   }
   else return false;
 
-  if(!co1 || !co2) return false; //vertical at edge of map
-  
-  return getWorld(co1[0], co1[1]) == I && getWorld(co2[0], co2[1]) == I
-   && getWorld(x0, y0) != I && getWorld(x1, y1) != I;
+  // N if N in the data or if beyond edge of map
+  var w1 = (co1 ? getWorld(co1[0], co1[1]) : N);
+  var w2 = (co2 ? getWorld(co2[0], co2[1]) : N);
+
+  // Both sides must be water, but ONE of them may also be N
+  if(w1 != I && w2 != I) return false;
+  if(!(w1 == I || w1 == N) || !(w2 == I || w2 == N)) return false;
+
+  // Start and end point must NOT be water
+  if(getWorld(x0, y0) == I || getWorld(x1, y1) == I) return false;
+
+  return true;
+}
+
+/*
+conditions for bridge:
+2 tiles distance two with corners towards each other
+water on both bridge sides
+land on both bridge ends
+no other bridge there yet already
+player building of their color on at least one side
+*/
+function canHaveBridge(x0, y0, x1, y1, color) {
+  if(!worldCanHaveBridge(x0, y0, x1, y1)) return false;
+
+  if(!isOccupiedBy(x0, y0, color) && !isOccupiedBy(x1, y1, color)) return false;
+  if(getBridge(x0, y0, x1, y1) != N) return false; //already bridge there
+
+  return true;
 }
 
 //init an array to become an array of size game.bh*game.bw with the given value in each element
@@ -1077,7 +1183,7 @@ function waterDistance(x0, y0, x1, y1) {
     initWorldArray(visited, false);
     visited[arCo(x0, y0)] = true;
     var queue = [[x0, y0]];
-    
+
     while(queue.length > 0)
     {
       var co = queue.shift();
@@ -1116,7 +1222,8 @@ function landConnected(x0, y0, x1, y1) {
   return hexDist(x0, y0, x1, y1) == 1 || getBridge(x0, y0, x1, y1) != N;
 }
 
-//do NOT use this for giants, use digDist in rules.js for player-dependent dig distance
+//do NOT use this for giants, use "digDist" for player-dependent dig distance
+//only supports the 7 circle colors
 function colorDist(color1, color2) {
   var result = Math.abs(color2 - color1);
   if(result > 3) result = 7 - result;

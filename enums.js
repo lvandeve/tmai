@@ -1,7 +1,7 @@
 /*
 TM AI
 
-Copyright (C) 2013 by Lode Vandevenne
+Copyright (C) 2013-2014 by Lode Vandevenne
 
 This software is provided 'as-is', without any express or implied
 warranty. In no event will the authors be held liable for any damages
@@ -24,63 +24,12 @@ freely, subject to the following restrictions:
 */
 //Game-rule related enums and their (code)name and description. (so not some other internal enums)
 
-//Faction enum
-var F_index = 0;
-var F_NONE = F_index++;
-//official factions
-var F_CHAOS = F_index++;
-var F_GIANTS = F_index++;
-var F_FAKIRS = F_index++;
-var F_NOMADS = F_index++;
-var F_HALFLINGS = F_index++;
-var F_CULTISTS = F_index++;
-var F_ALCHEMISTS = F_index++;
-var F_DARKLINGS = F_index++;
-var F_MERMAIDS = F_index++;
-var F_SWARMLINGS = F_index++;
-var F_AUREN = F_index++;
-var F_WITCHES = F_index++;
-var F_ENGINEERS = F_index++;
-var F_DWARVES = F_index++;
-//non official / debug factions
-var F_GENERIC = F_index++; //generic faction, has none of the properties of the actual factions
-
-var F_OFFICIAL_BEGIN = F_CHAOS;
-var F_OFFICIAL_END = F_DWARVES;
-var F_ALL_BEGIN = F_CHAOS;
-var F_ALL_END = F_GENERIC;
-
-//usable in savegame format (no spaces)
-var factionCodeNames_ = ['none', 'chaosmag',
-    'giants', 'fakirs', 'nomads', 'halflings', 'cultists', 'alchemists',
-    'darklings', 'mermaids', 'swarmlings', 'auren', 'witches', 'engineers',
-    'dwarves', 'generic'];
-
-function getFactionCodeName(faction) {
-  return factionCodeNames_[faction];
-}
-
-var codeNameToFaction_ = {};
-for(var i = 0; i < factionCodeNames_.length; i++) codeNameToFaction_[factionCodeNames_[i]] = i;
-
-function codeNameToFaction(name) {
-  return codeNameToFaction_[name];
-}
-
-var factionNames_ = ['None', 'Chaos Magicians',
-    'Giants', 'Fakirs', 'Nomads', 'Halflings', 'Cultists', 'Alchemists',
-    'Darklings', 'Mermaids', 'Swarmlings', 'Auren', 'Witches', 'Engineers',
-    'Dwarves', 'Generic'];
-
-function getFactionName(faction) {
-  return factionNames_[faction];
-}
 
 /*
 Tile color enum, 1-letter on purpose for land maps
 Color letters for now and for possible future expansions.
 rationale of letter choices:
-  river: I (rationale: second letter)
+  river: I (second letter)
   null/none: N
   red: R
   orange: O
@@ -91,11 +40,11 @@ rationale of letter choices:
   violet/purple: V
   magenta/pink: M
   white: W
-  grey/gray: S (rationale: "silver")
-  black: K (rationale: code for black in "CMYK")
-  brown: U (rationale: etymology "brun")
+  grey/gray: S ("silver")
+  black: K (code for black in "CMYK")
+  brown: U (etymology "brun")
 */
-var N = 0; /*edge of hexmap (null)*/
+var N = 0; /*none (edge of hexmap)*/
 var I = 1; /*river*/
 var R = 2; /*solitude (red)*/
 var Y = 3; /*desert (yellow)*/
@@ -104,15 +53,45 @@ var K = 5; /*swamp (black)*/
 var B = 6; /*lake (blue)*/
 var G = 7; /*forest (green)*/
 var S = 8; /*mountain (grey)*/
-var COLOR_BEGIN = I; //includes I because it also has a render color: white
-var COLOR_END = S;
+var W = 9; /*ice (white)*/
+var O = 10; /*lava (orange)*/
+var X = 11; /*any*/
+var Z = 12; /*many*/
+// All colors
+var COLOR_BEGIN = I; //includes I because it also has a render color (light blue)
+var COLOR_END = Z;
+// The possible landscape colors (also the possible colors of wooden pieces)
 var LANDSCAPE_BEGIN = R;
-var LANDSCAPE_END = S;
+var LANDSCAPE_END = O;
+// The 7 main circle colors
+var CIRCLE_BEGIN = R;
+var CIRCLE_END = S;
+// The possible faction colors
+var FACTION_COLOR_BEGIN = R;
+var FACTION_COLOR_END = Z;
 
-var colorCodeName = ['N' /*null, edge of hexmap*/, 'I' /*river*/, 'R', 'Y', 'U', 'K', 'B', 'G', 'S'];
+var colorCodeName = ['N' /*null, edge of hexmap*/, 'I' /*river*/, 'R', 'Y', 'U', 'K', 'B', 'G', 'S', 'W', 'O', 'X', 'Z'];
 var codeNameToColor = {};
 for(var i = 0; i < colorCodeName.length; i++) codeNameToColor[colorCodeName[i]] = i;
 
+function getColorName(color) {
+  switch(color) {
+    case N: return 'none';
+    case I: return 'river';
+    case R: return 'red';
+    case Y: return 'yellow';
+    case U: return 'brown';
+    case K: return 'black';
+    case B: return 'blue';
+    case G: return 'green';
+    case S: return 'grey';
+    case W: return 'white';
+    case O: return 'orange';
+    case X: return 'any';
+    case Z: return 'many';
+    default: return 'unknown';
+  }
+}
 
 
 //Buildings
@@ -163,10 +142,16 @@ var A_CONVERT_2C_1VP = A_index++; //alchemists only (TODO: remove this as action
 var A_CONVERT_1W_1P = A_index++; //darklings only, after building their SH, max 3 times (the SH upgrade action must precede)
 var A_CONVERT_ACTIONS_END = A_index++; //not an actual action, used for comparisons
 var A_CONNECT_WATER_TOWN = A_index++; //mermaids
+var A_ACOLYTES_CULT = A_index++; //using freecult from spades on cult tracks
 //Faction specific non-turn actions
 var A_DOUBLE = A_index++; //chaos magicians double action
 var A_TUNNEL = A_index++; //dwarves special ability.
 var A_CARPET = A_index++; //fakirs special ability.
+//Cheat actions
+var A_CHEAT_C = A_index++;
+var A_CHEAT_W = A_index++;
+var A_CHEAT_P = A_index++;
+var A_CHEAT_PW = A_index++;
 //Pass
 var A_PASS = A_index++;
 //Power resources
@@ -183,6 +168,8 @@ var A_GIANTS_2SPADE = A_index++;
 var A_TRANSFORM_CW = A_index++; //transform terrain clockwise 1 step
 var A_TRANSFORM_CCW = A_index++; //transform terrain counterclockwise 1 step
 var A_GIANTS_TRANSFORM = A_index++; //transform terrain to giants home color. Consumes two spades.
+var A_TRANSFORM_SPECIAL = A_index++; //transform to special terrain color
+var A_TRANSFORM_SPECIAL2 = A_index++; //transform to special terrain color 2
 var A_SANDSTORM = A_index++; //nomads sandstorm. No spades needed for this action.
 //The build dwelling actions
 var A_BUILD = A_index++; //build a dwelling. This action can either be on its own, or after any of the DIG actions
@@ -203,13 +190,14 @@ var A_AUREN_CULT = A_index++; //2 cult advances
 //Advance
 var A_ADV_SHIP = A_index++;
 var A_ADV_DIG = A_index++;
+var A_SHIFT = A_index++;
+var A_SHIFT2 = A_index++;
 //Bridge
 var A_POWER_BRIDGE = A_index++; //from the power action
 var A_ENGINEERS_BRIDGE = A_index++;
 //Debug
-var A_DEBUG_SKIP = A_index++; //skip a whole round for debug purposes (such as watching AI's)
-var A_DEBUG_STEP = A_index++; //skip an action for debug purposes (such as watching AI's)
-var A_CHEAT_PW = A_index++; //get 1pw
+var A_DEBUG_SKIP = A_index++; //skip a whole round for debug purposes (such as watching AI's) - pass, ignoring bonus tiles
+var A_DEBUG_STEP = A_index++; //skip an action for debug purposes (such as watching AI's) - do a no-op this turn
 var A_END = A_index++; //Not an action, last enum value
 
 
@@ -228,7 +216,12 @@ function getActionCodeName(type) {
     case A_CONVERT_2C_1VP: return '2cto1vp';
     case A_CONVERT_1W_1P: return '1wto1p';
     case A_CONNECT_WATER_TOWN: return 'watertown';
+    case A_ACOLYTES_CULT: return 'spadecult';
     case A_DOUBLE: return 'chaosdouble';
+    case A_CHEAT_C: return 'cheatc';
+    case A_CHEAT_W: return 'cheatw';
+    case A_CHEAT_P: return 'cheatp';
+    case A_CHEAT_PW: return 'cheatpw';
     case A_PASS: return 'pass';
     case A_POWER_1P: return 'pow1p';
     case A_POWER_2W: return 'pow2w';
@@ -243,6 +236,8 @@ function getActionCodeName(type) {
     case A_TRANSFORM_CW: return 'transformcw';
     case A_TRANSFORM_CCW: return 'transformccw';
     case A_GIANTS_TRANSFORM: return 'giantstransform';
+    case A_TRANSFORM_SPECIAL: return 'icetransform';
+    case A_TRANSFORM_SPECIAL2: return 'firetransform';
     case A_SANDSTORM: return 'sandstorm';
     case A_UPGRADE_TP: return 'upgradetp';
     case A_SWARMLINGS_TP: return 'swarmlingstp';
@@ -257,13 +252,14 @@ function getActionCodeName(type) {
     case A_AUREN_CULT: return 'aurencult2';
     case A_ADV_SHIP: return 'advshipping';
     case A_ADV_DIG: return 'advdigging';
+    case A_SHIFT: return 'shift';
+    case A_SHIFT2: return 'shift2';
     case A_POWER_BRIDGE: return 'powbridge';
     case A_ENGINEERS_BRIDGE: return 'engbridge';
     case A_TUNNEL: return 'tunnel';
     case A_CARPET: return 'carpet';
     case A_DEBUG_SKIP: return 'debugskip';
     case A_DEBUG_STEP: return 'debugstep';
-    case A_CHEAT_PW: return 'cheat1pw';
     default: return 'unknown';
   }
 }
@@ -380,6 +376,25 @@ function getTileCodeName(tile) {
   return 'unk';
 }
 
+function getTileVPDetail(tile) {
+  if(tile == T_BON_PASSDVP_2C) return 'bonus pass d';
+  if(tile == T_BON_PASSTPVP_1W) return 'bonus pass tp';
+  if(tile == T_BON_PASSSHSAVP_2W) return 'bonus pass sh/sa';
+  if(tile == T_BON_PASSSHIPVP_3PW) return 'bonus pass ship';
+  if(tile == T_FAV_1W_TPVP) return 'favor tp';
+  if(tile == T_FAV_1E_DVP) return 'favor d';
+  if(tile == T_FAV_1A_PASSTPVP) return 'favor pass tp';
+  if(tile == T_ROUND_DIG2VP_1E1C) return 'round dig';
+  if(tile == T_ROUND_TW5VP_4E1DIG) return 'round town';
+  if(tile == T_ROUND_D2VP_4W1P) return 'round d';
+  if(tile == T_ROUND_SHSA5VP_2F1W) return 'round sh/sa';
+  if(tile == T_ROUND_D2VP_4F4PW) return 'round d';
+  if(tile == T_ROUND_TP3VP_4W1DIG) return 'round tp';
+  if(tile == T_ROUND_SHSA5VP_2A1W) return 'round sh/sa';
+  if(tile == T_ROUND_TP3VP_4A1DIG) return 'round tp';
+  return '???';
+}
+
 var codeNameToTile_ = {};
 for(var i = T_NONE; i < T_TILE_ENUM_END; i++) codeNameToTile_[getTileCodeName(i)] = i;
 
@@ -466,9 +481,9 @@ function tileToHelpString(tile, prefix) {
   else if(tile == T_FAV_3E) result += '3 earth cult';
   else if(tile == T_FAV_3A) result += '3 air cult';
   else if(tile == T_FAV_2F_6TW) result += '2 fire cult + form towns at 6 instead of 7 power';
-  else if(tile == T_FAV_2W_CULT) result += '3 water cult + free cult action';
-  else if(tile == T_FAV_2E_1PW1W) result += '3 earth cult + 1pw and 1w income';
-  else if(tile == T_FAV_2A_4PW) result += '3 air cult + 4pw income';
+  else if(tile == T_FAV_2W_CULT) result += '2 water cult + free cult action';
+  else if(tile == T_FAV_2E_1PW1W) result += '2 earth cult + 1pw and 1w income';
+  else if(tile == T_FAV_2A_4PW) result += '2 air cult + 4pw income';
   else if(tile == T_FAV_1F_3C) result += '1 fire cult + 3c income';
   else if(tile == T_FAV_1W_TPVP) result += '1 water cult + 3vp when building tp';
   else if(tile == T_FAV_1E_DVP) result += '1 earth cult + 2vp when building d';
@@ -517,6 +532,9 @@ S_NONE = S_index++;
 S_PRE = S_index++; //Pre-game state, where you can choose options, amount of players, start player, ...
 //Initial states, each next state is either the same with a next player, or the next one (until S_ACTION is reached)
 S_INIT_FACTION = S_index++; //Choosing faction.
+S_INIT_FACTION_COLOR = S_index++; //Faction initialization: color
+S_INIT_FAVOR = S_index++; //Choosing initial favor tile.
+S_INIT_AUX_COLOR = S_index++; //Faction initialization: aux color
 S_INIT_DWELLING = S_index++; //Placing initial dwellings until all done.
 S_INIT_BONUS = S_index++; //Choosing initial bonus tile.
 //The most complex state, handles player taking actions on their turn, passing, rounds, and income between rounds.
@@ -524,6 +542,7 @@ S_ACTION = S_index++; //Taking actions, for 6 rounds long.
 //States between actions or caused by actions. Next state is again itself, or S_ACTION
 S_LEECH = S_index++; //Player making leeching decision
 S_CULTISTS = S_index++; //Cultists player choosing cult track after leeching
+S_CULT = S_index++; //Choosing cult track
 //States between rounds. Next state is again itself, or S_ACTION
 S_ROUND_END_DIG = S_index++; //Player digging due to round end cult bonus
 //Final state after all actions and rounds are done.
@@ -535,11 +554,15 @@ function getGameStateCodeName(state) {
     case S_NONE: return 'none';
     case S_PRE: return 'pre';
     case S_INIT_FACTION: return 'choose_faction';
+    case S_INIT_FACTION_COLOR: return 'choose_faction_color';
+    case S_INIT_FAVOR: return 'choose_favor';
+    case S_INIT_AUX_COLOR: return 'choose_aux_color';
     case S_INIT_DWELLING: return 'initial_dwelling';
     case S_INIT_BONUS: return 'initial_bonus';
     case S_ACTION: return 'action';
     case S_LEECH: return 'leech';
     case S_CULTISTS: return 'cultists';
+    case S_CULT: return 'cult';
     case S_ROUND_END_DIG: return 'round_dig';
     case S_GAME_OVER: return 'game_over';
   }
@@ -552,4 +575,36 @@ for(var i = S_NONE; i < S_ENUM_END; i++) codeNameToGameState_[getGameStateCodeNa
 function codeNameToGameState(name) {
   return codeNameToGameState_[name];
 }
+
+
+// Resources (cost or income)
+// The order (and enum values) match the order in resource-array objects
+var R_index = 0;
+R_NONE = -1;
+R_C = R_index++;
+R_W = R_index++;
+R_P = R_index++;
+R_PW = R_index++;
+R_VP = R_index++;
+R_PP = R_index++;
+R_KEY = R_index++;
+R_SPADE = R_index++;
+R_PT = R_index++;
+R_CULT = R_index++; //of any, but same, track, indicated by cult variable in action
+R_FREECULT = R_index++; // any cult (if multiple: splittable amongst tracks)
+R_PT0 = R_index++;
+R_PT1 = R_index++;
+R_PT2 = R_index++;
+R_DARKLINGCONVERTS = R_index++; // TODO: use this as a resource for player.darklingconverts action
+R_SPADEVP = R_index++; // *potential* spade-action VPs for if the round bonus point tile is there even though no digging was involved (for lava factions)
+R_FIRE = R_index++;
+R_WATER = R_index++;
+R_EARTH = R_index++;
+R_AIR = R_index++;
+R_B_D = R_index++; //TODO: use this as a resource for witches dwelling action
+R_B_TP = R_index++; //TODO: use this as a resource for swarmlings TP action
+R_B_TE = R_index++;
+R_B_SH = R_index++;
+R_B_SA = R_index++;
+R_BRIDGE = R_index++; // TODO: use this as a resources for power bridge and engineer bridge action
 

@@ -23,6 +23,23 @@ freely, subject to the following restrictions:
     distribution.
 */
 
+/*
+Factions covered:
+unittesttext0:
+mermaids
+halflings (but no SH upgrade)
+fakirs
+witches
+dwarves
+
+unittesttext1:
+halflings (but no SH upgrade)
+witches
+dwarves
+mermaids
+chaosmagicians
+*/
+
 var unittesttext0 = 'show history\n\
 removing tile bon3\n\
 round 1 scoring: score8\n\
@@ -628,32 +645,352 @@ witches: +9vp for network\n\
 mermaids: +9vp for network\n\
 '
 
-function expect(boolean) {
-  if(!boolean) throw new Error('test failed');
+var unittesttext2 = 'show history\n\\n\
+clusters\t18/12/6\n\
+Default game options\n\
+option strict-leech\n\
+option strict-darkling-sh\n\
+option strict-chaosmagician-sh\n\
+option errata-cultist-power\n\
+option mini-expansion-1\n\
+option shipping-bonus\n\
+option fire-and-ice-final-scoring\n\
+option email-notify\n\
+Randomize setup\n\
+Round 1 scoring: SCORE4, SA/SH >> 5\n\
+Round 2 scoring: SCORE1, SPADE >> 2\n\
+Round 3 scoring: SCORE6, TP >> 3\n\
+Round 4 scoring: SCORE2, TOWN >> 5\n\
+Round 5 scoring: SCORE5, D >> 2\n\
+Round 6 scoring: SCORE7, SA/SH >> 5\n\
+Removing tile BON8\n\
+Removing tile BON9\n\
+Removing tile BON7\n\
+Removing tile BON2\n\
+Player 1: Rob\n\
+Player 2: Lode\n\
+Player 3: Jan\n\
+swarmlings setup\n\
+chaosmagicians setup\n\
+nomads setup\n\
+swarmlings build E4\n\
+nomads build D3\n\
+nomads build E8\n\
+swarmlings build H2\n\
+nomads build B2\n\
+chaosmagicians build D6\n\
+nomads Pass BON6\n\
+chaosmagicians Pass BON4\n\
+swarmlings Pass BON1\n\
+Round 1 income\n\
+swarmlings income_for_faction\n\
+chaosmagicians income_for_faction\n\
+nomads income_for_faction\n\
+Round 1, turn 1\n\
+swarmlings 1 upgrade E4 to TP\n\
+nomads Leech 1 from swarmlings\n\
+chaosmagicians burn 4. action ACT4\n\
+nomads 2 upgrade D3 to TP\n\
+swarmlings -1 Leech 2 from nomads\n\
+Round 1, turn 2\n\
+swarmlings action BON1. build I2\n\
+chaosmagicians upgrade D6 to TP\n\
+nomads burn 3. action ACT2\n\
+Round 1, turn 3\n\
+swarmlings build I1\n\
+chaosmagicians upgrade D6 to TE. +FAV11. +FAV7\n\
+nomads send p to FIRE\n\
+Round 1, turn 4\n\
+swarmlings 2 upgrade E4 to SH\n\
+chaosmagicians build C5\n\
+nomads -1 Leech 2 from swarmlings\n\
+nomads 3 upgrade D3 to SH\n\
+swarmlings -2 Leech 3 from nomads\n\
+Round 1, turn 5\n\
+swarmlings action ACTS. Upgrade I1 to TP\n\
+chaosmagicians build A12\n\
+nomads action ACTN. transform E7 to yellow\n\
+Round 1, turn 6\n\
+swarmlings pass BON3\n\
+chaosmagicians pass BON1\n\
+nomads build E7\n\
+nomads pass BON5\n\
+Round 2 income\n\
+swarmlings income_for_faction\n\
+chaosmagicians income_for_faction\n\
+nomads income_for_faction\n\
+Round 2, turn 1\n\
+swarmlings action ACT6. build H3\n\
+chaosmagicians action BON1. build D7\n\
+nomads burn 3. action ACT4\n\
+Round 2, turn 2\n\
+swarmlings build I4\n\
+chaosmagicians advance ship\n\
+nomads action ACTN. build E6\n\
+Round 2, turn 3\n\
+swarmlings action ACTS. Upgrade I4 to TP. +TW7\n\
+chaosmagicians pass BON10\n\
+nomads 3 build E5\n\
+swarmlings -2 Leech 3 from nomads\n\
+Round 2, turn 4\n\
+swarmlings upgrade I1 to TE. +FAV11\n\
+nomads 3 upgrade E5 to TP\n\
+swarmlings -2 Leech 3 from nomads\n\
+Round 2, turn 5\n\
+swarmlings pass BON4\n\
+nomads 3 convert 2W to 2C. upgrade E5 to TE. +FAV10\n\
+nomads pass BON1\n\
+swarmlings Decline 3 from nomads\n\
+Round 3 income\n\
+chaosmagicians income_for_faction\n\
+nomads income_for_faction\n\
+swarmlings income_for_faction\n\
+Round 3, turn 1\n\
+chaosmagicians advance ship\n\
+nomads send p to WATER\n\
+swarmlings 3 action ACT6. transform I6 to blue. build C1\n\
+Round 3, turn 2\n\
+chaosmagicians burn 4. action ACT5. build B4\n\
+nomads -2 Leech 3 from swarmlings\n\
+nomads 1 action ACTN. build D2\n\
+swarmlings Leech 1 from nomads\n\
+swarmlings action ACT4\n\
+Round 3, turn 3\n\
+chaosmagicians build A6\n\
+nomads 1 convert 2PW to 2C. upgrade D2 to TP\n\
+swarmlings Leech 1 from nomads\n\
+swarmlings Send p to earth\n\
+Round 3, turn 4\n\
+chaosmagicians 2 convert 2w to 2c. build d4\n\
+nomads -1 Leech 2 from chaosmagicians\n\
+nomads action BON1. transform E2 to yellow\n\
+swarmlings 1 build A4\n\
+nomads Leech 1 from swarmlings\n\
+Round 3, turn 5\n\
+chaosmagicians pass BON3\n\
+nomads 1 burn 2. convert 3PW to 3C. upgrade E6 to TP\n\
+swarmlings 5 action ACTS. Upgrade C1 to TP\n\
+chaosmagicians Leech 1 from nomads\n\
+nomads Decline 5 from swarmlings\n\
+Round 3, turn 6\n\
+nomads pass BON6\n\
+swarmlings pass BON1\n\
+Round 4 income\n\
+chaosmagicians income_for_faction\n\
+nomads income_for_faction\n\
+swarmlings income_for_faction\n\
+nomads transform E3 to yellow\n\
+Round 4, turn 1\n\
+chaosmagicians 3 upgrade D4 to TP\n\
+nomads -2 Leech 3 from chaosmagicians\n\
+nomads action ACT4\n\
+swarmlings send p to EARTH\n\
+Round 4, turn 2\n\
+chaosmagicians 3 convert 1W to 1C. upgrade D4 to TE. +FAV9. +FAV6\n\
+nomads -2 Leech 3 from chaosmagicians\n\
+nomads 3 build E3\n\
+swarmlings -2 Leech 3 from nomads\n\
+swarmlings action BON1. build A3\n\
+Round 4, turn 3\n\
+chaosmagicians action FAV6. +EARTH\n\
+nomads build E2. +TW5\n\
+swarmlings action ACT1. Bridge C1:A3\n\
+Round 4, turn 4\n\
+chaosmagicians 1 convert 2w to 2c. dig 1. build C2\n\
+nomads Leech 1 from chaosmagicians\n\
+nomads 2 convert 1PW to 1C. upgrade E7 to TP. +TW5\n\
+swarmlings action ACT6. build A2\n\
+chaosmagicians -1 Leech 2 from nomads\n\
+Round 4, turn 5\n\
+chaosmagicians convert pw to c. pass bon10\n\
+nomads action ACTN. transform F1 to yellow. convert 1PW to 1C\n\
+swarmlings 5 upgrade C1 to TE. +FAV5\n\
+nomads -2 Leech 5 from swarmlings\n\
+Round 4, turn 6\n\
+nomads 1 1 convert 1PW to 1C. upgrade B2 to TP\n\
+swarmlings Leech 1 from nomads\n\
+swarmlings action ACTS. Upgrade A2 to TP. +TW3\n\
+Round 4, turn 7\n\
+nomads advance ship\n\
+chaosmagicians Leech 1 from nomads\n\
+swarmlings send p to EARTH\n\
+Round 4, turn 8\n\
+nomads convert 3PW to 1W. pass BON4\n\
+swarmlings pass BON6\n\
+Round 5 income\n\
+chaosmagicians income_for_faction\n\
+nomads income_for_faction\n\
+swarmlings income_for_faction\n\
+chaosmagicians transform G4 to red\n\
+swarmlings transform D1 to blue. transform F3 to blue\n\
+Round 5, turn 1\n\
+chaosmagicians convert pw to c. build G4\n\
+nomads 1 action ACT5. build F5\n\
+swarmlings send p to Air\n\
+chaosmagicians Leech 1 from nomads\n\
+Round 5, turn 2\n\
+chaosmagicians advance ship\n\
+nomads 2 build B1\n\
+swarmlings -1 Leech 2 from nomads\n\
+swarmlings action act4\n\
+Round 5, turn 3\n\
+chaosmagicians 4 convert 2PW to 2C. dig 1. build F4\n\
+nomads decline 4 from chaosmagicians\n\
+nomads build F1\n\
+swarmlings 3 build D1\n\
+Round 5, turn 4\n\
+chaosmagicians action FAV6. +FIRE\n\
+nomads Decline 3 from swarmlings\n\
+nomads 4 build H1\n\
+swarmlings Decline 4 from nomads\n\
+swarmlings 1 4 build F3\n\
+chaosmagicians Leech 1 from swarmlings\n\
+Round 5, turn 5\n\
+chaosmagicians 2 convert 1PW to 1C. convert 2W to 2C. upgrade C2 to TP\n\
+nomads -3 leech 4 from swarmlings\n\
+nomads -1 Leech 2 from chaosmagicians\n\
+nomads 1 1 action ACTN. build A5\n\
+chaosmagicians Leech 1 from nomads\n\
+swarmlings Leech 1 from nomads\n\
+swarmlings send p to AIR\n\
+Round 5, turn 6\n\
+chaosmagicians send p to EARTH\n\
+nomads burn 1. action ACT2\n\
+swarmlings 1 4 action ACTS. Upgrade F3 to TP\n\
+chaosmagicians Leech 1 from swarmlings\n\
+Round 5, turn 7\n\
+chaosmagicians 2 convert 2pw to 2c. convert p to w. build i5\n\
+nomads Decline 4 from swarmlings\n\
+nomads send p to FIRE\n\
+swarmlings -1 Leech 2 from chaosmagicians\n\
+swarmlings 3 dig 1. build F2\n\
+nomads -2 Leech 3 from swarmlings\n\
+Round 5, turn 8\n\
+chaosmagicians pass BON3\n\
+nomads advance ship\n\
+swarmlings convert pw to c. pass BON10\n\
+nomads pass BON6\n\
+Round 6 income\n\
+chaosmagicians income_for_faction\n\
+nomads income_for_faction\n\
+swarmlings income_for_faction\n\
+Round 6, turn 1\n\
+chaosmagicians upgrade D6 to SA. Convert pw to c. +FAV10. +FAV12\n\
+nomads 1 2 upgrade B2 to TE. convert 2PW to 2C. +FAV5. convert 1PW to 1C\n\
+chaosmagicians Leech 2 from nomads\n\
+swarmlings Leech 1 from nomads\n\
+swarmlings action ACT4\n\
+Round 6, turn 2\n\
+chaosmagicians 2 4 convert 1PW to 1C. upgrade F4 to TP\n\
+nomads -2 Leech 4 from chaosmagicians\n\
+nomads 1 1 upgrade A5 to TP. convert 1PW to 1C\n\
+chaosmagicians Leech 1 from nomads\n\
+swarmlings Decline 2 from chaosmagicians\n\
+swarmlings Leech 1 from nomads\n\
+swarmlings advance ship\n\
+Round 6, turn 3\n\
+chaosmagicians convert 1PW to 1C. send p to fire\n\
+nomads 3 action ACTN. build B3\n\
+swarmlings 1 build I6\n\
+chaosmagicians Leech 3 from nomads\n\
+chaosmagicians Leech 1 from swarmlings\n\
+Round 6, turn 4\n\
+chaosmagicians 2 convert 1PW to 1C. build g2\n\
+nomads 1 2 convert 1PW to 1C. upgrade B2 to SA. +FAV12. +TW8\n\
+swarmlings Decline 2 from chaosmagicians\n\
+swarmlings Leech 1 from nomads\n\
+swarmlings action ACTS. Upgrade H3 to TP\n\
+chaosmagicians Decline 2 from nomads\n\
+Round 6, turn 5\n\
+chaosmagicians 3 upgrade A6 to TP\n\
+nomads Decline 3 from chaosmagicians\n\
+nomads send p to Water\n\
+swarmlings build H4\n\
+Round 6, turn 6\n\
+chaosmagicians send p to AIR\n\
+nomads pass\n\
+swarmlings action ACT2\n\
+Round 6, turn 7\n\
+chaosmagicians action FAV6. +AIR. convert 1PW to 1C\n\
+swarmlings advance ship\n\
+Round 6, turn 8\n\
+chaosmagicians pass\n\
+swarmlings 5 Convert 2pw to 2c. convert 3w to 3c. upgrade C1 to SA. +FAV12\n\
+Round 6, turn 9\n\
+swarmlings send p to WATER. burn 2. convert 5pw to p\n\
+Round 6, turn 10\n\
+swarmlings Send p to water\n\
+swarmlings pass\n\
+nomads Leech 5 from swarmlings\n\
+Scoring connected-clusters\n\
+swarmlings vp for connected-clusters\n\
+chaosmagicians vp for connected-clusters\n\
+nomads vp for connected-clusters\n\
+Scoring FIRE cult\n\
+swarmlings vp for FIRE\n\
+chaosmagicians vp for FIRE\n\
+nomads vp for FIRE\n\
+Scoring WATER cult\n\
+swarmlings vp for WATER\n\
+chaosmagicians vp for WATER\n\
+nomads vp for WATER\n\
+Scoring EARTH cult\n\
+swarmlings vp for EARTH\n\
+chaosmagicians vp for EARTH\n\
+nomads vp for EARTH\n\
+Scoring AIR cult\n\
+swarmlings vp for AIR\n\
+chaosmagicians vp for AIR\n\
+nomads vp for AIR\n\
+Scoring network\n\
+swarmlings vp for network\n\
+chaosmagicians vp for network\n\
+nomads vp for network\n\
+Converting resources to VPs\n\
+swarmlings score_resources\n\
+chaosmagicians score_resources\n\
+nomads score_resources\n\
+'
+
+function expect(boolean, message) {
+  if(!boolean) {
+    if(message) console.log(message);
+    throw new Error(message || 'test failed');
+  }
+}
+
+function expectEqual(a, b) {
+  expect(a == b, 'expected ' + a + ' got ' + b);
 }
 
 function runUnitTest() {
   try {
+    //snellmandebug = true;
     var game;
 
     game = deSerializeGameState(unittesttext0);
-    expect(game.players[0].vp == 127);
-    expect(game.players[1].vp == 158);
-    expect(game.players[2].vp == 137);
-    expect(game.players[3].vp == 102);
-    expect(game.players[4].vp == 107);
+    expectEqual(127, game.players[0].vp);
+    expectEqual(158, game.players[1].vp);
+    expectEqual(137, game.players[2].vp);
+    expectEqual(102, game.players[3].vp);
+    expectEqual(107, game.players[4].vp);
 
     game = deSerializeGameState(unittesttext1);
-    expect(game.players[0].vp == 175);
-    expect(game.players[1].vp == 94);
-    expect(game.players[2].vp == 101);
-    expect(game.players[3].vp == 106);
-    expect(game.players[4].vp == 98);
+    expectEqual(175, game.players[0].vp);
+    expectEqual(94, game.players[1].vp);
+    expectEqual(101, game.players[2].vp);
+    expectEqual(106, game.players[3].vp);
+    expectEqual(98, game.players[4].vp);
+
+    game = deSerializeGameState(unittesttext2);
+    expectEqual(143, game.players[0].vp);
+    expectEqual(126, game.players[1].vp);
+    expectEqual(147, game.players[2].vp);
 
     console.log('test success');
     addLog('test success');
   } catch(e) {
-    console.log('test fail');
+    console.log('test fail - print out snellmanunittesttext or set snellmandebug = true to see log');
     addLog('test fail');
   }
   drawHud();

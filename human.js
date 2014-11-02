@@ -44,6 +44,7 @@ var HS_CULT = 4; //must go on the cult track
 var HS_BONUS_TILE = 5;
 var HS_FAVOR_TILE = 6;
 var HS_TOWN_TILE = 7;
+var HS_OTHER = 8; //custom dialog, ...
 
 var humanstate = HS_MAIN;
 
@@ -102,6 +103,22 @@ function prepareAction(action) {
 
   var player = getCurrentPlayer();
 
+  //burn power if needed, but only if this is the first action, otherwise it's possible that e.g. you actually do have enough power, like from mermaids water town formation
+  if(isPowerOctogonAction(action.type) && pactions.length == 0) {
+    var power = player.pw2;
+    for(var i = 0; i < pactions.length; i++) {
+      //ACTUALLY, there are also other things that alter power: mermaids town giving power tile, chaos double action, ...
+      //BUT instead it already looks above that this is the first action, so in fact this is redundant. But left for in case it'd be made more advance. Then all power altering actions must be checked.
+      if(pactions[i].type == A_BURN) power++;
+    }
+    var needed = player.getActionCost(action.type)[3];
+
+    while(power < needed) {
+      power++;
+      pactions.push(new Action(A_BURN));
+    }
+  }
+
   //automatically add tunneling/carpet if needed
   if(player.faction == F_FAKIRS || player.faction == F_DWARVES) {
     if(isBuildDwellingAction(action) || isTransformAction(action)) {
@@ -130,9 +147,12 @@ function prepareAction(action) {
     for(var i = 0; i < num; i++) pactions.push(new Action(A_CONVERT_1W_1P));
   }
 
-
   actionEl.innerHTML = actionsToString(pactions);
 
+  var cults = []; //for acolytes
+  var cultincome = player.getFaction().getActionIncome(player, action.type, R)[R_FREECULT];
+
+  // Recursive because multiple decisions may be required for a single action.
   function tryPrepareAction(action) {
     actionEl.innerHTML = actionsToString(pactions);
     if(action.type == A_PASS && action.bontile == T_NONE && state.round != 6) {
@@ -142,7 +162,7 @@ function prepareAction(action) {
         clearHumanState();
         tryPrepareAction(action);
       };
-      setHumanState(HS_BONUS_TILE, 'choose a bonus tile for passing', fun);
+      queueHumanState(HS_BONUS_TILE, 'choose a bonus tile for passing', fun);
     }
     else if(action.favtiles.length < actionGivesFavorTile(player, action)) {
       setHelp('choose a favor tile', true);
@@ -152,7 +172,7 @@ function prepareAction(action) {
         clearHumanState();
         tryPrepareAction(action);
       };
-      setHumanState(HS_FAVOR_TILE, 'choose a favor tile', fun);
+      queueHumanState(HS_FAVOR_TILE, 'choose a favor tile', fun);
     }
     //town tiles MUST be checked after favor tiles! This because there is a favor tile that can turn the action into a town-creation action.
     else if(action.twtiles.length < actionCreatesTown(player, action, pactions)) {
@@ -163,10 +183,29 @@ function prepareAction(action) {
         clearHumanState();
         tryPrepareAction(action);
       };
-      setHumanState(HS_TOWN_TILE, 'that will form a town! choose a town tile', fun);
+      queueHumanState(HS_TOWN_TILE, 'that will form a town! choose a town tile', fun);
     }
     else if(action.type == A_UPGRADE_SH && player.faction == F_HALFLINGS) {
       letClickMapForHalflingsStrongholdDigs();
+    }
+    //else if(action.cult == C_NONE && isTransformAction(action) && player.getFaction().getTransformActionCost(player, action.type, R)[R_CULT]) {
+    else if(action.cult == C_NONE && isTransformAction(action) && player.getFaction().getTransformActionCost(player, action.type, R)[R_CULT]) {
+      var fun = function(cult) {
+        action.cult = cult;
+        clearHumanState();
+        tryPrepareAction(action);
+      };
+      queueHumanState(HS_CULT, 'choose cult track for pay with', fun);
+    }
+    else if(cultincome > cults.length) {
+      var fun = function(cult) {
+        cults.push(cult);
+        clearHumanState();
+        pactions.push(makeActionWithCult(A_ACOLYTES_CULT, cult));
+        actionEl.innerHTML = actionsToString(pactions);
+        tryPrepareAction(action);
+      };
+      queueHumanState(HS_CULT, 'choose cult track to increase', fun);
     }
   }
 
@@ -186,10 +225,35 @@ function letClickMapForBridge(action) {
     if(remaining == 0) {
       prepareAction(action);
     } else {
-      setHumanState(HS_MAP, 'click bridge end point', clickFun);
+      queueHumanState(HS_MAP, 'click bridge end point', clickFun);
     }
   };
-  setHumanState(HS_MAP, 'click bridge start point', clickFun);
+  queueHumanState(HS_MAP, 'click bridge start point', clickFun);
+}
+
+function chooseActionColor(action) {
+  var already = getNoShiftColors(getCurrentPlayer());
+  var j = 0;
+  var bg = makeSizedDiv(300, 100, 200, 350, popupElement);
+  bg.style.backgroundColor = '#FFFFFF';
+  bg.innerHTML = 'choose shift color';
+  bg.style.border = '1px solid black';
+
+  var clickFun = function(color) {
+    clearHumanState();
+    action.color = color;
+    popupElement.innerHTML = '';
+    prepareAction(action);
+  };
+
+  for(var i = CIRCLE_BEGIN; i <= CIRCLE_END; i++) {
+    if(already[i]) continue;
+    var el = makeLinkButton(305, 100 + (j + 1) * 16, getColorName(i), popupElement);
+    el.onclick = bind(clickFun, i);;
+    j++;
+  }
+
+  queueHumanState(HS_MAP, 'choose color', null);
 }
 
 function isHandlingActionInput() {
@@ -242,21 +306,18 @@ Human.prototype.chooseInitialBonusTile = function(playerIndex, callback) {
     if(error == '') clearHumanState();
     else setHelp('invalid bonus tile, please try again');
   }
-  setHumanState(HS_BONUS_TILE, null, fun);
+  queueHumanState(HS_BONUS_TILE, null, fun);
 };
 
-//returns true if successful, false if house could not be placed there
-function humanPlaceInitialDwelling(x, y) {
-  var player = getCurrentPlayer();
-  if(getWorld(x, y) != player.color) return false;
-  if(getBuilding(x, y)[0] != B_NONE) return false;
-  if(player.b_d <= 0) return false;
-  player.b_d--;
-  setBuilding(x, y, B_D, player.color);
-  //drawMap();
-  //drawHud();
-  return true;
-}
+
+Human.prototype.chooseInitialFavorTile = function(playerIndex, callback) {
+  var fun = function(tile) {
+    var error = callback(playerIndex, tile);
+    if(error == '') clearHumanState();
+    else setHelp('invalid favor tile, please try again');
+  }
+  queueHumanState(HS_FAVOR_TILE, null, fun);
+};
 
 Human.prototype.chooseInitialDwelling = function(playerIndex, callback) {
   var fun = function(x, y) {
@@ -268,7 +329,7 @@ Human.prototype.chooseInitialDwelling = function(playerIndex, callback) {
     }
     else setHelp('could not place initial dwelling: ' + error + ' - Please try again');
   };
-  setHumanState(HS_MAP, null, fun);
+  queueHumanState(HS_MAP, null, fun);
 };
 
 Human.prototype.chooseFaction = function(playerIndex, callback) {
@@ -277,20 +338,42 @@ Human.prototype.chooseFaction = function(playerIndex, callback) {
     if(error != '') setHelp('invalid faction: ' + error + ' - Please try again');
   };
 
-  var already = getAlreadyChosenColors();
-  var j = 0;
-  //drawHud();
-  var bg = makeSizedDiv(300, 100, 200, 300, popupElement);
+  var bg = makeSizedDiv(300, 100, 200, 350, popupElement);
   //bg.style.backgroundColor = 'rgba(255,255,255,0.85)'; //alpha does not work in IE
   bg.style.backgroundColor = '#FFFFFF';
   bg.innerHTML = 'choose faction';
   bg.style.border = '1px solid black';
 
-  for(var i = F_ALL_BEGIN; i <= F_ALL_END; i++) {
-    if(already[factionColor(i)]) continue;
-    var el = makeLinkButton(305, 100 + (j + 1) * 16, getFactionName(i), popupElement);
-    el.onclick = bind(buttonClickFun, i);
-    j++;
+  var factions = getPossibleFactionChoices();
+
+  for(var i = 0; i <= factions.length; i++) {
+    var el = makeLinkButton(305, 100 + (i + 1) * 16, getFactionName(factions[i]), popupElement);
+    el.onclick = bind(buttonClickFun, factions[i]);
+  }
+};
+
+Human.prototype.chooseAuxColor = function(playerIndex, callback) {
+  //return AI.prototype.chooseAuxColor(playerIndex, callback);
+
+  var buttonClickFun = function(color) {
+    var error = callback(playerIndex, color);
+    if(error != '') setHelp('invalid color: ' + error + ' - Please try again');
+  };
+
+  var colors = [];
+  for(var i = CIRCLE_BEGIN; i <= CIRCLE_END; i++) {
+    if(auxColorToPlayerMap[i] == undefined && colorToPlayerMap[i] == undefined) colors.push(i);
+  }
+
+
+  var bg = makeSizedDiv(300, 100, 200, 300, popupElement);
+  bg.style.backgroundColor = '#FFFFFF';
+  bg.innerHTML = 'choose color';
+  bg.style.border = '1px solid black';
+
+  for(var i = 0; i < colors.length; i++) {
+    var el = makeLinkButton(305, 100 + (i + 1) * 16, getColorName(colors[i]), popupElement);
+    el.onclick = bind(buttonClickFun, colors[i]);
   }
 };
 
@@ -323,7 +406,6 @@ Human.prototype.leechPower = function(playerIndex, fromPlayer, amount, vpcost, r
     return;
   }
 
-  var already = getAlreadyChosenColors();
   var j = 0;
   //drawHud();
   var bg = makeSizedDiv(ACTIONPANELX, ACTIONPANELY, ACTIONPANELW, ACTIONPANELH, popupElement);
@@ -379,46 +461,58 @@ Human.prototype.leechPower = function(playerIndex, fromPlayer, amount, vpcost, r
 //Similar to transformDirAction, except returns A_TRANSFORM_CW if the tile is already your color, for the human UI dig controls (not applicable to giants)
 function humanTransformDirAction(player, fromcolor, tocolor) {
   var result = transformDirAction(player, fromcolor, tocolor);
-  return result == A_NONE ? A_TRANSFORM_CW : result;
+  return result.length == 0 ? [A_TRANSFORM_CW] : result;
 }
 
 //Returns opposite direction of humanTransformDirAction (not applicable to giants)
 function humanAntiTransformDirAction(player, fromcolor, tocolor) {
   var result = humanTransformDirAction(player, fromcolor, tocolor);
-  if(result == A_TRANSFORM_CW) result = A_TRANSFORM_CCW;
-  else if(result == A_TRANSFORM_CCW) result = A_TRANSFORM_CW;
+  var dir = result[0] == A_TRANSFORM_CW ? A_TRANSFORM_CCW : A_TRANSFORM_CW;
+  for(var i = 0; i < result.length; i++) {
+    result[i] = dir;
+  }
   return result;
 }
 
-Human.prototype.doRoundBonusSpade = function(playerIndex, num, callback) {
-  if(num < 2 && game.players[playerIndex].faction == F_GIANTS) {
+Human.prototype.doRoundBonusSpade = function(playerIndex, callback) {
+  var player = game.players[playerIndex];
+  var num = player.spades;
+  if(num < 2 && player.faction == F_GIANTS) {
     callback(playerIndex, []);
     return;
   }
 
   var result = [];
-  var player = game.players[playerIndex];
 
   actionEl.innerHTML = 'rounddig';
+
+  var clickedmap = {};
 
   var currentNum = num;
   var done = 0;
   var fun = function(x, y) {
+    var ckey = '' + x + ',' + y;
+    clickedmap[ckey] = undef0(clickedmap[ckey]) + 1;
     if(currentNum <= 0) return;
-    currentNum--;
     var type = A_NONE;
     if(player.faction == F_GIANTS) type = A_GIANTS_TRANSFORM;
-    else if(digAndBuildMode == DBM_ONE) type = humanTransformDirAction(player, getWorld(x, y), player.color);
-    else if(digAndBuildMode == DBM_ANTI) type = humanAntiTransformDirAction(player, getWorld(x, y), player.color);
+    else if(digAndBuildMode == DBM_ONE) {
+      var types = humanTransformDirAction(player, getWorld(x, y), player.getMainDigColor());
+      var j = clickedmap[ckey] - 1;//num - currentNum;
+      if(j >= types.length) j = types.length - 1;
+      type = types[j]; //TODO: this is not FULLY correct. Fix this to always have the right types required for transformation in the right order.
+    }
+    else if(digAndBuildMode == DBM_ANTI) type = humanAntiTransformDirAction(player, getWorld(x, y), player.getMainDigColor())[0];
     result.push([type,x,y]);
     actionEl.innerHTML = 'rounddig ';
     for(var i = 0; i < result.length; i++) {
       actionEl.innerHTML += printCo(result[i][1], result[i][2]);
       if(i < result.length - 1) actionEl.innerHTML += ', ';
     }
+    currentNum--;
   };
   digAndBuildMode = player.faction == F_GIANTS ? DBM_COLOR : DBM_ONE;
-  setHumanState(HS_DIG, 'You got ' + num + '  bonus spades from the cult track. Click on map to dig, press execute when done.', fun);
+  queueHumanState(HS_DIG, 'You got ' + num + '  bonus spades from the cult track. Click on map to dig, press execute when done.', fun);
 
   executeButtonFun_ = function() {
     var error = callback(playerIndex, result);
@@ -449,7 +543,7 @@ Human.prototype.chooseCultistTrack = function(playerIndex, callback) {
       setHelp('invalid cult. Please try again');
     }
   };
-  setHumanState(HS_CULT, 'click on which cult track to increase', fun);
+  queueHumanState(HS_CULT, 'click on which cult track to increase', fun);
 };
 
 //dig&build mode
@@ -476,12 +570,12 @@ function digAndBuildFun(initialMode, helpText) {
   var player = getCurrentPlayer();
 
   digAndBuildMode = initialMode;
-  
+
   var ptype = pactions.length > 0 ? pactions[pactions.length - 1].type : A_NONE; //previous action type
   var roundend = state.type == S_ROUND_END_DIG;
   var halflingssh = (ptype == A_UPGRADE_SH && player.faction == F_HALFLINGS);
   var cansplit = ptype == A_POWER_2SPADE || halflingssh;
-  var canaddspades = !roundend && ptype != A_SANDSTORM && !halflingssh;
+  var canaddspades = !roundend && ptype != A_SANDSTORM && ptype != A_TRANSFORM_SPECIAL2 && !halflingssh;
 
   var fun = function(x, y) {
     clearHumanState();
@@ -489,7 +583,7 @@ function digAndBuildFun(initialMode, helpText) {
       if(ptype == A_SANDSTORM) {
         pactions[pactions.length - 1].co = [x, y];
       } else {
-        var tactions = getAutoTransformActions(player, x, y, player.color, getFreeSpades(player, pactions), 999);
+        var tactions = getAutoTransformActions(player, x, y, player.getMainDigColor(), getFreeSpades(player, pactions), 999);
         for(var i = 0; i < tactions.length; i++) prepareAction(tactions[i]);
       }
       if(digAndBuildMode == DBM_BUILD) {
@@ -498,10 +592,11 @@ function digAndBuildFun(initialMode, helpText) {
         prepareAction(action);
       }
     } else {
+      // single dig where player chooses particular direction (e.g. anti-dig)
       var type = A_NONE;
       if(player.faction == F_GIANTS) type = A_GIANTS_TRANSFORM;
-      else if(digAndBuildMode == DBM_ONE) type = humanTransformDirAction(player, getWorld(x, y), player.color);
-      else if(digAndBuildMode == DBM_ANTI) type = humanAntiTransformDirAction(player, getWorld(x, y), player.color);
+      else if(digAndBuildMode == DBM_ONE) type = humanTransformDirAction(player, getWorld(x, y), player.getMainDigColor())[0];
+      else if(digAndBuildMode == DBM_ANTI) type = humanAntiTransformDirAction(player, getWorld(x, y), player.getMainDigColor())[0];
       if(getFreeSpades(player, pactions) < 1) prepareAction(new Action(A_SPADE));
       var action = new Action(type);
       action.co = [x, y];
@@ -513,8 +608,9 @@ function digAndBuildFun(initialMode, helpText) {
       queueHumanState(HS_DIG, helpText, fun);
       drawHud();
     }
-  };
-  setHumanState(HS_DIG, helpText, fun);
+  }
+
+  queueHumanState(HS_DIG, helpText, fun);
 }
 
 //Gets the building at the x, y coordinate, but in case of chaos magicians
@@ -549,7 +645,7 @@ function upgrade1fun() {
     action.co = [x, y];
     prepareAction(action);
   };
-  setHumanState(HS_MAP, 'click where to upgrade to TP/SH', fun);
+  queueHumanState(HS_MAP, 'click where to upgrade to TP/SH', fun);
 }
 
 function upgrade2fun() {
@@ -566,10 +662,13 @@ function upgrade2fun() {
     action.co = [x, y];
     prepareAction(action);
   };
-  setHumanState(HS_MAP, 'click where to upgrade to TE/SA', fun);
+  queueHumanState(HS_MAP, 'click where to upgrade to TE/SA', fun);
 }
 
-registerKeyHandler(88 /*X*/, executeButtonFun);
+registerKeyHandler(88 /*X*/, function() {
+  if(humanStateBusy()) return; // do not let this shortcut work if human must click something (map, cult track, ...). Note however that this misses the case of end round bonus dig, where execute button is visible. TODO: use better criterium so that bonus dig support 'x' shortcut too.
+  executeButtonFun();
+});
 registerKeyHandler(13 /*enter*/, executeButtonFun);
 registerKeyHandler(66 /*B*/, function() {
   if(isHandlingActionInput()) digAndBuildFun(DBM_BUILD, 'click where to dig&build');
@@ -583,6 +682,9 @@ registerKeyHandler(89 /*Y*/, function() {
 });
 registerKeyHandler(70 /*F*/, function() {
   if(fastButtonFun) fastButtonFun();
+});
+registerKeyHandler(71 /*G*/, function() {
+  if(fastestButtonFun) fastestButtonFun();
 });
 registerKeyHandler(85 /*U*/, function() {
   if(isHandlingActionInput()) upgrade1fun();

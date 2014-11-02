@@ -1,7 +1,7 @@
 /*
 TM AI
 
-Copyright (C) 2013 by Lode Vandevenne
+Copyright (C) 2013-2014 by Lode Vandevenne
 
 This software is provided 'as-is', without any express or implied
 warranty. In no event will the authors be held liable for any damages
@@ -25,8 +25,7 @@ freely, subject to the following restrictions:
 
 //Everything related to drawing and UI
 
-
-var mapElement =  document.createElement('div');
+var mapElement = makeSizedDiv(0, 40, 820, 442, document.body);
 document.body.appendChild(mapElement);
 
 //UI that never changes
@@ -47,6 +46,33 @@ var logEl = makeDiv(5, 1920, document.body);
 var popupElement =  document.createElement('div');
 document.body.appendChild(popupElement);
 
+function showGreyDialog(text, px, py) {
+  if(!px) px = 400;
+  if(!py) py = 400;
+
+  text = text.replace(/(?:\r\n|\r|\n)/g, '<br />');
+  var div = makeDiv(px, py, uiElement);
+  div.style.backgroundColor = '#bbb';
+  div.style.border = '1px solid black';
+  div.style.zIndex = 1000;
+  div.style.padding = '8px';
+  div.innerHTML = text;
+  var div2 = makeElement(div, 'div');
+  div2.innerHTML = 'x';
+  div2.style.position = 'absolute';
+  div2.style.right = '3px';
+  div2.style.top = '1px';
+  div2.style.cursor = 'pointer';
+  div2.onclick = function() {
+    uiElement.removeChild(div);
+  };
+};
+
+function showGreyDialogAtMouse(text, e) {
+  var pos = getMousePos(e);
+  showGreyDialog(text, pos[0], pos[1]);
+}
+
 //hex grid coordinates to pixel coordinates
 //the result is the center of where the hex cell should be
 //hex grid uses the type of coordinate system where odd and even rows are different
@@ -59,13 +85,13 @@ function pixelCo(x, y) {
   if(y % 2) px -= Math.floor(xsize / 2);
   //var py = y * ysize * 21 / 23;
   var py = y * ysize * 11 / 15;
-  return [px, py + 16];
+  return [px, py - 24];
 }
 
 var logText = '';
 var lastLogLine = '';
 var logUpsideDown = false;
-var logColored = true; //coloredlog
+var logColored = false; //coloredlog
 
 function addLog(text) {
   if(logUpsideDown) logText = text + '<br/>' + logText;
@@ -96,17 +122,15 @@ function clearHelp() {
   helpEl.innerHTML = '';
 }
 
-function addText(px, py, text) {
-  return makeText(px, py, text, hudElement);
-}
-
 function drawTileMapElement(px, py, tilex, tiley, parent) {
   var tilesize = 64;
   var el =  makeDiv(px - tilesize/2, py - tilesize/3, parent);
-  el.className = 'tiles';
   el.style.width = '' + tilesize + 'px';
   el.style.height = '' + tilesize + 'px';
-  el.style.backgroundPosition = '' + (-tilesize * tilex) + 'px ' + (-tilesize * tiley) + 'px';
+  if(tilex >= 0 && tiley >= 0) {
+    el.className = 'tiles';
+    el.style.backgroundPosition = '' + (-tilesize * tilex) + 'px ' + (-tilesize * tiley) + 'px';
+  }
   return el;
 }
 
@@ -118,16 +142,16 @@ function drawTileMapElementOnGrid(x, y, tilex, tiley, parent) {
 }
 
 function drawHexagon(x, y, color) {
-  return drawTileMapElementOnGrid(x, y, 0, color - 1, mapElement);
+  return drawTileMapElementOnGrid(x, y, 0, color - I, mapElement);
 }
 
 
 function drawBuilding(x, y, building, color, parent) {
-  return drawTileMapElementOnGrid(x, y, building == B_MERMAIDS ? 9 : building, color - 1, parent);
+  return drawTileMapElementOnGrid(x, y, building == B_MERMAIDS ? 9 : building, color - I, parent);
 }
 
 function drawIcon(px, py, symbol, color, parent) {
-  return drawTileMapElement(px, py, symbol, color - 1, parent);
+  return drawTileMapElement(px, py, symbol, color - I, parent);
 }
 
 //draw a small player color token somewhere
@@ -174,6 +198,7 @@ function drawBridges() {
   for(var x = 0; x < game.bw; x++)
   {
     var bridges = game.bridges[arCo(x, y)];
+    if(!bridges) continue;
     if(bridges[0] != N) {
       drawBridge(x, y, x, y - 2, bridges[0]);
     }
@@ -190,33 +215,19 @@ function drawBridges() {
 
 //given the tile color, return the RGB color as used in the tiles.png image
 function getImageColor(color) {
-  /*if(color == I) return '#ffffff';
-  if(color == N) return '#ffffff';
-  if(color == R) return '#e61e1e';
-  if(color == Y) return '#fff000';
-  if(color == U) return '#dc8a46';
-  if(color == K) return '#373737';
-  if(color == B) return '#6187f7';
-  if(color == G) return '#48c048';
-  if(color == S) return '#aaaaaa';*/
-  /*if(color == I) return '#ffffff';
+  if(color == I) return '#daecf6';
   if(color == N) return '#ffffff';
   if(color == R) return '#ee1c24';
   if(color == Y) return '#fff200';
-  if(color == U) return '#8c6239';
-  if(color == K) return '#3e362f';
-  if(color == B) return '#00a99d';
-  if(color == G) return '#8dc73f';
-  if(color == S) return '#959595';*/
-  if(color == I) return '#ffffff';
-  if(color == N) return '#ffffff';
-  if(color == R) return '#ee1c24';
-  if(color == Y) return '#fff200';
-  if(color == U) return '#cb823e';
+  if(color == U) return '#9c612a';
   if(color == K) return '#252525';
   if(color == B) return '#009ce5';
   if(color == G) return '#2bda2c';
   if(color == S) return '#959595';
+  if(color == W) return '#eeeeff';
+  if(color == O) return '#ff911d';
+  if(color == X) return '#ffeeee';
+  if(color == Z) return '#ffeeee';
 }
 
 //given a CSS hex RGB color, get a high contrast color (= either white or black)
@@ -264,6 +275,20 @@ function getTranslucentColor(cssColor, alpha) {
   return RGBToCssColor(rgba);
 }
 
+//alpha in range 0-255, lower makes color lighter
+function getLighterColor(cssColor, alpha) {
+  var rgba = cssColorToRGB(cssColor);
+
+  rgba[3] = 255;
+  if(alpha < 255) {
+    rgba[0] = Math.floor((rgba[0] * alpha + 255 * (255 - alpha)) / 255.0);
+    rgba[1] = Math.floor((rgba[1] * alpha + 255 * (255 - alpha)) / 255.0);
+    rgba[2] = Math.floor((rgba[2] * alpha + 255 * (255 - alpha)) / 255.0);
+  }
+
+  return RGBToCssColor(rgba);
+}
+
 //precalculate the map contrast colors
 var lowc = [];
 for(var i = COLOR_BEGIN; i <= COLOR_END; i++) lowc[i] = getLowContrastColor(getImageColor(i));
@@ -273,16 +298,18 @@ for(var i = COLOR_BEGIN; i <= COLOR_END; i++) highc[i] = getHighContrastColor(ge
 var altco = false; //have coordinates like 0,0 instead of A1 on the map (for debugging)
 
 function drawMap() {
+  mapElement.style.left = (game.btoggle ? -20 : 0) + 'px';
   var drawMapTile = function(x, y) {
     var tile = getWorld(x, y);
     if(tile != N) {
       drawHexagon(x, y, tile);
-
-      if(altco) drawGridSymbol(x, y, x + ',' + y);
-      else drawGridSymbol(x, y, printCo(x, y));
+      if(tile != I) {
+        if(altco) drawGridSymbol(x, y, x + ',' + y);
+        else drawGridSymbol(x, y, printCo(x, y));
+      }
     }
     var building = getBuilding(x, y);
-    if(building[0] != B_NONE) {
+    if(building && building[0] != B_NONE) {
       drawBuilding(x, y, building[0], building[1], mapElement);
     }
   };
@@ -304,14 +331,19 @@ function getCultColor(cult) {
   if(cult == C_A) return '#ddd';
 }
 
+//aka "renderCultTracks"
 function drawCultTracks(px, py) {
   var trackwidth = 60;
   var trackheight = 450;
 
   function drawTrack(x, y, cult) {
     var color = getCultColor(cult);
-    var track = makeSizedDiv(x, y, trackwidth, trackheight, hudElement);
+    var track = makeSizedDiv(x, y, trackwidth, trackheight - 30, hudElement);
     track.style.backgroundColor = color;
+    track.style.borderRadius = '5px';
+    var bottom = makeSizedDiv(x, y + trackheight - 30, trackwidth, 30, hudElement);
+    bottom.style.backgroundColor = '#777';
+    bottom.style.borderRadius = '5px';
     for(var i = 0; i < 11; i++) {
       var text = makeDiv(x + trackwidth / 2 - 8, y + Math.floor(trackheight * (i + 0.5) / 12), hudElement);
       text.innerHTML = 10 - i;
@@ -320,7 +352,7 @@ function drawCultTracks(px, py) {
       var player = game.players[i];
       if(player.color == I || player.color == N) continue;
       var num = player.cult[cult];
-      drawOrb(x + 20 + Math.floor(i * (trackwidth - 40) / game.players.length), 7 + Math.floor(trackheight * (11 - num + 0.5) / 12), player.color);
+      drawOrb(x + 20 + Math.floor(i * (trackwidth - 40) / game.players.length), 7 + Math.floor(trackheight * (11 - num + 0.5) / 12), player.woodcolor);
     }
     for(var i = 0; i < 4; i++) {
       var x2 = x + 5 + Math.floor(5 + i * trackwidth / 5);
@@ -331,9 +363,16 @@ function drawCultTracks(px, py) {
     }
 
     var ui = makeSameSizeDiv(track, hudElement);
+    ui.style.height = trackheight;
     ui.style.cursor = 'pointer';
     ui.onclick = bind(function(cult) {
-      if(cultClickFun) cultClickFun(cult);
+      if(cultClickFun) {
+        cultClickFun(cult);
+      } else if(executeButtonFun_ /*the way to check a human is doing action. TODO: improve that way*/) {
+        // Shortcut: click on cult track immediately to send priest there, rather than on the 'cult' button in the action links
+        var type = getAutoSendPriestCultAction(player, cult);
+        prepareAction(makeActionWithCult(type, cult));
+      }
     }, cult);
   }
 
@@ -408,7 +447,7 @@ function renderBonusTile(px, py, tile, text1, text2, text3, onTileClick) {
   text2el.innerHTML = text2;
   var text3el = makeDiv(px + 2, py + 37, hudElement);
   text3el.innerHTML = text3;
-  if (game.bonustilecoins[tile]) addText(px, py-12, '+' + game.bonustilecoins[tile] + 'c');
+  if (game.bonustilecoins[tile]) makeText(px, py-12, '+' + game.bonustilecoins[tile] + 'c', hudElement);
 
   if(onTileClick) {
     var elui = makeSameSizeDiv(el, hudElement);
@@ -436,7 +475,7 @@ function drawBonusTile(px, py, tile, onTileClick) {
   else if(tile == T_BON_PASSTPVP_1W) { text1 = 'pass:'; text2 = 'TP 2vp'; text3 = '+1w'; }
   else if(tile == T_BON_PASSSHSAVP_2W) { text1 = 'pass:'; text2 = 'S 4vp'; text3 = '+2w'; }
   else if(tile == T_BON_1P) { text1 = ''; text2 = ''; text3 = '+1p'; }
-  else if(tile == T_BON_PASSSHIPVP_3PW) { text1 = 'pass'; text2 = 'shipvp'; text3 = '+3pw'; }
+  else if(tile == T_BON_PASSSHIPVP_3PW) { text1 = 'pass:'; text2 = 'shipvp'; text3 = '+3pw'; }
   return renderBonusTile(px, py, tile, text1, text2, text3, onTileClick);
 }
 
@@ -446,6 +485,7 @@ function renderFavorTile(px, py, tile, cult, num, text1, text2, onTileClick) {
   el.style.width = 70;
   el.style.height = 60;
   el.style.backgroundColor = '#eedd00';
+  el.style.borderRadius = '12px';
   var cultcolor = getCultColor(cult);
   var culttext = num == 1 ? 'o' : num == 2 ? 'oo' : 'ooo';
   var text1el = makeDiv(px + 5, py + 5, hudElement);
@@ -527,14 +567,14 @@ function drawRoundTile(px, py, tile, index) {
   var num;
   var cult;
 
-  if(tile == T_ROUND_DIG2VP_1E1C) { text1 = 'dig:2VP'; text2 = '1C'; num = 1; cult = C_E; }
-  else if(tile == T_ROUND_TW5VP_4E1DIG) { text1 = 'TW:5VP'; text2 = 'dig'; num = 4; cult = C_E; }
+  if(tile == T_ROUND_DIG2VP_1E1C) { text1 = 'dig: 2vp'; text2 = '1C'; num = 1; cult = C_E; }
+  else if(tile == T_ROUND_TW5VP_4E1DIG) { text1 = 'TW: 5vp'; text2 = 'dig'; num = 4; cult = C_E; }
   else if(tile == T_ROUND_D2VP_4W1P) { text1 = 'D:2VP'; text2 = '1P'; num = 4; cult = C_W; }
-  else if(tile == T_ROUND_SHSA5VP_2F1W) { text1 = 'S:5VP'; text2 = '1W'; num = 2; cult = C_F; }
-  else if(tile == T_ROUND_D2VP_4F4PW) { text1 = 'D:2VP'; text2 = '4PW'; num = 4; cult = C_F; }
-  else if(tile == T_ROUND_TP3VP_4W1DIG) { text1 = 'TP:3VP'; text2 = 'dig'; num = 4; cult = C_W; }
-  else if(tile == T_ROUND_SHSA5VP_2A1W) { text1 = 'S:5VP'; text2 = '1W'; num = 2; cult = C_A; }
-  else if(tile == T_ROUND_TP3VP_4A1DIG) { text1 = 'TP:3VP'; text2 = 'dig'; num = 4; cult = C_A; }
+  else if(tile == T_ROUND_SHSA5VP_2F1W) { text1 = 'SH/SA:5vp'; text2 = '1W'; num = 2; cult = C_F; }
+  else if(tile == T_ROUND_D2VP_4F4PW) { text1 = 'D: 2vp'; text2 = '4PW'; num = 4; cult = C_F; }
+  else if(tile == T_ROUND_TP3VP_4W1DIG) { text1 = 'TP: 3vp'; text2 = 'dig'; num = 4; cult = C_W; }
+  else if(tile == T_ROUND_SHSA5VP_2A1W) { text1 = 'SH/SA:5vp'; text2 = '1W'; num = 2; cult = C_A; }
+  else if(tile == T_ROUND_TP3VP_4A1DIG) { text1 = 'TP: 3vp'; text2 = 'dig'; num = 4; cult = C_A; }
   else return [0, 0];
   return renderRoundTile(px, py, tile, cult, num, text1, text2, index);
 }
@@ -556,7 +596,7 @@ function drawTilesMap(px, py, tiles, maxWidth, startX, onTileClick) {
   var i = 0;
   for (var tile in tiles) {
     if (tiles.hasOwnProperty(tile) && tiles[tile] > 0) {
-      if (tiles[tile] > 1) addText(px + px2, py + py2 - 12, tiles[tile] + 'x');
+      if (tiles[tile] > 1) makeText(px + px2, py + py2 - 12, tiles[tile] + 'x', hudElement);
       var size = drawTile(px + px2, py + py2, tile, onTileClick, i);
       if(px2 + size[0] + 5 > maxWidth) {
         px2 = (startX - px);
@@ -583,6 +623,48 @@ function drawTilesArray(px, py, tiles, maxWidth, startX, onTileClick) {
     }
   }
   return [px2, py2];
+}
+
+function renderFinalScoringTile(px, py, text1, text2, text3, text4, text5, text6, title) {
+  var el = makeDiv(px, py, hudElement);
+  el.style.border = '1px solid black';
+  el.style.width = 80;
+  el.style.height = 70;
+  el.style.backgroundColor = '#fff';
+
+  var text1el = makeDiv(px + 2, py + 0, hudElement);
+  text1el.innerHTML = '<b>' + text1 + '</b>';
+  var text2el = makeDiv(px + 2, py + 10, hudElement);
+  text2el.innerHTML = text2;
+  var text3el = makeDiv(px + 2, py + 22, hudElement);
+  text3el.innerHTML = '<b>' + text3 + '</b>';
+  var text4el = makeDiv(px + 2, py + 32, hudElement);
+  text4el.innerHTML = text4;
+  var text5el = makeDiv(px + 2, py + 44, hudElement);
+  text5el.innerHTML = '<b>' + text5 + '</b>';
+  var text6el = makeDiv(px + 2, py + 56, hudElement);
+  text6el.innerHTML = text6;
+
+  var text0el = makeDiv(px - 1, py - 12, hudElement);
+  text0el.innerHTML = 'Final Scoring';
+
+  el.title = title;
+  text1el.title = title;
+  text2el.title = title;
+
+  return [71, 61];
+}
+
+function drawFinalScoringTile(px, py, index) {
+  var text1 = 'cults:';
+  var text2 = '8/4/2';
+  var text3 = 'network:';
+  var text4 = '18/12/6';
+  var text5 = finalScoringCodeNames[index] + ':';
+  var text6 = '18/12/6';
+  if(text5 == 'none:') text5 = text6 = '';
+  var title = finalScoringCodeNames[index];
+  return renderFinalScoringTile(px, py, text1, text2, text3, text4, text5, text6, title);
 }
 
 //convert a cost array to a string, ignoring things that are 0.
@@ -628,20 +710,34 @@ function costAlternativesToString(cost1, cost2) {
 
 function getFullVPDetailsText(player) {
   var vpbreakdown = '';
+  var arr = [];
   for(name in player.vp_detail) {
-    vpbreakdown += name + ':' + player.vp_detail[name] + ' \n';
+    //vpbreakdown += name + ':' + player.vp_detail[name] + ' \n';
+    arr.push([name, player.vp_detail[name]]);
   }
-  return 'VP:' + player.vp + ' \n' + vpbreakdown;
+
+  arr.sort(function(a, b) {
+    return b[1] - a[1];
+  });
+
+  for(var i = 0; i < arr.length; i++) {
+    vpbreakdown += arr[i][0] + ': ' + arr[i][1] + '\n';
+  }
+  
+  return 'VP: ' + player.vp + '\n' + vpbreakdown;
 }
 
 function dangerColor(danger, text) {
   return danger ? '<font color="red">' + text + '</font>' : text;
 }
 
-function getPlayerResourcesString(player) {
-  return player.c + 'c, ' + player.w + 'w, '
-      + player.p + '/' + player.pp + ' p, '
-      + player.pw0 + '/' + player.pw1 + '/' + player.pw2 + ' pw';
+function getPlayerResourcesString(player, markup) {
+  var result = player.c + 'c, ' + player.w + 'w, '
+      + player.p + '/' + player.pp + ' p, ';
+  var pw = '' + player.pw0 + '/' + player.pw1 + '/' + player.pw2 + ' pw';
+  if(markup) result += '<font color="#909">' + pw + '</font>';
+  else result += pw;
+  return result;
 }
 
 function drawPlayerPanel(px, py, player, scoreProjection) {
@@ -650,18 +746,22 @@ function drawPlayerPanel(px, py, player, scoreProjection) {
   bg.style.backgroundColor = '#fff0e0';
 
   function drawDigCircle(px, py) {
-    var num = LANDSCAPE_END - LANDSCAPE_BEGIN + 1;
-    var b = LANDSCAPE_BEGIN;
-    drawOrb(px + 0, py + 0, player.color);
-    drawOrb(px + 16, py + 8, b + (player.color + 1 - b) % num);
-    drawOrb(px + -16, py + 8, b + (player.color + 6 - b) % num);
-    drawOrb(px + 20, py + 25, b + (player.color + 2 - b) % num);
-    drawOrb(px + -20, py + 25, b + (player.color + 5 - b) % num);
-    drawOrb(px + 9, py + 39, b + (player.color + 3 - b) % num);
-    drawOrb(px + -9, py + 39, b + (player.color + 4 - b) % num);
+    var num = CIRCLE_END - CIRCLE_BEGIN + 1;
+    var b = CIRCLE_BEGIN;
+    var color = player.auxcolor;
+    if(!(color >= CIRCLE_BEGIN && color <= CIRCLE_END)) color = player.woodcolor;
+    if(!(color >= CIRCLE_BEGIN && color <= CIRCLE_END)) return;
+    drawOrb(px + 0, py + 0, color);
+    drawOrb(px + 16, py + 8, b + (color + 1 - b) % num);
+    drawOrb(px + -16, py + 8, b + (color + 6 - b) % num);
+    drawOrb(px + 20, py + 25, b + (color + 2 - b) % num);
+    drawOrb(px + -20, py + 25, b + (color + 5 - b) % num);
+    drawOrb(px + 9, py + 39, b + (color + 3 - b) % num);
+    drawOrb(px + -9, py + 39, b + (color + 4 - b) % num);
   }
-  var playertext = addText(px, py, getFullName(player));
-  var imColor = getImageColor(player.color);
+  var name = getFullName(player);
+  var playertext = makeText(px, py, name, hudElement);
+  var imColor = getImageColor(player.woodcolor);
   if(player.passed) {
     playertext.style.backgroundColor = getTranslucentColor(imColor, 64);
     playertext.style.color = getTranslucentColor(getHighContrastColor(imColor), 128);
@@ -671,48 +771,50 @@ function drawPlayerPanel(px, py, player, scoreProjection) {
   }
 
 
-  var vptext = addText(px, py + 15, 'VP: ' + player.vp);
+  var vptext = makeText(px, py + 15, 'VP: ' + player.vp, hudElement);
   vptext.title = getFullVPDetailsText(player);
+  vptext.onclick = bind(showGreyDialogAtMouse, getFullVPDetailsText(player));
+  vptext.style.cursor = 'pointer';
   vptext.style.fontWeight = 'bold';
   var passedtext = ''
   if(player.passed && player.index == state.startPlayer) passedtext += 'passed, start';
   else if(player.passed) passedtext += 'passed';
   else if(player.index == state.startPlayer) passedtext += 'start';
-  addText(px + 130, py , passedtext);
-  addText(px, py + 30, 'res: <b>' + getPlayerResourcesString(player) + '</b>');
+  makeText(name.length > 18 ? px + 170 : px + 130, py , passedtext, hudElement);
+  makeText(px, py + 30, 'res: <b>' + getPlayerResourcesString(player, true) + '</b>', hudElement);
 
-  addText(px, py + 45, 'D: <b>' + dangerColor(player.b_d == 0, built_d(player) + '/8</b>') + ' cost: ' + costToString(getBuildingCost(player.faction, B_D, false)) +
-      ' next: ' + costToString(getIncomeForNextBuilding(player, B_D)));
-  addText(px, py + 60, 'TP: <b>' + dangerColor(player.b_tp == 0, built_tp(player) + '/4</b>') + ' cost: ' +
-      costAlternativesToString(getBuildingCost(player.faction, B_TP, true), getBuildingCost(player.faction, B_TP, false)) +
-      ' next: ' + costToString(getIncomeForNextBuilding(player, B_TP)));
-  addText(px, py + 75, 'TE: <b>' + dangerColor(player.b_te == 0, built_te(player) + '/3</b>') + ' cost: ' + costToString(getBuildingCost(player.faction, B_TE, true)) +
-      ' next: ' + costToString(getIncomeForNextBuilding(player, B_TE)));
-  addText(px, py + 90, 'SH: <b>' + built_sh(player) + '/1</b> cost: ' + costToString(getBuildingCost(player.faction, B_SH, true)) +
-      ' next: ' + costToString(getIncomeForNextBuilding(player, B_SH)));
-  addText(px, py + 105, 'SA: <b>' + built_sa(player) + '/1</b> cost: ' + costToString(getBuildingCost(player.faction, B_SA, true)) +
-      ' next: ' + costToString(getIncomeForNextBuilding(player, B_SA)));
+  makeText(px, py + 45, 'D: <b>' + dangerColor(player.b_d == 0, built_d(player) + '/8</b>') + ' cost: ' + costToString(player.getFaction().getBuildingCost(B_D, false)) +
+      ' next: ' + costToString(getIncomeForNextBuilding(player, B_D)), hudElement);
+  makeText(px, py + 60, 'TP: <b>' + dangerColor(player.b_tp == 0, built_tp(player) + '/4</b>') + ' cost: ' +
+      costAlternativesToString(player.getFaction().getBuildingCost(B_TP, true), player.getFaction().getBuildingCost(B_TP, false)) +
+      ' next: ' + costToString(getIncomeForNextBuilding(player, B_TP)), hudElement);
+  makeText(px, py + 75, 'TE: <b>' + dangerColor(player.b_te == 0, built_te(player) + '/3</b>') + ' cost: ' + costToString(player.getFaction().getBuildingCost(B_TE, true)) +
+      ' next: ' + costToString(getIncomeForNextBuilding(player, B_TE)), hudElement);
+  makeText(px, py + 90, 'SH: <b>' + built_sh(player) + '/1</b> cost: ' + costToString(player.getFaction().getBuildingCost(B_SH, true)) +
+      ' next: ' + costToString(getIncomeForNextBuilding(player, B_SH)), hudElement);
+  makeText(px, py + 105, 'SA: <b>' + built_sa(player) + '/1</b> cost: ' + costToString(player.getFaction().getBuildingCost(B_SA, true)) +
+      ' next: ' + costToString(getIncomeForNextBuilding(player, B_SA)), hudElement);
 
 
-  if(player.maxdigging > 0) addText(px, py + 120, 'digging: <b>' + player.digging + '</b> (' + player.digging + '/' + player.maxdigging + ') advcost: ' + costToString(getAdvanceDigCost(player.faction)));
-  else addText(px, py + 120, 'digging: N/A');
-  if(player.maxshipping > 0) addText(px, py + 135, 'shipping: <b>' + getShipping(player) + '</b> (' + player.shipping + '/' + player.maxshipping + (player.bonusshipping ? ' + ' + player.bonusshipping : '') + ') advcost: ' + costToString(getAdvanceShipCost(player.faction)));
-  else if(player.maxtunnelcarpetdistance > 0) addText(px, py + 135, 'range: <b>' + player.tunnelcarpetdistance + '/' + player.maxtunnelcarpetdistance);
-  else addText(px, py + 135, 'shipping: N/A');
+  if(player.maxdigging > 0) makeText(px, py + 120, 'digging: <b>' + player.digging + '</b> (' + player.digging + '/' + player.maxdigging + ') advcost: ' + costToString(player.getActionCost(A_ADV_DIG)), hudElement);
+  else makeText(px, py + 120, 'digging: N/A', hudElement);
+  if(player.maxshipping > 0) makeText(px, py + 135, 'shipping: <b>' + getShipping(player) + '</b> (' + player.shipping + '/' + player.maxshipping + (player.bonusshipping ? ' + ' + player.bonusshipping : '') + ') advcost: ' + costToString(player.getActionCost(A_ADV_SHIP)), hudElement);
+  else if(player.maxtunnelcarpetdistance > 0) makeText(px, py + 135, 'range: <b>' + player.tunnelcarpetdistance + '/' + player.maxtunnelcarpetdistance, hudElement);
+  else makeText(px, py + 135, 'shipping: N/A', hudElement);
 
   if(state.round == 6 && state.type != S_GAME_OVER) {
     var p = scoreProjection[player.index];
-    addText(px, py + 150, 'projected end vp: <b>' + p[0] + '</b> (current: ' + player.vp + ', cult: ' + p[1] + ', netw: ' + p[2] + ', res: ' + p[3] + ', pass: ' + p[4] + ')');
+    makeText(px, py + 150, 'projected end vp: <b>' + p[0] + '</b> (current: ' + player.vp + ', cult: ' + p[1] + ', netw: ' + p[2] + ', fin: ' + p[3] + ', res: ' + p[4] + ', pass: ' + p[5] + ')', hudElement);
   } else {
     var income = getIncome(player, player.passed /*display bonus tile income only when passed*/, state.round);
     var dangerp = income[2] > player.pp - player.p;
     var dangerpw = income[3] > player.pw0 * 2 + player.pw1;
 
-    addText(px, py + 150, 'income: <B>' + income[0] + 'c, ' + income[1] + 'w, ' +
-        dangerColor(dangerp, income[2] + 'p') + ', ' + dangerColor(dangerpw, income[3] + 'pw</b>'));
+    makeText(px, py + 150, 'income: <B>' + income[0] + 'c, ' + income[1] + 'w, ' +
+        dangerColor(dangerp, income[2] + 'p') + ', ' + dangerColor(dangerpw, income[3] + 'pw</b>'), hudElement);
   }
 
-  addText(px, py + 165, 'octogons: ').title = 'the actions with an action token this player has exclusive access to (striked through when already used this round)';
+  makeText(px, py + 165, 'octogons: ', hudElement).title = 'the actions with an action token this player has exclusive access to (striked through when already used this round)';
   var actionsText = '';
   function addActionText(octogon) {
     var name = getActionName(octogon);
@@ -730,7 +832,7 @@ function drawPlayerPanel(px, py, player, scoreProjection) {
     if(player.faction == F_AUREN) addActionText(A_AUREN_CULT);
     if(player.faction == F_WITCHES) addActionText(A_WITCHES_D);
   }
-  addText(px + 70, py + 165, actionsText);
+  makeText(px + 70, py + 165, actionsText, hudElement);
 
   if(player.color != I && player.color != N) drawDigCircle(px + 280, py + 20);
 
@@ -763,9 +865,10 @@ function drawHud2(players, onTileClickMain) {
   drawTilesMap(5, 595, game.bonustiles, 500, 5, onTileClickMain);
   drawTilesMap(5, 675, game.towntiles, 500, 5, onTileClickMain);
   drawTilesMap(5, 735, game.favortiles, 450, 5, onTileClickMain);
+  drawFinalScoringTile(462, 520, game.finalscoring);
 
-  drawCultTracks(840, 40);
-  drawHumanUI(563, 570, state.currentPlayer);
+  drawCultTracks(/*840*/ 5 + game.bw * 64, 40);
+  drawHumanUI(563, 570, state.showResourcesPlayer);
   if(state.type == S_GAME_OVER) drawEndGameScoring(ACTIONPANELX, ACTIONPANELY, 0 /*playerIndex*/);
 }
 
@@ -791,12 +894,18 @@ function drawEndGameScoring(px, py) {
   for(var i = 0; i < sorted.length; i++) {
     var p = sorted[i];
     var text = getFullNameColored(sorted[i]) + ': <b>' + p.vp + '</b>';
-    makeText(px + 5, py + 40 + 16 * i, text, parent).title = getFullVPDetailsText(sorted[i]);
+    var vptext = makeText(px + 5, py + 40 + 16 * i, text, parent);
+    vptext.title = getFullVPDetailsText(sorted[i]);
+    vptext.onclick = bind(showGreyDialogAtMouse, getFullVPDetailsText(sorted[i]));
+    vptext.style.cursor = 'pointer';
     var vp_game = p.getVPFor('start') + p.getVPFor('round') + p.getVPFor('town') + p.getVPFor('favor') + p.getVPFor('bonus') + p.getVPFor('faction') + p.getVPFor('advance') + p.getVPFor('leech');
     var cultvp = '[' + p.getVPForDetail('fire') + ',' + p.getVPForDetail('water') + ',' + p.getVPForDetail('earth') + ',' + p.getVPForDetail('air') + ']';
     if(cultvp.length < 5) cultvp = p.getVPFor('cult');
-    var text2 = ' cult:' + cultvp + ' netw:' + p.getVPFor('network') + ' res:' + p.getVPFor('resources') + ' game:' + vp_game;
-    makeText(px + 200, py + 40 + 16 * i, text2, parent).title = getFullVPDetailsText(sorted[i]);
+    var text2 = ' cult:' + cultvp + ' netw:' + p.getVPFor('network') + ' fin:' + p.getVPFor('final') + ' res:' + p.getVPFor('resources') + ' game:' + vp_game;
+    var textel2 = makeText(px + 200, py + 40 + 16 * i, text2, parent);
+    textel2.title = getFullVPDetailsText(sorted[i]);
+    textel2.onclick = bind(showGreyDialogAtMouse, getFullVPDetailsText(sorted[i]));
+    textel2.style.cursor = 'pointer';
   }
 }
 
@@ -806,7 +915,13 @@ function makeHtmlTextWithColors(text, fgcolor, bgcolor) {
 
 //summary near the actions panel so that you don't have to look at other parts of the screen to see your resources etc...
 function drawSummary(px, py, playerIndex) {
-  var parent = hudElement;
+  var div = makeSizedDiv(px - 5, py, 520 + 5, 90, hudElement);
+  div.style.backgroundColor = getLighterColor(getImageColor(game.players[playerIndex].woodcolor), 32);
+  div.style.overflow = 'visible';
+  try { div.style.whiteSpace = 'no-wrap'; } catch(e) { /*IE8*/};
+  var parent = div/*hudElement*/;
+  px = 5;
+  py = 5;
 
   makeText(px, py, 'Players: ', parent);
   var playerText = '';
@@ -815,7 +930,7 @@ function drawSummary(px, py, playerIndex) {
     var fgcolor;
     var bgcolor;
     var player = game.players[i];
-    var imColor = getImageColor(player.color);
+    var imColor = getImageColor(player.woodcolor);
     if(player.passed) {
       bgcolor = getTranslucentColor(imColor, 64);
       fgcolor = getTranslucentColor(getHighContrastColor(imColor), 128);
@@ -823,15 +938,15 @@ function drawSummary(px, py, playerIndex) {
       bgcolor = imColor;
       fgcolor = getHighContrastColor(imColor);
     }
-    var name = getFactionCodeName(player.faction) + ' ' + player.vp;
+    var name = getFactionCodeName(player.getFaction()) + ' ' + player.vp;
     if(player.index == state.currentPlayer) name += '*';
     if(player.index == state.startPlayer) name += ' [S]';
     playerText += makeHtmlTextWithColors(name, fgcolor, bgcolor) + ' ';
   }
-  makeText(px + 60, py, playerText, parent);
+  makeText(px + 60, py, playerText, parent).style.width = '1000px'; //prevetn wrap
 
 
-  makeText(px, py + 16, 'Taken: ', parent).title = 'list of octogon-actions taken this round. Includes the faction specific actions of other players';
+  /*makeText(px, py + 16, 'Taken: ', parent).title = 'list of octogon-actions taken this round. Includes the faction specific actions of other players';
   var octotext = '';
   // Public octogons
   for(var i = A_BEGIN + 1; i < A_END; i++) {
@@ -848,31 +963,36 @@ function drawSummary(px, py, playerIndex) {
       if(isFactionOctogonAction(i) && game.players[j].octogons[i]) octotext += getActionName(i) + ' ';
     }
   }
-  makeText(px + 50, py + 16, octotext, parent).style.textDecoration = 'line-through';
+  makeText(px + 50, py + 16, octotext, parent).style.textDecoration = 'line-through';*/
 
 
   var player = game.players[playerIndex];
-  addText(px, py + 32, 'Resources: <b>' +  player.c + ' c, ' + player.w + ' w, ' +
+  makeText(px, py + 16, 'Resources: <b>' +  player.c + ' c, ' + player.w + ' w, ' +
       player.p + '/' + player.pp + ' p, ' +
-      player.pw0 + '/' + player.pw1 + '/' + player.pw2 + ' pw' + '</b>');
-  addText(px, py + 48, 'Buildings: <b>' + dangerColor(player.b_d == 0, (8 - player.b_d) + '/8 D') + ', ' +
+      '<font color="#909">' + player.pw0 + '/' + player.pw1 + '/' + player.pw2 + ' pw' + '</font></b>', parent);
+  makeText(px, py + 32, 'Buildings: <b>' + dangerColor(player.b_d == 0, (8 - player.b_d) + '/8 D') + ', ' +
       dangerColor(player.b_tp == 0, (4 - player.b_tp) + '/4 TP') + ', ' +
       dangerColor(player.b_te == 0, (3 - player.b_te) + '/3 TE') + ', ' +
-      (1 - player.b_sh) + '/1 SH, ' + (1 - player.b_sa) + '/1 SA' + '</b>');
-  addText(px, py + 64, 'Advances: <b>dig: ' + player.digging + ', ship: ' + player.shipping + '</b>');
+      (1 - player.b_sh) + '/1 SH, ' + (1 - player.b_sa) + '/1 SA' + '</b>', parent);
+  var advancetext = 'dig: ' + player.digging + ', ship: ' + player.shipping;
+  if(player.maxtunnelcarpetdistance > 0) advancetext += ', range: ' + player.tunnelcarpetdistance;
+  makeText(px, py + 48, 'Advances: <b>' + advancetext + '</b>', parent);
   var income = getIncome(player, player.passed /*display bonus tile income only when passed*/, state.round);
   var dangerp = income[2] > player.pp - player.p;
   var dangerpw = income[3] > player.pw0 * 2 + player.pw1;
   if(state.round != 6) {
-    addText(px, py + 80, 'Income: &nbsp;&nbsp;&nbsp;<b>' + income[0] + ' c, ' + income[1] + ' w, ' +
-        dangerColor(dangerp, income[2] + ' p') + ', ' + dangerColor(dangerpw, income[3] + ' pw') + '</b>');
+    makeText(px, py + 64, 'Income: &nbsp;&nbsp;&nbsp;<b>' + income[0] + ' c, ' + income[1] + ' w, ' +
+        dangerColor(dangerp, income[2] + ' p') + ', ' + dangerColor(dangerpw, income[3] + ' pw') + '</b>', parent);
   }
 }
 
 function makeExecButton(player, x, y, parent, executButtonFun, title) {
   var execbutton = makeButton(x, y, 'execute', parent, executeButtonFun, title);
-  if(player.color) execbutton[0].style.backgroundColor = getImageColor(player.color); //give the execute button the player's faction color
-  if(player.color == Y || player.color == S) execbutton[1].style.color = 'black';
+  if(player.auxcolor) {
+    var execcolor = player.color == O ? O : player.auxcolor;
+    execbutton[0].style.backgroundColor = getImageColor(execcolor); //give the execute button the player's faction color
+    execbutton[1].style.color = getHighContrastColor(getImageColor(execcolor));
+  }
 }
 
 
@@ -910,8 +1030,8 @@ function drawHumanUI(px, py, playerIndex) {
     var cy = ACTIONPANELY + ACTIONPANELH / 2;
     if(state.type == S_INIT_DWELLING) {
       //draw dwelling to indicate your color
-      drawIcon(cx, cy, 0, player.color, parent);
-      drawIcon(cx, cy, B_D, player.color, parent);
+      drawIcon(cx, cy, 0, player.auxcolor, parent);
+      drawIcon(cx, cy, B_D, player.woodcolor, parent);
       makeText(px, py + 2, 'click a valid location on the map to continue', parent);
     }
     else if(humanstate == HS_DIG) {
@@ -936,7 +1056,7 @@ function drawHumanUI(px, py, playerIndex) {
         ry += 24;
       }
 
-      if(player.faction != F_GIANTS && ptype != A_SANDSTORM) {
+      if(player.faction != F_GIANTS && ptype != A_SANDSTORM && player.color != O) {
         button = makeLinkButton(px + 16, ry, 'transform once', parent);
         button.onclick = function() { digAndBuildMode = DBM_ONE; drawHud(); };
         button.title = 'Transforms the landscape one step towards your color.';
@@ -960,7 +1080,7 @@ function drawHumanUI(px, py, playerIndex) {
       }
     }
     else if(humanstate == HS_MAP) {
-      drawIcon(cx, cy, 0, player.color, parent);
+      drawIcon(cx, cy, 0, player.woodcolor, parent);
       makeText(px, py + 2, 'click a valid location on the map to continue', parent);
     }
     else if(humanstate == HS_CULT) {
@@ -1007,7 +1127,7 @@ function drawPlayerActions(px, py, playerIndex, parent /*parent DOM element*/) {
   var button;
 
   makeText(px, py, 'POWER:', parent);
-  if(!game.octogons[A_POWER_BRIDGE]) {
+  if(player.getFaction().canTakeAction(player, A_POWER_BRIDGE, game)) {
     button = makeLinkButton(px + 90, py, getActionName(A_POWER_BRIDGE), parent);
     button.title = '3pw to build a bridge';
     button.style.backgroundColor = '#ff4';
@@ -1015,7 +1135,7 @@ function drawPlayerActions(px, py, playerIndex, parent /*parent DOM element*/) {
       letClickMapForBridge(new Action(A_POWER_BRIDGE));
     };
   }
-  if(!game.octogons[A_POWER_1P]) {
+  if(player.getFaction().canTakeAction(player, A_POWER_1P, game)) {
     button = makeLinkButton(px + 170, py, getActionName(A_POWER_1P), parent);
     button.title = '3pw to get a priest';
     button.style.backgroundColor = '#ff4';
@@ -1023,7 +1143,7 @@ function drawPlayerActions(px, py, playerIndex, parent /*parent DOM element*/) {
       prepareAction(new Action(A_POWER_1P));
     };
   }
-  if(!game.octogons[A_POWER_2W]) {
+  if(player.getFaction().canTakeAction(player, A_POWER_2W, game)) {
     button = makeLinkButton(px + 220, py, getActionName(A_POWER_2W), parent);
     button.title = '4pw to get 2 workers';
     button.style.backgroundColor = '#ff4';
@@ -1031,7 +1151,7 @@ function drawPlayerActions(px, py, playerIndex, parent /*parent DOM element*/) {
       prepareAction(new Action(A_POWER_2W));
     };
   }
-  if(!game.octogons[A_POWER_7C]) {
+  if(player.getFaction().canTakeAction(player, A_POWER_7C, game)) {
     button = makeLinkButton(px + 275, py, getActionName(A_POWER_7C), parent);
     button.title = '4pw to get 7 coins';
     button.style.backgroundColor = '#ff4';
@@ -1039,22 +1159,22 @@ function drawPlayerActions(px, py, playerIndex, parent /*parent DOM element*/) {
       prepareAction(new Action(A_POWER_7C));
     };
   }
-  if(!game.octogons[A_POWER_SPADE]) {
+  if(player.getFaction().canTakeAction(player, A_POWER_SPADE, game)) {
     button = makeLinkButton(px + 330, py, 'pow1dig', parent);
     button.title = '4pw to get 1 spade. Note: by default also builds where you click, use the selector to change to other transform actions.';
     button.style.backgroundColor = '#ff4';
     button.onclick = function() {
       prepareAction(new Action(A_POWER_SPADE));
-      digAndBuildFun(DBM_BUILD, 'click where to dig & build');
+      if(player.getActionIncome(A_POWER_SPADE)[R_SPADE]) digAndBuildFun(DBM_BUILD, 'click where to dig & build');
     };
   }
-  if(!game.octogons[A_POWER_2SPADE]) {
+  if(player.getFaction().canTakeAction(player, A_POWER_2SPADE, game)) {
     button = makeLinkButton(px + 395, py, 'pow2dig', parent);
     button.title = '6pw to get 2 spades. Note: by default also builds where you click, use the selector to change to other transform actions.';
     button.style.backgroundColor = '#ff4';
     button.onclick = function() {
       prepareAction(new Action(A_POWER_2SPADE));
-      digAndBuildFun(DBM_BUILD, 'click where to dig & build');
+      if(player.getActionIncome(A_POWER_2SPADE)[R_SPADE]) digAndBuildFun(DBM_BUILD, 'click where to dig & build');
     };
   }
 
@@ -1075,7 +1195,7 @@ function drawPlayerActions(px, py, playerIndex, parent /*parent DOM element*/) {
       action.cult = cult;
       prepareAction(action);
     };
-    setHumanState(HS_CULT, 'choose which cult track to send the priest to', fun);
+    queueHumanState(HS_CULT, 'choose which cult track to send the priest to', fun);
   };
   var sendPriestAutoFun = function(type) {
     var fun = function(cult) {
@@ -1085,7 +1205,7 @@ function drawPlayerActions(px, py, playerIndex, parent /*parent DOM element*/) {
       action.cult = cult;
       prepareAction(action);
     };
-    setHumanState(HS_CULT, 'choose which cult track to send the priest to', fun);
+    queueHumanState(HS_CULT, 'choose which cult track to send the priest to', fun);
   };
 
   var priestbutton = makeLinkButton(px + 90, py + 32, 'cult', parent);
@@ -1104,7 +1224,8 @@ function drawPlayerActions(px, py, playerIndex, parent /*parent DOM element*/) {
     var digbutton = makeLinkButton(px, py, text, parent);
     digbutton.onclick = function() {
       prepareAction(new Action(type));
-      digAndBuildFun(DBM_BUILD, 'click where to dig & build');
+      var player = getCurrentPlayer();
+      if(player.getActionIncome(type)[R_SPADE]) digAndBuildFun(DBM_BUILD, 'click where to dig & build');
     };
     return digbutton;
   }
@@ -1129,7 +1250,7 @@ function drawPlayerActions(px, py, playerIndex, parent /*parent DOM element*/) {
       action.co = [x, y];
       prepareAction(action);
     };
-    setHumanState(HS_MAP, 'click where to build dwelling', fun);
+    queueHumanState(HS_MAP, 'click where to build dwelling', fun);
   };
 
   makeText(px, py + 64, 'UPGRADE: ', parent);
@@ -1156,7 +1277,7 @@ function drawPlayerActions(px, py, playerIndex, parent /*parent DOM element*/) {
         action.cult = cult;
         prepareAction(action);
       };
-      setHumanState(HS_CULT, 'click on which cult track to increase', fun);
+      queueHumanState(HS_CULT, 'click on which cult track to increase', fun);
     };
     return button;
   }
@@ -1219,7 +1340,7 @@ function drawPlayerActions(px, py, playerIndex, parent /*parent DOM element*/) {
         a.co = [x, y];
         prepareAction(a);
       };
-      setHumanState(HS_MAP, 'click where to form water town', fun);
+      queueHumanState(HS_MAP, 'click where to form water town', fun);
     };
     px2 += 60;
   }
@@ -1239,7 +1360,7 @@ function drawPlayerActions(px, py, playerIndex, parent /*parent DOM element*/) {
         action2.co = [x, y];
         prepareAction(action2);
       };
-      setHumanState(HS_MAP, 'click dwelling to upgrade', fun);
+      queueHumanState(HS_MAP, 'click dwelling to upgrade', fun);
     };
     px2 += 60;
   }
@@ -1253,7 +1374,7 @@ function drawPlayerActions(px, py, playerIndex, parent /*parent DOM element*/) {
         action2.co = [x, y];
         prepareAction(action2);
       };
-      setHumanState(HS_MAP, 'click where to fly and build free dwelling', fun);
+      queueHumanState(HS_MAP, 'click where to fly and build free dwelling', fun);
     };
     px2 += 60;
   }
@@ -1262,6 +1383,22 @@ function drawPlayerActions(px, py, playerIndex, parent /*parent DOM element*/) {
     button.title = '2wto build a bridge';
     button.onclick = function() {
       letClickMapForBridge(new Action(A_ENGINEERS_BRIDGE));
+    };
+    px2 += 60;
+  }
+  if(player.getFaction().canTakeAction(player, A_SHIFT, game)) {
+    button = makeLinkButton(px2, py + 112, getActionName(A_SHIFT), parent);
+    button.title = 'TODO';
+    button.onclick = function() {
+      chooseActionColor(new Action(A_SHIFT));
+    };
+    px2 += 60;
+  }
+  if(player.getFaction().canTakeAction(player, A_SHIFT2, game)) {
+    button = makeLinkButton(px2, py + 112, getActionName(A_SHIFT2), parent);
+    button.title = 'TODO';
+    button.onclick = function() {
+      chooseActionColor(new Action(A_SHIFT2));
     };
     px2 += 60;
   }
@@ -1308,12 +1445,33 @@ function drawMapClick() {
       var co = pixelCo(x, y);
       var px = co[0];
       var py = co[1];
-      var el =  makeDiv(px - tilesize/2, py - tilesize/3 + tilesize/6, uiElement);
+      var el =  makeDiv(parseInt(mapElement.style.left) + px - tilesize/2, parseInt(mapElement.style.top) + py - tilesize/3 + tilesize/6, uiElement);
       el.style.width = '' + tilesize + 'px';
       el.style.height = '' + (tilesize - 2*tilesize/6) + 'px';
       var closure_x = x;
       var closure_y = y;
-      el.onclick = bind(function(x, y) { if (mapClickFun) mapClickFun(x, y); }, x, y);
+      el.onclick = bind(function(x, y) {
+        if(mapClickFun) {
+          mapClickFun(x, y);
+        } else if(executeButtonFun_ /*the way to check a human is doing action. TODO: improve that way*/) {
+          // An automatic action based on clicking on the map
+          var player = getCurrentPlayer();
+          var b = getBuilding(x, y);
+          if(b[0] == B_NONE && getWorld(x, y) != I && getWorld(x, y) != N) {
+            //digAndBuildMode = DBM_BUILD;
+            //prepareAutoDigAndBuildActions(x, y);
+            var tactions = getAutoTransformActions(player, x, y, player.color, getFreeSpades(player, pactions), 999);
+            for(var i = 0; i < tactions.length; i++) prepareAction(tactions[i]);
+            if(digAndBuildMode == DBM_BUILD) prepareAction(makeActionWithXY(A_BUILD, x, y));
+          } else if(b[1] == player.woodcolor) {
+            if(b[0] == B_D) prepareAction(makeActionWithXY(A_UPGRADE_TP, x, y));
+            // TODO: support asking whether the player wants SH or TE in a tiny popup
+            if(b[0] == B_TP && built_sh(player)) prepareAction(makeActionWithXY(A_UPGRADE_TE, x, y));
+            if(b[0] == B_TP && player.b_te <= 0) prepareAction(makeActionWithXY(A_UPGRADE_SH, x, y));
+            if(b[0] == B_TE) prepareAction(makeActionWithXY(A_UPGRADE_SA, x, y));
+          }
+        }
+      }, x, y);
       el.style.cursor = 'pointer';
       IEClickHack(el);
     }
@@ -1329,7 +1487,7 @@ function makeDropDown(x, y, options, parent) {
 }
 
 function makeLabeledDropDown(x, y, label, options, parent) {
-  makeDiv(x, y, hudElement).innerHTML = label;
+  makeDiv(x, y, parent).innerHTML = label;
   return makeDropDown(x, y + 16, options, parent);
 }
 
@@ -1369,224 +1527,25 @@ function makeButton(x, y, label, parentEl, clickfun, tooltip) {
   return [bg, labelDiv, button];
 }
 
-/*
-each button fun receives the following object containing the dropdown states:
-{
-  numplayers: 2 - 5
-  startplayer: -1 - 4 (-1 means random, 0 is human, 1-4 are the AI's)
-  worldmap: 0 for standard, 1 for random, 2 for small random
-  presetfaction: [humanfaction, ai1faction, ...] --> none means random
-  presetround: [round1tile, round2tile, ...] --> none means random
-  presetbonus: {preferred bonus tiles} --> those in the set will be chosen first with the random selection
-  newcultistsrule
-  towntilepromo2013
-  bonustilepromo2013
-}
-*/
-function renderPreScreen(px, py, standardButtonFun, presetButtonFun, beginnerButtonFun, observeButtonFun, debugButtonFun) {
-  var parent = hudElement;
 
-  makeText(px, py - 100, 'TM AI: Play TM against AI players.<br/>'
-      + 'Programmed by Lode Vandevenne.<br/>'
-      + 'Drawings by Giordano Segatta.<br/>'
-      + 'Based on: <a href="http://boardgamegeek.com/boardgame/120677/terra-mystica">http://boardgamegeek.com/boardgame/120677/terra-mystica</a><br/>'
-      + 'version: v0.8e (20131208)', parent);
 
-  var ppy = py;
-  var numPlayerEl = makeLabeledDropDown(px, ppy, 'num players', ['5', '4', '3', '2', '1'], parent);
-  var startPlayerEl = makeLabeledDropDown(px + 250, ppy, 'start player', ['random', 'human', 'ai1', 'ai2', 'ai3', 'ai4'], parent);
-  var worldMapEl = makeLabeledDropDown(px + 400, ppy, 'world map', ['standard', 'randomized', 'randomized small'], parent);
-  /*makeButton(px + 120, py, 'Standard', parent, bind(buttonFun, standardButtonFun), 'Begin a game with standard rules and choice of faction');
-  makeButton(px + 240, py, 'Preset', parent, bind(buttonFun, presetButtonFun), 'Begin a game with factions preset below, or random factions by default');
-  makeButton(px + 360, py, 'Beginner', parent, bind(buttonFun, beginnerButtonFun), 'Begin a game with beginner setup. No choice of faction, it is based on player start position');
-  makeButton(px + 480, py, 'Observe', parent, bind(buttonFun, observeButtonFun), 'Observe a pure AI game');*/
-  //makeButton(px + 600, py, 'Debug', parent, bind(buttonFun, debugButtonFun), 'DEBUG');
-  var gameTypeDrowpDown = makeLabeledDropDown(px + 120, ppy, 'Game Type', ['Standard', 'Preset', 'Beginner', 'Observe'], parent);
-  gameTypeDrowpDown.title = 'Standard: choice of faction. Preset: use Preset settings below. Beginner: official beginner setup, faction based on start position. Observe: Watch only AIs play';
-
-  var newcultistcb = makeCheckbox(px, ppy + 50, parent, 'New cultists rule', 'The official new rule where cultists receive 1 power if everyone refuses to take power');
-  newcultistcb.checked = state.newcultistsrule;
-  var towntilepromo2013cb = makeCheckbox(px + 160, ppy + 50, parent, 'town tile promo 2013', 'Enable the new town tiles from the official 2013 mini expansion');
-  towntilepromo2013cb.checked = state.towntilepromo2013;
-  var bonustilepromo2013cb = makeCheckbox(px + 350, ppy + 50, parent, 'bonus tile promo 2013', 'Enable the new bonus tile from the official 2013 mini expansion. If checked, tile may appear randomly just like any other bonus tile.');
-  bonustilepromo2013cb.checked = state.bonustilepromo2013;
-
-  ppy = py + 160;
-  makeText(px, ppy, 'Preset factions', parent);
-  var factionDropDowns = [];
-  for(var i = 0; i < 5; i++) {
-    makeText(px, ppy + 20 + i * 32 + 5, 'player ' + (i + 1), parent);
-    var factions = [];
-    factions.push('random');
-    for(var j = F_ALL_BEGIN; j <= F_ALL_END; j++) factions.push(getFactionCodeName(j));
-    factionDropDowns.push(makeDropDown(px + 60, ppy + 20 + i * 32, factions, parent));
-  }
-
-  makeText(px + 200, ppy, 'Preset round tiles', parent);
-  var roundDropDowns = [];
-  for(var i = 0; i < 6; i++) {
-    makeText(px + 200, ppy + 20 + i * 32 + 5, 'round ' + (i + 1), parent);
-    var tiles = [];
-    tiles.push('random');
-    for(var j = T_ROUND_BEGIN + 1; j < T_ROUND_END; j++) tiles.push(tileToStringLong(j, false));
-    roundDropDowns.push(makeDropDown(px + 260, ppy + 20 + i * 32, tiles, parent));
-  }
-
-  var allc = makeCheckbox(px + 450, ppy - 5, parent, 'Preset bonus tiles', 'check the preferred bonus tiles, those are given precedence during random selection');
-  allc.checked = false;
-  var bonusBoxes = [];
-  for(var i = 0; i < (T_BON_END - T_BON_BEGIN - 1); i++) {
-    var j = i + T_BON_BEGIN + 1;
-    var c = makeCheckbox(px + 450, ppy + 30 + i * 22, parent, getTileCodeName(j));
-    c.checked = false;
-    bonusBoxes.push(c);
-  }
-  allc.onclick = function() {
-    for(var i = 0; i < bonusBoxes.length; i++) bonusBoxes[i].checked = allc.checked;
-  }
-
-  function buttonFun(fun) {
-    var params = {};
-    params.numplayers = 5 - numPlayerEl.selectedIndex;
-    params.startplayer = startPlayerEl.selectedIndex - 1;
-    params.worldmap = worldMapEl.selectedIndex;
-    params.presetfaction = [];
-    for(var i = 0; i < factionDropDowns.length; i++) {
-      var f = factionDropDowns[i].selectedIndex + F_ALL_BEGIN - 1 /*because first choice is random*/;
-      if(factionDropDowns[i].selectedIndex == 0) f = F_NONE;
-      params.presetfaction[i] = f;
-    }
-    params.presetround = [];
-    for(var i = 0; i < roundDropDowns.length; i++) {
-      var r = roundDropDowns[i].selectedIndex + T_ROUND_BEGIN;
-      if(roundDropDowns[i].selectedIndex == 0) r = T_NONE;
-      params.presetround[i] = r;
-    }
-    params.presetbonus = {};
-    for(var i = 0; i < bonusBoxes.length; i++) {
-      if(bonusBoxes[i].checked) params.presetbonus[i + T_BON_BEGIN + 1] = true;
-    }
-
-    params.newcultistsrule = newcultistcb.checked;
-    params.towntilepromo2013 = towntilepromo2013cb.checked;
-    params.bonustilepromo2013 = bonustilepromo2013cb.checked;
-
-    fun(params);
-  }
-
-  ppy = py + 90;
-  makeButton(px, ppy, 'Start', parent, bind(buttonFun, function(buttonFun) {
-    if(gameTypeDrowpDown.selectedIndex == 0) standardButtonFun(buttonFun);
-    if(gameTypeDrowpDown.selectedIndex == 1) presetButtonFun(buttonFun);
-    if(gameTypeDrowpDown.selectedIndex == 2) beginnerButtonFun(buttonFun);
-    if(gameTypeDrowpDown.selectedIndex == 3) observeButtonFun(buttonFun);
-  }), 'Start new game');
-
-  makeText(px, py + 420, '<h3>Documentation:</h3>' +
-    '<h4>Updates</h4>' +
-    '<p>20131208:You can now also load games from terra.snellman.net. For this, select and copy all the text on the site of a game (ctrl+a, ctrl+c), then paste it in the load game dialog. ' +
-        'It will then execute the actions of the game log line by line, until it reaches the same state as on terra.snellman.net. May break on some edge cases.<p/>' +
-    '<p>20131130:Multistep undo/redo system added. New promo bonus tile.  New more futureproof savegame format. Mermaids town with bridge bugfix.<p/>' +
-    '<p>20131029: The new Essen 2013 promo town tiles have been added.<p/>' +
-    '<h4>About</h4>' +
-    '<p>In this boardgame computer implementation, you will be pitted against AI opponents in TM. This allows for a very quick game to try out strategies with any faction. Multiplayer is not possible.<p/>' +
-    '<p>This is on the internet, but works offline (there is no game server, everything is calculated in JavaScript). Closing the window will lose the game forever. This is for quick play only.<p/>' +
-    '<p>On the left below the game board are the round, bonus, town and favor tiles. On the right is your action panel and a summary. Below are the player boards. Yours is the top one, the AIs are shown below. There you can see resources, non-placed buildings, and VPs<p/>' +
-    '<p>When the game is finished, the final scores are shown where the action buttons were. There is also a log at the bottom.<p/>' +
-    '<h4>Game Rules</h4>' +
-    '<p>Please consult the TM rulebook<p/>' +
-    '<h4>Starting the game</h4>' +
-    '<p>Choose the number of players, the start player, and one of the game modes:<br/>' +
-    ' -Standard: every player chooses a faction according to the standard choice rules. Preset faction settings are not used.<br/>' +
-    ' -Preset: by default, play with randomly assigned faction. Use the preset dropdowns to assign chosen factions to each player.<br/>' +
-    ' -Beginner: play with the beginner set up. Only a bonus tile needs to be chosen, no initial dwellings or faction. The faction depends on the starting player<br/>' +
-    ' -Observe: observe AIs play a standard game against each other.</p>' +
-    'Choose preset options if applicable. Then press Start' +
-    '<h4>Preset options</h4>' +
-    '<p>To finetune the game more, there are preset options. Preset faction only works when playing a Preset game. Preset round tiles and bonus tiles work in all games except the Beginner game.' +
-    ' </p><p>To assign preset round tiles, choose the tile for each round (see below for abbreviations), or select random to randomize the tile of some round. </p><p>To assign preset bonus tiles, select' +
-    ' the preferred bonus tiles. The selected ones are given precedence in the random selection, the unchecked ones are only used if all checked ones are already picked.' +
-    ' Please note that having all bonus tiles selected or having none selected has the same effect: full randomness. </p><p>For all preset options,' +
-    ' the game will resolve conflicts (such as choosing two factions of the same color or the same round tile twice) automatically with random selection.</p>' +
-    '<h4>Performing Actions</h4>' +
-    '<p>The action usage may be a little confusing at first, but it works as follows: when it is your turn, you can perform an action sequence. That is, you\'re only allowed to do a single actual action,' +
-    ' but other minor actions such as burning power or converting power to coins can precede and follow the main action. Therefore, you always have to specify your complete action sequence first,' +
-    ' then press the Execute button. You only see the result of the action after pressing that button. If it is not allowed by the game rules, you will see the reason, and can retry with a new' +
-    ' action sequence. Depending on the action, you will be asked to click a hex on the map, click a favor tile to pick from, etc... The on screen instructions will tell each time what to do.</p>' +
-    '<p>After doing an action, you can press Next to cycle through the AI\'s actions, or Fast to go through them faster.</p>' +
-    '<p>To get the basic idea, here are some click sequences for typical actions:<br/>' +
-    ' -dig&build: click on a map tile. It will automatically do as many dig actions as needed to make the tile your color, and put a dwelling on it. Press Execute to actually perform it.<br/>' +
-    ' -dig once: use the dig or dig&build button, but then before clicking on the map, first set the transform mode to "transform once"<br/>' +
-    ' -cult: click on a cult track, then press Execute to send a priest to 3 if available, otherwise 2 if available, otherwise 1<br/>' +
-    ' -upgr1: click a dwelling to upgrade to TP, or a TP to upgrade to SH, then press Execute<br/>' +
-    ' -upgr2: click a TP to upgrade to TE, or a TE to upgrade to SA, then press Execute<br/>' +
-    ' -forming a town: if any action results in a town, you must choose a town tile before pressing execute<br/>' +
-    '</p>' +
-    '<h4>Other input</h4>' +
-    '<p>Apart from actions, sometimes you need to provide another type of input. For these, you usually don\'t need the "Execute" button. This is for the following types of input:<br/>' +
-    ' -Choosing initial faction: pick it from the popup<br/>' +
-    ' -Placing initial dwelling: click on a map hex of your color<br/>' +
-    ' -Choosing an initial bonus tile: click on a bonus tile, they are the parchment (very light yellow) colored ones<br/>' +
-    ' -Leeching power from an opponent: click yes, no, "auto 1" to automatically do "yes" for 1, "auto smart" to never show the popup anymore (sometimes does lose VPs, depending on round)<br/>' +
-    ' -Bonus digs at the end of the round from the cult track: click the map as many times as you have digs. If no reachable tile is available, click an invalid one to continue on, it will be ignored.<br/>' +
-    '</p>' +
-    '<h4>Halflings</h4>' +
-    '<p>When upgrading to stronghold, after clicking on the trading post to upgrade, you can apply the 3 digs, using transformation actions such as transform once or transform&build. The SH will still look like a TP at this point, that is normal.</p>' +
-    '<h4>Darklings</h4>' +
-    '<p>When upgrading to stronghold, it automatically adds the worker to priest conversion actions based on how many are left. If this was unwanted, use p->w to convert them back to workers.</p>' +
-    '<h4>Mermaids</h4>' +
-    '<p>If you can form a mermaids water town, choose the "watertown" action before pressing execute, but after doing the action that ensures the right town size.</p>' +
-    '<h4>Shortcuts</h4>' +
-    '<p>' +
-    'Actions:<br/>' +
-    ' <b>b</b>: dig&build<br/>' +
-    ' <b>u</b>: upgrade to TP or SH<br/>' +
-    ' <b>v</b>: upgrade to TE or SA<br/>' +
-    '<br/>' +
-    'Buttons:<br/>' +
-    ' <b>x</b>: execute<br/>' +
-    ' <b>n</b>: next<br/>' +
-    ' <b>f</b>: fast<br/>' +
-    '<br/>' +
-    'Leeching:<br/>' +
-    ' <b>y</b>: yes<br/>' +
-    ' <b>n</b>: no<br/>' +
-    '</p>' +
-    '<h4></h4>' +
-    '<h4>Abbreviations</h4>' +
-    '<p>' +
-    ' D: dwelling<br/>' +
-    ' TP: trading post<br/>' +
-    ' TE: temple<br/>' +
-    ' SH: stronghold<br/>' +
-    ' SA: sanctuary<br/>' +
-    ' S: stronghold or sanctuary (e.g. svp = vp for SH or SA)<br/>' +
-    ' c: coin<br/>' +
-    ' w: worker<br/>' +
-    ' p: priest<br/>' +
-    ' pw: power (aka mana)<br/>' +
-    ' vp: victory points<br/>' +
-    ' F: fire cult track<br/>' +
-    ' W: water cult track<br/>' +
-    ' E: earth cult track<br/>' +
-    ' A: air cult track<br/>' +
-    ' P: pass<br/>' +
-    ' BON: bonus tile<br/>' +
-    ' FAV: favor tile<br/>' +
-    ' RND: round tile<br/>' +
-    ' TW: town tile<br/>' +
-    ' dig: getting a spade + transforming terrain' +
-    '</p>' +
-    '<h4></h4>' +
-    '<p></p>' +
-    '', parent);
-
-}
-
+////////////////////////////////////////////////////////////////////////////////
+////////////////////////////////////////////////////////////////////////////////
+////////////////////////////////////////////////////////////////////////////////
+////////////////////////////////////////////////////////////////////////////////
 
 function drawHud() {
   function mainTileClick(tile) {
-    if(tileClickFun) tileClickFun(tile);
+    if(tileClickFun) {
+      tileClickFun(tile);
+    } else if(executeButtonFun_ /*the way to check a human is doing action. TODO: improve that way*/) {
+        if(isBonusTile(tile) && state.round != 6) {
+          // Shortcut: click on bonus tile to pass with it
+          var action = new Action(A_PASS);
+          if(state.round != 6) action.bontile = tile;
+          prepareAction(action);
+        }
+      }
   }
 
   logEl.style.top = 900 + game.players.length * 205;
@@ -1621,7 +1580,7 @@ function drawSaveLoadUI(onlyload) {
       var area = els[1];
 
       makeText(5, 5, 'Copy all the text below, and save it in a text file to keep a copy of the game state. It can be loaded again at any time.' +
-          ' The state can also be shared with others. The final "log:" section is optional. Currently this feature is experimental.', el);
+          ' The state can also be shared with others. The final "log:" section is optional.', el);
 
       area.value = serializeGameState(saveGameState(game, state, logText));
       area.select();
@@ -1639,7 +1598,7 @@ function drawSaveLoadUI(onlyload) {
     var area = els[1];
 
     makeText(5, 5, 'Paste the gamestate text in the field, then press Load to load the game. It only works if the text is valid. ' +
-        'This also supports logs from games from terra.snellman.net: just select all in a game from there, and paste it in here.', el);
+        'This also supports logs from games from terra.snellman.net: on there press "Load full log", select all, and paste it in here.', el);
 
     area.select();
 
@@ -1710,12 +1669,18 @@ function drawSaveLoadUI(onlyload) {
       drawDebugActions(0, 563, 850);
       debugbutton.onclick = undefined;
     }
-
-
   }
 }
 
 function resetAndBeginNewGame() {
+  clearHumanState();
+  state.type = S_PRE;
+  fastestMode = false;
+  fastMode = false;
+  autoLeech = false;
+  autoLeech1 = false;
+  autoLeechNo = false;
+
   game.players.length = 0;
   window.setTimeout(function() {
     mapElement.innerHTML = '';
@@ -1726,6 +1691,7 @@ function resetAndBeginNewGame() {
     helpEl.innerHTML = '';
     logEl.innerHTML = '';
     logText = '';
+    lastLogLine = '';
     beginGame();
   }, 0);
 }

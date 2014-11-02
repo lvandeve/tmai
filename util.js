@@ -156,7 +156,7 @@ function wrap(v, start, end) {
   return v;
 }
 
-//returns 0 for anything that is false, the value otherwise
+//returns 0 for anything that is falsy, the value otherwise
 function undef0(v) {
   return v || 0;
 }
@@ -410,4 +410,30 @@ document.onkeydown = function(e) {
 function registerKeyHandler(dos_code, fun) {
   if (dos_code.charCodeAt != undefined) dos_code = dos_code.charCodeAt(0);
   keyHandlers_[dos_code] = fun;
+}
+
+////////////////////////////////////////////////////////////////////////////////
+// Other
+////////////////////////////////////////////////////////////////////////////////
+
+function localStorageSupported() {
+  try {
+    return 'localStorage' in window && window['localStorage'] != null;
+  } catch(e) {
+    return false;
+  }
+}
+
+function getMousePos(e) {
+  var posx = 0;
+  var posy = 0;
+  if (!e) var e = window.event;
+  if (e.pageX || e.pageY)   {
+    return [e.pageX, e.pageY];
+  }
+  else if (e.clientX || e.clientY)   {
+    return [e.clientX + document.body.scrollLeft + document.documentElement.scrollLeft,
+            e.clientY + document.body.scrollTop + document.documentElement.scrollTop];
+  }
+  return [null, null];
 }

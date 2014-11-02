@@ -12,31 +12,62 @@ div {
 }
 
 .tiles {
-  background-image: url('tiles.png');
+  background-image: url('tiles.png?v=20141102');
 }
 
+/*.hex::before {
+    content: " ";
+    width: 0; height: 0;
+    border-bottom: 30px solid #6C6;
+    border-left: 52px solid transparent;
+    border-right: 52px solid transparent;
+    position: absolute;
+    top: -30px;
+}
+
+.hex {
+    margin-top: 30px;
+    width: 104px;
+    height: 60px;
+    background-color: #6C6;
+    position: relative;
+}
+
+.hex::after {
+    content: "";
+    width: 0;
+    position: absolute;
+    bottom: -30px;
+    border-top: 30px solid #6C6;
+    border-left: 52px solid transparent;
+    border-right: 52px solid transparent;
+}*/
 </style>
 
-<script type="text/javascript" src="util.js?v=20131205"></script>
-<script type="text/javascript" src="enums.js?v=20131205"></script>
-<script type="text/javascript" src="game.js?v=20131205"></script>
-<script type="text/javascript" src="world.js?v=20131205"></script>
-<script type="text/javascript" src="player.js?v=20131205"></script>
-<script type="text/javascript" src="rules.js?v=20131205"></script>
-<script type="text/javascript" src="render.js?v=20131205"></script>
-<script type="text/javascript" src="strategy.js?v=20131205"></script>
-<script type="text/javascript" src="actor.js?v=20131205"></script>
-<script type="text/javascript" src="ai.js?v=20131205"></script>
-<script type="text/javascript" src="human.js?v=20131205"></script>
-<script type="text/javascript" src="state.js?v=20131205"></script>
-<script type="text/javascript" src="snellman.js?v=20131205"></script>
-<script type="text/javascript" src="save.js?v=20131205"></script>
-<script type="text/javascript" src="unittest.js?v=20131205"></script>
+<script type="text/javascript" src="util.js?v=20141102"></script>
+<script type="text/javascript" src="enums.js?v=20141102"></script>
+<script type="text/javascript" src="game.js?v=20141102"></script>
+<script type="text/javascript" src="world.js?v=20141102"></script>
+<script type="text/javascript" src="faction.js?v=20141102"></script>
+<script type="text/javascript" src="player.js?v=20141102"></script>
+<script type="text/javascript" src="action.js?v=20141102"></script>
+<script type="text/javascript" src="rules.js?v=20141102"></script>
+<script type="text/javascript" src="render.js?v=20141102"></script>
+<script type="text/javascript" src="menu.js?v=20141102"></script>
+<script type="text/javascript" src="strategy.js?v=20141102"></script>
+<script type="text/javascript" src="actor.js?v=20141102"></script>
+<script type="text/javascript" src="ai.js?v=20141102"></script>
+<script type="text/javascript" src="human.js?v=20141102"></script>
+<script type="text/javascript" src="state.js?v=20141102"></script>
+<script type="text/javascript" src="snellman.js?v=20141102"></script>
+<script type="text/javascript" src="save.js?v=20141102"></script>
+<script type="text/javascript" src="unittest.js?v=20141102"></script>
+<script type="text/javascript" src="fireice.js?v=20141102"></script>
 <script>
 /*
 TM AI
 
-Copyright (C) 2013 by Lode Vandevenne
+Copyright (C) 2013-2014 by Lode Vandevenne
 
 This software is provided 'as-is', without any express or implied
 warranty. In no event will the authors be held liable for any damages
@@ -59,19 +90,6 @@ freely, subject to the following restrictions:
 */
 
 //The main HTML page and game initialization
-
-function beginGame() {
-  game.bw = 13;
-  game.bh = 9;
-  clearHumanState();
-
-  fastestMode = false;
-  autoLeech = false;
-  autoLeech1 = false;
-  autoLeechNo = false;
-  drawSaveLoadUI(true);
-  gameLoopNonBlocking(S_PRE, false);
-}
 
 beginGame();
 

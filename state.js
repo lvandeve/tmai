@@ -1,7 +1,7 @@
 /*
 TM AI
 
-Copyright (C) 2013 by Lode Vandevenne
+Copyright (C) 2013-2014 by Lode Vandevenne
 
 This software is provided 'as-is', without any express or implied
 warranty. In no event will the authors be held liable for any damages
@@ -64,19 +64,24 @@ function getCallBackStateDebugString() {
 //Constructor
 var State = function() {
   this.type = S_PRE;
+  this.typestack = []; //TODO: also support different currentPlayer and other vars on the stack. TODO: replace everything with stack.
   this.next_type = S_NONE;
   this.round = 0; //the round for actions. 0 = pre-rounds, 1-6 = game rounds.
   this.startPlayer = 0;
   this.currentPlayer = 0;
+  this.showResourcesPlayer = 0;
+
+  this.numHandledForState = 0; //counter for bookkeeping for how much of something already done, e.g. to know when each player chose a faction
 
   this.leecharray = []; //2D leech array described at function getLeechEffect (array of [playerIndex, amount])
   this.leechi = 0; //index in leech array
   this.leechtaken = 0;
 
-  // game rule options
-  this.newcultistsrule = true;
+  // game rule options. TODO: newcultistsrule etc... belongs more in the Game class than here. Move it?
+  this.newcultistsrule = true; // getting 1 power if nobody leeches from them
   this.towntilepromo2013 = true; // new town tiles
   this.bonustilepromo2013 = true; // new bonus tile
+  this.fireice = true; // Fire & Ice expansion
 };
 
 function logPlayerNameFun(player) {
@@ -99,7 +104,7 @@ var fastestMode = false;
 var nscount = 0;
 var nsfuncount = 0;
 var showingNextButtonPanel = false;
-// When this function is called, everything must be set up and ready for the next state (which will now become the current state)
+// When this function is called, everything must be set up and ready for the next state (which will now become the current state) - this may mean initNewStateType must be called before it
 // This function may show a "next" button to the player or handle UI in other ways, that is, if this function did nothing, the game would just keep going on with no possible interaction
 // progress = whether the state change progresses the game (= should pause for the player)
 function gameLoopNonBlocking(type, progress) {
@@ -164,6 +169,7 @@ function gameLoopNonBlocking(type, progress) {
 }
 
 function gameLoopBlocking(isFinishedFun) {
+  state.initNewStateType(state.type);
   for(;;) {
     var callbackcalled = false;
     var executeResultCallback = function(player, result) {
@@ -179,442 +185,14 @@ function gameLoopBlocking(isFinishedFun) {
 
     state.executeActor(executeResultCallback, noActorCallback);
 
-    if(!callbackcalled) {
+    if(!callbackcalled && state.type != S_GAME_OVER && !isFinishedFun()) {
+      console.log('error: callback must be called in blocking gameloop. ' + getCallBackStateDebugString());
       addLog('error: callback must be called in blocking gameloop');
       return;
     }
-    
+
     if(isFinishedFun()) return;
   }
-}
-
-function startNewRound() {
-  state.round++;
-  addLog('');
-  addLog('ROUND ' + state.round + (logUpsideDown ? ' started ^' : ' started'));
-  this.currentPlayer = this.startPlayer;
-  for(var i = 0; i < game.players.length; i++) {
-    var player = game.players[i];
-    var income = getIncome(player, true, state.round - 1 /*because you get the round bonus from last round*/);
-    addIncome(player, income);
-    addLog(logPlayerNameFun(player) + ' Income: ' + incomeToStringWithPluses(income) + getGreyedResourcesLogString(player));
-    player.passed = false;
-  }
-  initOctogons();
-  addBonusTileCoins();
-}
-
-State.prototype.getHelpText = function() {
-};
-
-function makeNewAIPlayer(name) {
-  var player = new Player();
-  player.human = false;
-  player.actor = new AI();
-  player.name = name;
-  return player;
-}
-
-function makeNewHumanPlayer(name) {
-  var player = new Player();
-  player.human = true;
-  player.actor = new Human();
-  player.name = name;
-  return player;
-}
-
-function initParams(params) {
-  state.newcultistsrule = params.newcultistsrule;
-  state.towntilepromo2013 = params.towntilepromo2013;
-  state.bonustilepromo2013 = params.bonustilepromo2013;
-
-  initBoard();
-}
-
-function getAIPlayerName(index) {
-  if(index < 5) return ['Talos', 'Galatea', 'Golem', 'Hal', 'Automaton'][index];
-  else return 'AI' + (index + 1);
-}
-
-function getHumanPlayerName(index) {
-  if(index < 5) return ['Human', 'Human2', 'Human3', 'Human4', 'Human5'][index];
-  else return 'Human' + (index + 1);
-}
-
-function initPlayers(params) {
-  var numai = 0;
-  var numhuman = 0;
-  for(var i = 0; i < params.numplayers; i++) {
-    if(i == 0) {
-      game.players[i] = makeNewHumanPlayer(getHumanPlayerName(numhuman));
-      numhuman++;
-    } else {
-      game.players[i] = makeNewAIPlayer(getAIPlayerName(numai));
-      numai++;
-    }
-    game.players[i].index = i;
-  }
-
-  var startplayer = params.startplayer;
-  if(startplayer == -1) startplayer = randomInt(game.players.length);
-  startplayer = wrapPlayer(startplayer)
-  state.startPlayer = startplayer;
-  state.currentPlayer = startplayer;
-}
-
-// With the round tiles etc...
-function initialGameLogMessage() {
-  var playernames = '';
-  for(var i = 0; i < game.players.length; i++) playernames += (game.players[wrapPlayer(state.startPlayer + i)].name) + (i < game.players.length - 1 ? ', ' : '');
-  addLog('Players: ' + playernames);
-  addLog(game.players[state.startPlayer].name + ' is the starting player');
-
-  if(state.newcultistsrule) addLog('cultists errate enabled');
-  if(state.towntilepromo2013) addLog('town tiles promo 2013 enabled');
-  if(state.bonustilepromo2013) addLog('shipping bonus tile promo 2013 enabled');
-
-  addLog('round 1 tile: ' + tileToStringLong(game.roundtiles[1], true));
-  addLog('round 2 tile: ' + tileToStringLong(game.roundtiles[2], true));
-  addLog('round 3 tile: ' + tileToStringLong(game.roundtiles[3], true));
-  addLog('round 4 tile: ' + tileToStringLong(game.roundtiles[4], true));
-  addLog('round 5 tile: ' + tileToStringLong(game.roundtiles[5], true));
-  addLog('round 6 tile: ' + tileToStringLong(game.roundtiles[6], true));
-  var j = 0;
-  for(var i = T_BON_BEGIN + 1; i < T_BON_END; i++) {
-    if(game.bonustiles[i]) {
-      j++;
-      addLog('bonus tile ' + j + ': ' + tileToStringLong(i, true));
-    }
-  }
-  addLog('');
-}
-
-
-function initialGameRender() {
-  uiElement.innerHTML = '';
-  drawMap();
-  drawMapClick();
-  drawHud();
-  drawSaveLoadUI(false);
-}
-
-function startGameButtonFun(params) {
-  initParams(params);
-  if(params.worldmap == 0) initStandardWorld();
-  else randomizeWorld(params.worldmap == 2);
-  initPlayers(params);
-
-  chooseRoundTiles(params);
-  chooseBonusTiles(params);
-
-  initialGameRender();
-  initialGameLogMessage();
-  gameLoopNonBlocking(S_INIT_FACTION, false);
-}
-
-function startBeginnerGameButtonFun(params) {
-  initParams(params);
-  initStandardWorld(); // Random world not supported here
-  initPlayers(params);
-
-  //beginner game factions
-  if(game.players.length <= 2) {
-    // 1-player not supported
-    game.players[state.startPlayer].faction = F_WITCHES;
-    game.players[wrapPlayer(state.startPlayer + 1)].faction = F_NOMADS;
-  }
-  else if(game.players.length == 3) {
-    game.players[state.startPlayer].faction = F_WITCHES;
-    game.players[wrapPlayer(state.startPlayer + 1)].faction = F_NOMADS;
-    game.players[wrapPlayer(state.startPlayer + 2)].faction = F_ALCHEMISTS;
-  }
-  else if(game.players.length == 4) {
-    game.players[state.startPlayer].faction = F_WITCHES;
-    game.players[wrapPlayer(state.startPlayer + 1)].faction = F_NOMADS;
-    game.players[wrapPlayer(state.startPlayer + 2)].faction = F_HALFLINGS;
-    game.players[wrapPlayer(state.startPlayer + 3)].faction = F_MERMAIDS;
-  }
-  else if(game.players.length == 5) {
-    game.players[state.startPlayer].faction = F_WITCHES;
-    game.players[wrapPlayer(state.startPlayer + 1)].faction = F_NOMADS;
-    game.players[wrapPlayer(state.startPlayer + 2)].faction = F_HALFLINGS;
-    game.players[wrapPlayer(state.startPlayer + 3)].faction = F_MERMAIDS;
-    game.players[wrapPlayer(state.startPlayer + 4)].faction = F_GIANTS;
-  }
-  for(var i = 0; i < game.players.length; i++) {
-    game.players[i].color = factionColor(game.players[i].faction);
-    initPlayerFaction(game.players[i]);
-  }
-  createColorToPlayerMap();
-
-  //beginner game bonus tiles
-  if(game.players.length == 2) {
-    game.bonustiles[T_BON_CULT_4C] = 0;
-    game.bonustiles[T_BON_PASSDVP_2C] = 0;
-    game.bonustiles[T_BON_PASSTPVP_1W] = 0;
-    game.bonustiles[T_BON_1P] = 0;
-    game.bonustiles[T_BON_PASSSHIPVP_3PW] = 0;
-  }
-  else if(game.players.length == 3) {
-    game.bonustiles[T_BON_CULT_4C] = 0;
-    game.bonustiles[T_BON_PASSDVP_2C] = 0;
-    game.bonustiles[T_BON_PASSTPVP_1W] = 0;
-    game.bonustiles[T_BON_PASSSHIPVP_3PW] = 0;
-  }
-  else if(game.players.length == 4) {
-    game.bonustiles[T_BON_PASSDVP_2C] = 0;
-    game.bonustiles[T_BON_PASSTPVP_1W] = 0;
-    game.bonustiles[T_BON_PASSSHIPVP_3PW] = 0;
-  }
-  else if(game.players.length == 5) {
-    game.bonustiles[T_BON_PASSDVP_2C] = 0;
-    game.bonustiles[T_BON_PASSSHIPVP_3PW] = 0;
-  }
-
-  //beginner game round tiles
-  game.roundtiles[1] = T_ROUND_D2VP_4F4PW;
-  game.roundtiles[2] = T_ROUND_SHSA5VP_2A1W;
-  game.roundtiles[3] = T_ROUND_DIG2VP_1E1C;
-  game.roundtiles[4] = T_ROUND_TP3VP_4A1DIG;
-  game.roundtiles[5] = T_ROUND_SHSA5VP_2F1W;
-  game.roundtiles[6] = T_ROUND_TP3VP_4W1DIG;
-
-  //beginner game starting dwellings
-  function placeBeginnerDwelling(i, x, y) {
-    var error = placeInitialDwelling(game.players[wrapPlayer(state.startPlayer + i)], x, y);
-    if(error != '') throw new Error('invalid beginner dwelling coordinates: ' + error + ' ' + x + ' ' + y + ' ' + game.players[wrapPlayer(state.startPlayer + i)].color);
-  }
-  if(game.players.length == 2) {
-    placeBeginnerDwelling(0, 6, 2);
-    placeBeginnerDwelling(0, 5, 5);
-    placeBeginnerDwelling(1, 7, 4);
-    placeBeginnerDwelling(1, 4, 5);
-    placeBeginnerDwelling(1, 6, 8);
-  }
-  if(game.players.length == 3) {
-    placeBeginnerDwelling(0, 10, 4);
-    placeBeginnerDwelling(0, 5, 5);
-    placeBeginnerDwelling(1, 4, 5);
-    placeBeginnerDwelling(1, 9, 6);
-    placeBeginnerDwelling(1, 6, 8);
-    placeBeginnerDwelling(2, 4, 4);
-    placeBeginnerDwelling(2, 10, 6);
-  }
-  if(game.players.length == 4) {
-    placeBeginnerDwelling(0, 10, 4);
-    placeBeginnerDwelling(0, 5, 5);
-    placeBeginnerDwelling(1, 2, 3);
-    placeBeginnerDwelling(1, 7, 4);
-    placeBeginnerDwelling(1, 6, 8);
-    placeBeginnerDwelling(2, 5, 4);
-    placeBeginnerDwelling(2, 9, 5);
-    placeBeginnerDwelling(3, 6, 3);
-    placeBeginnerDwelling(3, 3, 4);
-  }
-  else if(game.players.length == 5) {
-    placeBeginnerDwelling(0, 6, 2);
-    placeBeginnerDwelling(0, 10, 4);
-    placeBeginnerDwelling(1, 4, 0);
-    placeBeginnerDwelling(1, 2, 3);
-    placeBeginnerDwelling(1, 6, 8);
-    placeBeginnerDwelling(2, 5, 4);
-    placeBeginnerDwelling(2, 9, 5);
-    placeBeginnerDwelling(3, 3, 4);
-    placeBeginnerDwelling(3, 6, 7);
-    placeBeginnerDwelling(4, 5, 3);
-    placeBeginnerDwelling(4, 10, 3);
-  }
-
-  calculateTownClusters();
-
-  initialGameRender();
-  initialGameLogMessage();
-  state.currentPlayer = wrapPlayer(state.startPlayer - 1);
-  gameLoopNonBlocking(S_INIT_BONUS, false); //faction and starting dwellings already done.
-}
-
-function startObserveGameButtonFun(params) {
-  initParams(params);
-  if(params.worldmap == 0) initStandardWorld();
-  else randomizeWorld(params.worldmap == 2);
-
-  for(var i = 0; i < params.numplayers; i++) {
-    game.players[i] = makeNewAIPlayer(getAIPlayerName(i));
-    game.players[i].index = i;
-  }
-
-  var startplayer = params.startplayer;
-  if(startplayer == -1) startplayer = randomInt(game.players.length);
-  startplayer = wrapPlayer(startplayer)
-  state.startPlayer = startplayer;
-  state.currentPlayer = startplayer;
-
-  chooseRoundTiles(params);
-  chooseBonusTiles(params);
-
-  initialGameRender();
-  initialGameLogMessage();
-  gameLoopNonBlocking(S_INIT_FACTION, false);
-}
-
-//debug scenario, where you're immediately in the actions, dwelling and such are already placed
-function startDebugGameButtonFun(params) {
-  initParams(params);
-  if(params.worldmap == 0) initStandardWorld();
-  else randomizeWorld(params.worldmap == 2);
-
-  var ai = new AI(); //to auto-place everything
-
-  params.numplayers = 2;
-  params.startplayer = 0;
-  initPlayers(params);
-  game.players[0].faction = F_CULTISTS;
-  game.players[1].faction = F_SWARMLINGS;
-  for(var i = 0; i < game.players.length; i++) {
-    game.players[i].color = factionColor(game.players[i].faction);
-    initPlayerFaction(game.players[i]);
-  }
-  createColorToPlayerMap();
-
-  function placeDwelling(player, x, y) {
-    var error = placeInitialDwelling(player, x, y);
-    if(error != '') throw new Error('invalid dwelling coordinates: ' + error + ' ' + x + ' ' + y + ' ' + player.color);
-    return error;
-  }
-  for(var i = 0; i < game.players.length; i++) {
-    while(getInitialDwellingsLeft(game.players[i]) > 0) {
-      ai.chooseInitialDwelling(i, placeDwelling);
-    }
-  }
-
-  chooseRoundTiles(params);
-  chooseBonusTiles(params);
-
-  for(var i = 0; i < game.players.length; i++) {
-    ai.chooseInitialBonusTile(i, function(player, tile) {
-      return giveBonusTile(player, tile);
-    });
-  }
-
-  calculateTownClusters();
-
-  initialGameRender();
-  initialGameLogMessage();
-  startNewRound();
-  gameLoopNonBlocking(S_ACTION, false);
-}
-
-function randomShuffle(list) {
-  // Fisher-Yates shuffle
-  for(var i = list.length - 1; i > 0; i--) {
-    var j = randomInt(i);
-    var temp = list[i];
-    list[i] = list[j];
-    list[j] = temp;
-  }
-}
-
-//randomizes, or sets to chosen value from params
-function randomizePlayerFactions(params) {
-  // The players with pre-determined race
-  var takencolors = {};
-  for(var i = 0; i < game.players.length; i++) {
-    if(params.presetfaction[i] != F_NONE) {
-      var color = factionColor(params.presetfaction[i]);
-      if(takencolors[color]) continue;
-      game.players[i].faction = params.presetfaction[i];
-      game.players[i].color = color;
-      initPlayerFaction(game.players[i]);
-      takencolors[color] = true;
-    }
-  }
-  var freecolors = [];
-  for(var i = LANDSCAPE_BEGIN; i <= LANDSCAPE_END; i++) {
-    if(!takencolors[i]) freecolors.push(i);
-  }
-  // The players with random race
-  randomShuffle(freecolors);
-  var j = 0;
-  for(var i = 0; i < game.players.length; i++) {
-    if(game.players[i].faction == F_NONE) {
-      var factions = colorFactions(freecolors[i]);
-      game.players[i].faction = factions[randomIndex(factions)];
-      game.players[i].color = freecolors[i];
-      initPlayerFaction(game.players[i]);
-    }
-  }
-}
-
-function chooseRoundTiles(params) {
-  for(var i = 6; i > 0; i--) game.roundtiles[i] = T_NONE;
-
-  var taken = {};
-  for(var i = 6; i > 0; i--) {
-    var index = params.presetround[i - 1];
-    if(i >= 5 && index == T_ROUND_DIG2VP_1E1C) continue; //no digging VP's in the last two rounds due to halflings abuse
-    if(taken[index]) continue; //no duplicate round tiles
-    taken[index] = true;
-    game.roundtiles[i] = index;
-  }
-  for(var i = 6; i > 0; i--) {
-    if(game.roundtiles[i] != T_NONE) continue;
-    while(true) {
-      var index = T_ROUND_BEGIN + 1 + randomInt(T_ROUND_END - T_ROUND_BEGIN - 1);
-      if(i >= 5 && index == T_ROUND_DIG2VP_1E1C) continue; //no digging VP's in the last two rounds due to halflings abuse
-      if(taken[index]) continue; //no duplicate round tiles
-      taken[index] = true;
-      game.roundtiles[i] = index;
-      break;
-    }
-  }
-}
-
-function chooseBonusTiles(params) {
-  game.bonustilecoins = [];
-
-  var list1 = []; //the preferred ones
-  var list2 = [];
-  for(var i = T_BON_BEGIN + 1; i < T_BON_END; i++) {
-    if (!params.bonustilepromo2013 && isBonusTilePromo2013Tile(i)) {
-      continue;
-    }
-    if(params.presetbonus[i]) {
-      list1.push(i);
-    } else {
-      list2.push(i);
-    }
-  }
-
-  randomShuffle(list1);
-  randomShuffle(list2);
-
-  var chosen = {};
-  var amount = Math.min(game.players.length + 3, T_BON_END - T_BON_BEGIN - 1);
-  for(var i = T_BON_BEGIN + 1; i < T_BON_END; i++) game.bonustiles[i] = 0;
-
-  for(var i = 0; i < amount; i++) {
-    if(i < list1.length) game.bonustiles[list1[i]] = 1;
-    else game.bonustiles[list2[i - list1.length]] = 1;
-  }
-  
-}
-
-function startPresetGameButtonFun(params) {
-  initParams(params);
-  if(params.worldmap == 0) initStandardWorld();
-  else randomizeWorld(params.worldmap == 2);
-
-  initPlayers(params);
-  randomizePlayerFactions(params);
-
-  createColorToPlayerMap();
-
-  chooseRoundTiles(params);
-  chooseBonusTiles(params);
-
-  initialGameRender();
-  initialGameLogMessage();
-  gameLoopNonBlocking(S_INIT_DWELLING, false); //faction and starting dwellings already done.
 }
 
 function getInitialDwellingsLeft(player) {
@@ -641,17 +219,27 @@ function addEndGameScore() {
   }
 
   //network
-  var scores = getNetworkEndScores();
+  var networkscores = getNetworkEndScores();
   addLog('');
-  for(var j = 0; j < scores.length; j++) {
-      if(scores[j][0] != 0) {
-      addLog(logPlayerNameFun(game.players[j]) + ' gets ' + scores[j][0] + ' VP from network size ' + scores[j][1]);
-      game.players[j].addVP(scores[j][0], 'network', 'network');
+  for(var j = 0; j < networkscores.length; j++) {
+    if(networkscores[j][0] != 0) {
+      addLog(logPlayerNameFun(game.players[j]) + ' gets ' + networkscores[j][0] + ' VP from network ' + networkscores[j][1]);
+      game.players[j].addVP(networkscores[j][0], 'network', 'network');
+    }
+  }
+
+  //expansion final scoring
+  var finalscores = getFinalScores();
+  addLog('');
+  for(var j = 0; j < finalscores.length; j++) {
+    if(finalscores[j][0] != 0) {
+      addLog(logPlayerNameFun(game.players[j]) + ' gets ' + finalscores[j][0] + ' VP from ' + finalScoringCodeNames[game.finalscoring] + ' ' + finalscores[j][1]);
+      game.players[j].addVP(finalscores[j][0], 'final', 'final');
     }
   }
 
   //resources
-  scores = getResourceEndScores();
+  var scores = getResourceEndScores();
   addLog('');
   for(var i = 0; i < game.players.length; i++) {
     addLog(logPlayerNameFun(game.players[i]) + ' gets ' + scores[i] + ' VP from resources');
@@ -725,22 +313,95 @@ State.prototype.selectNextInitialDwellingPlayer_ = function() {
   return true;
 };
 
+// switches to new kind of state type (chooses correct starting player for it, returns the given type so that you can assign it)
+// Set current player to start player for that state type, if relevant
+// Only call when starting a next phase of the game (e.g. placing initial dwellings, or starting a new round), but not when switching from power leeching back to actions in current round.
+// In other words, only call when the concept of a starting player for this kind of phase is relevant.
+State.prototype.initNewStateType = function(type) {
+  if(type == S_PRE) {
+  }
+  else if(type == S_INIT_FACTION) {
+    recalculateColorMaps(); // there may already be colors in it if preset factions were set
+    this.currentPlayer = this.startPlayer;
+    this.numHandledForState = 0;
+  }
+  else if(type == S_INIT_FACTION_COLOR) {
+  }
+  else if(type == S_INIT_FAVOR) {
+  }
+  else if(type == S_INIT_AUX_COLOR) {
+    this.currentPlayer = this.startPlayer;
+    this.numHandledForState = 0;
+  }
+  else if(type == S_INIT_DWELLING) {
+    this.currentPlayer = wrapPlayer(this.startPlayer - 1); // so that selectNextInitialDwellingPlayer_ makes it correct
+    this.selectNextInitialDwellingPlayer_();
+  }
+  else if(type == S_INIT_BONUS) {
+    this.currentPlayer = wrapPlayer(this.startPlayer - 1); //last player chooses bonus tile first
+  }
+  else if(type == S_ACTION) {
+    this.currentPlayer = this.startPlayer;
+  }
+  else if(type == S_LEECH) {
+  }
+  else if(type == S_CULT) {
+  }
+  else if(type == S_CULTISTS) {
+  }
+  else if(type == S_ROUND_END_DIG) {
+    this.currentPlayer = this.startPlayer;
+  }
+  else if(type == S_GAME_OVER) {
+    //Nothing to do here.
+  }
+  return type;
+};
+
 // Go from the current state to the next state (which may be the same, or different, type)
 // Some code seems duplicated here (e.g. selectNextInitialDwellingPlayer_ called in two places), but that is
 // because every combination of from- and to- state may require its own code path.
 State.prototype.transitionState = function() {
+
+  // This if is specifically for having free cult income from spades at the end of the round (for acolytes)
+  if((this.type == S_ROUND_END_DIG || this.type == S_CULT) && game.players[this.currentPlayer].freecult > 0) {
+    // TODO: support this with state stack instead
+    if(this.type != S_CULT) this.typestack.push(this.type);
+    this.type = S_CULT;
+    return;
+  }
+
+  if(this.typestack.length > 0) {
+    this.type = this.typestack.pop();
+  }
+
   callbackState = CS_TRANSITION;
   var next_state = this.next_type == S_NONE ? this.type : this.next_type;
 
   if(this.type == S_PRE) {
-    next_state = S_INIT_FACTION;
+    next_state = this.initNewStateType(S_INIT_FACTION);
   }
   else if(this.type == S_INIT_FACTION) {
+    next_state = S_INIT_FACTION_COLOR;
+  }
+  else if(this.type == S_INIT_FACTION_COLOR) {
+    next_state = S_INIT_FAVOR;
+  }
+  else if(this.type == S_INIT_FAVOR) {
     var nextplayer = wrapPlayer(this.currentPlayer + 1);
-    if(game.players[nextplayer].faction != F_NONE /*this means we went fully around*/) {
-      createColorToPlayerMap();
-      this.selectNextInitialDwellingPlayer_();
-      next_state = S_INIT_DWELLING; //done with current state
+    if(this.numHandledForState >= game.players.length /*this means we went fully around*/) {
+      recalculateColorMaps();
+      next_state = this.initNewStateType(S_INIT_AUX_COLOR);
+    } else {
+      next_state = S_INIT_FACTION;
+      this.currentPlayer = nextplayer;
+    }
+  }
+  else if(this.type == S_INIT_AUX_COLOR) {
+    var nextplayer = wrapPlayer(this.currentPlayer + 1);
+    if(this.numHandledForState >= game.players.length /*this means we went fully around*/) {
+      createAuxColorToPlayerMap();
+      next_state = this.initNewStateType(S_INIT_DWELLING);
     } else {
       this.currentPlayer = nextplayer;
     }
@@ -748,15 +409,14 @@ State.prototype.transitionState = function() {
   else if(this.type == S_INIT_DWELLING) {
     if(!this.selectNextInitialDwellingPlayer_()) {
       calculateTownClusters();
-      this.currentPlayer = wrapPlayer(this.startPlayer - 1); //last player chooses bonus tile first
-      next_state = S_INIT_BONUS; //TODO: chaos magician 1 dwelling, nomads 3 dwellings
+      next_state = this.initNewStateType(S_INIT_BONUS);
     }
   }
   else if(this.type == S_INIT_BONUS) {
     var nextplayer = wrapPlayer(this.currentPlayer - 1);
     if(game.players[nextplayer].bonustile != T_NONE) {
       startNewRound();
-      next_state = S_ACTION;
+      next_state = this.initNewStateType(S_ACTION);
     } else {
       this.currentPlayer = nextplayer;
     }
@@ -779,8 +439,7 @@ State.prototype.transitionState = function() {
         addEndGameScore();
         next_state = S_GAME_OVER;
       } else {
-        this.currentPlayer = this.startPlayer;
-        next_state = S_ROUND_END_DIG;
+        next_state = this.initNewStateType(S_ROUND_END_DIG);
       }
     } else {
       if(this.next_type == S_ACTION) {
@@ -795,29 +454,27 @@ State.prototype.transitionState = function() {
       var player = game.players[this.currentPlayer];
       var cultists = player && player.faction == F_CULTISTS;
       var taken = this.leechtaken > 0;
-      if(cultists) {
-        if(taken) {
-          setHelp('player ' + player.name + ' choose cultists track');
-          next_state = S_CULTISTS;
-        } else {
-          if(state.newcultistsrule) {
-            // check if players actually declined. If they were full on power, it does not count as decline
-            var declined = false;
-            for(var i = 0; i < this.leecharray.length; i++) {
-              var leecher = game.players[this.leecharray[i][0]];
-              if(leecher.pw0 > 0 || leecher.pw1 > 0) {
-                declined = true;
-                break;
-              }
-            }
-            if(declined) {
-              addPower(player, 1);
-              addLog(logPlayerNameFun(player) + ' receives one extra pw because everyone declined the cultists' + getGreyedResourcesLogString(player));
+
+      if(cultists && taken) {
+        setHelp('player ' + player.name + ' choose cultists track');
+        next_state = S_CULTISTS;
+      } else {
+        // check if players actually declined. If they were full on power, it does not count as decline
+        var declined = false;
+        if(!taken) {
+          for(var i = 0; i < this.leecharray.length; i++) {
+            var leecher = game.players[this.leecharray[i][0]];
+            if(leecher.pw0 > 0 || leecher.pw1 > 0) {
+              declined = true;
+              break;
             }
           }
-          next_state = S_ACTION;
         }
-      } else {
+        if(taken || declined) {
+          player.getFaction().getGaveLeechIncome(player, taken);
+          // TODO: add log if other faction gave resources too
+          if(cultists && declined) addLog(logPlayerNameFun(player) + ' receives one extra pw because everyone declined the cultists' + getGreyedResourcesLogString(player));
+        }
         next_state = S_ACTION;
       }
       this.leechtaken = 0;
@@ -832,41 +489,87 @@ State.prototype.transitionState = function() {
     next_state = S_ACTION;
     this.selectNextActionPlayer_();
   }
+  else if(this.type == S_CULT) {
+    // Nothing to do, should go to previous state with stack
+  }
   else if(this.type == S_ROUND_END_DIG) {
     for(;;) {
       this.currentPlayer = wrapPlayer(this.currentPlayer + 1);
       if(this.currentPlayer == this.startPlayer) {
         startNewRound();
-        next_state = S_ACTION ;
+        next_state = this.initNewStateType(S_ACTION);
         break;
       }
       var digs = getRoundBonusDigs(game.players[this.currentPlayer], this.round);
       if(digs > 0) break;
     }
-    
+
   }
   else if(this.type == S_GAME_OVER) {
     //Nothing to do here.
   }
 
   //gameLoopNonBlocking(next_state, true);
-  state.type = next_state;
+  this.type = next_state;
 };
 
 
 //Actually executes the current state after choosing right player, possible transitions other next states, etc...
 //the callback and the transitionIfNoActorCallback must do at least transitionState in them. noActorCallback is used if no actor handles the state with a callback to let it transition anyway.
 State.prototype.executeActor = function(callback, transitionIfNoActorCallback) {
+  state.showResourcesPlayer = state.currentPlayer;
   state.next_type = S_NONE;
   callbackState = CS_EXECUTE;
   if(this.type == S_PRE) {
-    renderPreScreen(200, 300, startGameButtonFun, startPresetGameButtonFun, startBeginnerGameButtonFun, startObserveGameButtonFun, startDebugGameButtonFun);
+    renderPreScreen(200, 300, startGameButtonFun, startRandomGameButtonFun, startBeginnerGameButtonFun, startQuickGameButtonFun);
     //transitionIfNoActorCallback();
   }
   else if(this.type == S_INIT_FACTION) {
-    setHelp('player ' + game.players[this.currentPlayer].name + ' choose faction');
-    callbackState = CS_ACTOR;
-    game.players[this.currentPlayer].actor.chooseFaction(this.currentPlayer, callback);
+    this.numHandledForState++;
+    var player = game.players[this.currentPlayer];
+    if(player.faction == F_NONE) {
+      setHelp('player ' + player.name + ' choose faction');
+      callbackState = CS_ACTOR;
+      player.actor.chooseFaction(this.currentPlayer, callback);
+    } else {
+      // The player already has a faction, this happens when a "preset" game type was chosen were factions were picked or random
+      trySetFaction(player, player.getFaction()); //inits it (such as setting player.color)
+      initPlayerFaction(player);
+      addLog(logPlayerNameFun(player) + ' preassigned faction: ' + getFactionCodeName(player.getFaction()) + getGreyedResourcesLogString(player));
+      transitionIfNoActorCallback();
+    }
+  }
+  else if(this.type == S_INIT_FACTION_COLOR) {
+    var player = game.players[this.currentPlayer];
+    if(player.color == X || player.color == W) {
+      setHelp('player ' + player.name + ' choose faction color');
+      callbackState = CS_ACTOR;
+      player.actor.chooseAuxColor(this.currentPlayer, callback);
+    } else {
+      transitionIfNoActorCallback();
+    }
+  }
+  else if(this.type == S_INIT_FAVOR) {
+    var player = game.players[this.currentPlayer];
+    if(player.getFaction().hasInitialFavorTile()) {
+      setHelp('player ' + player.name + ' choose initial favor tile');
+      callbackState = CS_ACTOR;
+      player.actor.chooseInitialFavorTile(this.currentPlayer, callback);
+    } else {
+      transitionIfNoActorCallback();
+    }
+  }
+  else if(this.type == S_INIT_AUX_COLOR) {
+    this.numHandledForState++;
+    var player = game.players[this.currentPlayer];
+    if(player.color == O) {
+      setHelp('player ' + player.name + ' choose faction color');
+      callbackState = CS_ACTOR;
+      player.actor.chooseAuxColor(this.currentPlayer, callback);
+    } else {
+      if(player.auxcolor == N) player.auxcolor = player.color;
+      transitionIfNoActorCallback();
+    }
   }
   else if(this.type == S_INIT_DWELLING) {
     setHelp('player ' + game.players[this.currentPlayer].name + ' place initial dwelling');
@@ -891,6 +594,7 @@ State.prototype.executeActor = function(callback, transitionIfNoActorCallback) {
     var amount = actualLeechAmount(game.players[leech[0]], leech[1]);
     if(amount > 0) {
       callbackState = CS_ACTOR;
+      state.showResourcesPlayer = leech[0];
       game.players[leech[0]].actor.leechPower(leech[0], this.currentPlayer, amount, amount - 1, this.round, this.leechtaken, this.leecharray.length - this.leechi - 1, callback);
     } else {
       addLog(logPlayerNameFun(game.players[leech[0]]) + ' could not leech, power already full' + getGreyedResourcesLogString(game.players[leech[0]]));
@@ -901,12 +605,24 @@ State.prototype.executeActor = function(callback, transitionIfNoActorCallback) {
     callbackState = CS_ACTOR;
     game.players[this.currentPlayer].actor.chooseCultistTrack(this.currentPlayer, callback);
   }
+  else if(this.type == S_CULT) {
+    callbackState = CS_ACTOR;
+    game.players[this.currentPlayer].actor.chooseCultistTrack(this.currentPlayer, callback);
+  }
   else if(this.type == S_ROUND_END_DIG) {
     var j = this.currentPlayer;
-    var digs = getRoundBonusDigs(game.players[j], this.round);
+    var player = game.players[j];
+    var digs = getRoundBonusDigs(player, this.round);
     if(digs > 0) {
-      callbackState = CS_ACTOR;
-      game.players[j].actor.doRoundBonusSpade(j, digs, callback);
+      var res = player.getActionIncome(A_SPADE);
+      if(res[R_SPADE] > 0) {
+        player.spades = digs; // initPlayerTemporaryTurnState at beginning of every turn action attempt will set it back to 0, so no need to decrease it here later in the callback
+        callbackState = CS_ACTOR;
+        player.actor.doRoundBonusSpade(j, callback);
+      } else {
+        addIncome(player, mulIncome(res, digs));
+        transitionIfNoActorCallback();
+      }
     } else {
       transitionIfNoActorCallback();
     }
@@ -919,7 +635,7 @@ State.prototype.executeActor = function(callback, transitionIfNoActorCallback) {
 };
 
 function getGreyedResourcesLogString(player) {
-  return ' <span style="color:#bbb">[' + getPlayerResourcesString(player) +
+  return ' <span style="color:#bbb">[' + getPlayerResourcesString(player, false) +
       ', ' + player.cult[0] + '/' + player.cult[1] + '/' + player.cult[2] + '/' + player.cult[3] + ' cult' +
       ', ' + player.vp + 'vp]</span>'
 }
@@ -949,9 +665,56 @@ State.prototype.executeResult = function(playerIndex, result) {
   else if(this.type == S_INIT_FACTION) {
     var faction = result;
     var error = trySetFaction(player, faction);
-    if(error == '') addLog(logPlayerNameFun(player) + ' chose faction: ' + getFactionCodeName(faction) + getGreyedResourcesLogString(player));
+    if(error == '') {
+      initPlayerFaction(player);
+      addLog(logPlayerNameFun(player) + ' chose faction: ' + getFactionCodeName(faction) + getGreyedResourcesLogString(player));
+    }
     else addLog(logPlayerNameFun(player) + ' chose illegal faction: ' + getFactionCodeName(faction));
-    initPlayerFaction(player);
+    recalculateColorMaps();
+    return error;
+  }
+  else if(this.type == S_INIT_FACTION_COLOR) {
+    var color = result;
+    var error = '';
+    // TODO: extract this to function in rules.js
+    if(!(color >= CIRCLE_BEGIN && color <= CIRCLE_END)) {
+      error = 'invalid color';
+    } else if(colorToPlayerMap[color] != undefined) {
+      error = 'color already chosen';
+    } else {
+      if(player.color == X) player.woodcolor = player.auxcolor = color;
+      else player.auxcolor = color;
+      recalculateColorMaps();
+    }
+    if(error == '') {
+      addLog(logPlayerNameFun(player) + ' chose faction color: ' + getColorName(color) + getGreyedResourcesLogString(player));
+    }
+    else addLog(logPlayerNameFun(player) + ' chose illegal faction color: ' + getColorName(color));
+    return error;
+  }
+  else if(this.type == S_INIT_FAVOR) {
+    var tile = result;
+    var error = giveFavorTile(player, tile);
+    if(error == '') addLog(logPlayerNameFun(player) + ' took favor tile ' + getTileCodeName(tile) + getGreyedResourcesLogString(player));
+    else addLog(logPlayerNameFun(player) + ' attempted illegal favor tile ' + tile + '. Error: ' + error);
+    return error;
+  }
+  else if(this.type == S_INIT_AUX_COLOR) {
+    var color = result;
+    var error = '';
+    // TODO: extract this to function in rules.js
+    if(!(color >= CIRCLE_BEGIN && color <= CIRCLE_END)) {
+      error = 'invalid color';
+    } else if(colorToPlayerMap[color] != undefined) {
+      error = 'color already chosen';
+    } else {
+      player.auxcolor = color;
+      createAuxColorToPlayerMap();
+    }
+    if(error == '') {
+      addLog(logPlayerNameFun(player) + ' chose faction color: ' + getColorName(color) + getGreyedResourcesLogString(player));
+    }
+    else addLog(logPlayerNameFun(player) + ' chose illegal faction color: ' + getColorName(color));
     return error;
   }
   else if(this.type == S_INIT_DWELLING) {
@@ -973,13 +736,15 @@ State.prototype.executeResult = function(playerIndex, result) {
     var actions = result;
     var resbefore = [player.c, player.w, player.p, player.pw2, player.vp];
     var cultbefore = [player.cult[0], player.cult[1], player.cult[2], player.cult[3]];
+    var tokensbefore = player.pw0 + player.pw1 + player.pw2;
     var error = tryActions(player, actions);
     var resafter = [player.c, player.w, player.p, player.pw2, player.vp];
     var cultafter = [player.cult[0], player.cult[1], player.cult[2], player.cult[3]];
+    var tokensafter = player.pw0 + player.pw1 + player.pw2;
     subtractIncome(resafter, resbefore);
     var resstring = incomeToStringWithPluses(resafter);
     var cultstring = getCultDifferenceString(cultbefore, cultafter);
-    var diffstring = resstring + (resstring.length > 0 && cultstring.length > 0 ? ' ' : '') + cultstring;
+    var diffstring = resstring + (resstring.length > 0 && cultstring.length > 0 ? ' ' : '') + (tokensbefore == tokensafter ? '' : ' burnt:' + (tokensbefore - tokensafter)) + cultstring;
     if(diffstring.length > 0) diffstring = ' [' + diffstring + ']';
     if(error == '') addLog(logPlayerNameFun(player) + ' Action: <b>' + actionsToString(actions) + '</b>' + diffstring + getGreyedResourcesLogString(player));
     else addLog(logPlayerNameFun(player) + ' attempted illegal action: ' + actionsToString(actions) + ' Error: ' + error);
@@ -1012,6 +777,12 @@ State.prototype.executeResult = function(playerIndex, result) {
     var cult = result;
     giveCult(player, cult, 1);
     addLog(logPlayerNameFun(player) + ' used cultists ability on ' + getCultName(cult) + getGreyedResourcesLogString(player));
+  }
+  else if(this.type == S_CULT) {
+    var cult = result;
+    giveCult(player, cult, 1);
+    player.freecult--;
+    addLog(logPlayerNameFun(player) + ' chose cult track ' + getCultName(cult) + getGreyedResourcesLogString(player));
   }
   else if(this.type == S_ROUND_END_DIG) {
     var digs = result;

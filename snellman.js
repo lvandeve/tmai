@@ -23,7 +23,11 @@ freely, subject to the following restrictions:
     distribution.
 */
 
-var snellmandebug = true;
+var snellmandebug = false;
+
+function snellmanDebugLog(text)  {
+  if(snellmandebug) console.log(text);
+}
 
 /*
 handy for debugging:
@@ -44,32 +48,42 @@ var fromSnellmanTile = {
   'score1' : T_ROUND_DIG2VP_1E1C, 'score2' : T_ROUND_TW5VP_4E1DIG, 'score3' : T_ROUND_D2VP_4W1P, 'score4' : T_ROUND_SHSA5VP_2F1W,
   'score5' : T_ROUND_D2VP_4F4PW, 'score6' : T_ROUND_TP3VP_4W1DIG, 'score7' : T_ROUND_SHSA5VP_2A1W, 'score8' : T_ROUND_TP3VP_4A1DIG,
   'tw1' : T_TW_5VP_6C, 'tw2' : T_TW_7VP_2W, 'tw3' : T_TW_9VP_P, 'tw4' : T_TW_6VP_8PW,
-  'tw5' : T_TW_8VP_CULT, 'tw6' : T_TW_2VP_2CULT, 'tw7' : T_TW_4VP_SHIP, 'tw8' : T_TW_11VP,
+  'tw5' : T_TW_8VP_CULT, 'tw6' : T_TW_2VP_2CULT, 'tw7' : T_TW_4VP_SHIP, 'tw8' : T_TW_11VP
 };
 var toSnellmanTile = {};
 for(var tile in fromSnellmanTile) toSnellmanTile[fromSnellmanTile[tile]] = tile;
 
 function fromSnellmanFaction(name) {
-  return name == 'chaosmagicians' ? F_CHAOS : codeNameToFaction(name);
+  return name == 'chaosmagicians' ? factions[F_CHAOS] : codeNameToFaction(name);
 }
 function toSnellmanFaction(faction) {
-  return faction == F_CHAOS ? 'chaosmagicians' : getFactionCodeName(faction);
+  faction = ensureFactionClass(faction);
+  return faction == factions[F_CHAOS] ? 'chaosmagicians' : getFactionCodeName(faction);
 }
 function fromSnellmanFaction2(name) {
-  return name == 'chaos magicians' ? F_CHAOS : codeNameToFaction(name);
+  return name == 'chaos magicians' ? factions[F_CHAOS] : codeNameToFaction(name);
 }
 function toSnellmanFaction2(faction) {
-  return faction == F_CHAOS ? 'chaos magicians' : getFactionCodeName(faction);
+  faction = ensureFactionClass(faction);
+  return faction == factions[F_CHAOS] ? 'chaos magicians' : getFactionCodeName(faction);
 }
-//snellman coordinates: x does not increase over water
+//snellman coordinates: x does not increase over water, instead water uses "r#" notation
 var fromSnellmanCo_ = {};
-for(var y = 0; y < game.bh; y++) {
-  var x2 = 0;
-  for(var x = 0; x < game.bw; x++) {
-    var color = standardWorld[arCo2(x, y, 13)];
-    if(color != I && color != N) {
-      x2++;
-      fromSnellmanCo_[String.fromCharCode(65 + y) + x2] = [x, y];
+function createSnellmanCo(game) {
+  fromSnellmanCo_ = {};
+  var r = 0; // for river coordinates
+  for(var y = 0; y < game.bh; y++) {
+    var x2 = 0;
+    for(var x = 0; x < game.bw; x++) {
+      var color = standardWorld[arCo2(x, y, 13)];
+      if(color != I && color != N) {
+        x2++;
+        fromSnellmanCo_[String.fromCharCode(65 + y) + x2] = [x, y];
+      }
+      else if(color == I) {
+        fromSnellmanCo_['R' + r] = [x, y]; //it's lowercase in snellman log, but we compare coordinates with uppercase, hence 'R'
+        r++;
+      }
     }
   }
 }
@@ -79,26 +93,19 @@ var parseSnellmanCo = function(text) {
 var fromSnellmanActionOctogon = {
     'act1' : A_POWER_BRIDGE, 'act2' : A_POWER_1P, 'act3' : A_POWER_2W, 'act4' : A_POWER_7C, 'act5' : A_POWER_SPADE, 'act6' : A_POWER_2SPADE,
     'bon1' : A_BONUS_SPADE, 'bon2' : A_BONUS_CULT, 'fav6' : A_FAVOR_CULT, 'actn' : A_SANDSTORM, 'actw': A_WITCHES_D, 'acta': A_AUREN_CULT,
-    'acts': A_SWARMLINGS_TP, 'actc': A_DOUBLE, 'actg': A_GIANTS_2SPADE,
+    'acts': A_SWARMLINGS_TP, 'actc': A_DOUBLE, 'actg': A_GIANTS_2SPADE
 };
 var fromSnellmanCultName = { 'fire' : C_F, 'water': C_W, 'earth' : C_E, 'air' : C_A };
 var fromSnellmanPlusCultName = { '+fire' : C_F, '+water': C_W, '+earth' : C_E, '+air' : C_A };
 var toSnellmanPlusCultName = [];
 for(var c in fromSnellmanPlusCultName) toSnellmanPlusCultName[fromSnellmanPlusCultName[c]] = c;
+//TODO: expansion colors
+var toSnellmanColorName_ = ['', '', 'red', 'yellow', 'brown', 'black', 'blue', 'green', 'grey'];
 var fromSnellmanColorName_ = { 'red': R, 'yellow': Y, 'brown': U, 'black': K, 'blue': B, 'green': G, 'grey': S };
 function fromSnellmanColorName(text) {
   if(text == 'gray') return S;
   else return fromSnellmanColorName_[text];
 }
-
-// Actor which executes the Snellman log lines starting with its name sequentially every time the Game State calls any if its choice functions.
-var SnellmanActor = function() {
-  this.factionkey = '';
-  this.l = 0; //index in own lines
-  this.lines = [];
-  this.l2 = 0; //sub-index in own lines: this is for a single line containing two built-initial-dwelling actions
-};
-inherit(SnellmanActor, Actor);
 
 // Finds the amount of players and which factions they have chosen from the log.
 // In some logs, there are specific lines "player: rob" and their faction can be found at the first numPlayers "income_for_faction" lines
@@ -173,6 +180,7 @@ function filterSnellmanMoves(text, players, snellmanunittesttext) {
     if(stringContains(line, 'income_for_faction')) continue;
     if(stringContains(line, 'all opponents' /*' declined power'*/)) continue;
     if(stringContains(line, 'score_resources')) continue;
+    if(stringContains(line, 'setup')) continue;
 
     var words = getWords(lines[i]);
     var factionname = words[0];
@@ -183,7 +191,7 @@ function filterSnellmanMoves(text, players, snellmanunittesttext) {
 
     line = line.substr(words[0].length + 1);
 
-    var cultslashespos = line.search(/[0-9]{1,2}\/[0-9]{1,2}\/[0-9]{1,2}\/[0-9]{1,2}/);
+    /*var cultslashespos = line.search(/[0-9]{1,2}\/[0-9]{1,2}\/[0-9]{1,2}\/[0-9]{1,2}/);
     if(cultslashespos >= 0) {
       for(;;) {
         cultslashespos++;
@@ -195,7 +203,7 @@ function filterSnellmanMoves(text, players, snellmanunittesttext) {
       }
       line = line.substring(cultslashespos);
       line = line.trim();
-    }
+    }*/
 
     result[index].push(line);
     snellmanunittesttext[0] += words[0] + ': ' + line + '\n';
@@ -231,8 +239,8 @@ function parseConvertNumbersAndLetters(words, index) {
           state = 1;
           n1 = n;
         }
-        if(state == 1) n1 = n1 * 10 + n;
-        if(state == 3) n2 = n2 * 10 + n;
+        else if(state == 1) n1 = n1 * 10 + n;
+        else if(state == 3) n2 = n2 * 10 + n;
       } else {
         // letter
         var c = word[j];
@@ -250,7 +258,23 @@ function parseConvertNumbersAndLetters(words, index) {
   return [n1, w1, n2, w2, i];
 }
 
+var snellmanFailureSaveState = null; //load after test fail with loadGameState(snellmanFailureSaveState); drawMap(); drawHud();
+
 var globalSnellmanParseDone = false;
+
+////////////////////////////////////////////////////////////////////////////////
+////////////////////////////////////////////////////////////////////////////////
+////////////////////////////////////////////////////////////////////////////////
+////////////////////////////////////////////////////////////////////////////////
+
+// Actor which executes the Snellman log lines starting with its name sequentially every time the Game State calls any if its choice functions.
+var SnellmanActor = function() {
+  this.factionkey = '';
+  this.l = 0; //index in own lines
+  this.lines = [];
+  this.l2 = 0; //sub-index in own lines: this is for a single line containing two built-initial-dwelling actions
+};
+inherit(SnellmanActor, Actor);
 
 SnellmanActor.prototype.doAction = function(playerIndex, callback) {
   if(this.l >= this.lines.length) {
@@ -280,7 +304,7 @@ SnellmanActor.prototype.doAction = function(playerIndex, callback) {
     return;
   }
 
-  if(snellmandebug) addLog('DEBUG: executing doAction: ' + line);
+  snellmanDebugLog('DEBUG: executing doAction: ' + playerIndex + ' ' + line);
   var result = [];
   var words = getWords(line);
   var spades = 0;
@@ -324,7 +348,7 @@ SnellmanActor.prototype.doAction = function(playerIndex, callback) {
     }
     else if(word == 'transform') {
       var co = parseSnellmanCo(words[i + 1]);
-      var tocolor = player.color;
+      var tocolor = player.getMainDigColor();
       if(words[i + 2] == 'to') {
         tocolor = fromSnellmanColorName(words[i + 3]);
         i += 2;
@@ -347,7 +371,7 @@ SnellmanActor.prototype.doAction = function(playerIndex, callback) {
       var y = co[1];
       if(spades > 0) {
         // Auto-transform since the action did not contain transform commands
-        var tactions = getAutoTransformActions(player, x, y, player.color, 999, spades);
+        var tactions = getAutoTransformActions(player, x, y, player.getMainDigColor(), 999, spades);
         for(var j = 0; j < tactions.length; j++) result.push(tactions[j]);
         spades += actionsSpadesDifference(player, tactions);
       }
@@ -384,7 +408,22 @@ SnellmanActor.prototype.doAction = function(playerIndex, callback) {
       }
       var tile = fromSnellmanTile[text];
       if(isFavorTile(tile)) {
-        result[result.length - 1].favtiles.push(tile);
+        // Finds which of the actions gave the favor tile
+        for(var j = result.length - 1; j >= 0; j--) {
+          if(isUpgradeAction(result[j])) {
+            result[j].favtiles.push(tile);
+            //if j is not the last action, then possibly there are convert actions between the upgrading and the favor tile taking
+            //the favor tile taking can change pw
+            //therefore, in fact the upgrade action must be executed after those convert actions
+            //so swap the order
+            if(j != result.length - 1) {
+              var temp = result[j];
+              result[j] = result[result.length - 1];
+              result[result.length - 1] = temp;
+            }
+            break;
+          }
+        }
       }
       else if(isTownTile(tile)) {
         // Find which of the actions made the town
@@ -460,9 +499,22 @@ SnellmanActor.prototype.doAction = function(playerIndex, callback) {
       var coords = words[i + 1].split(':');
       var parsed = [];
       for(var j = 0; j < coords.length; j++) parsed[j] = parseSnellmanCo(coords[j]);
-      var co = parsed.length == 3 ?
-        getTileBetween3(parsed[0][0], parsed[0][1], parsed[1][0], parsed[1][1], parsed[2][0], parsed[2][1]) :
-        getWaterTileBetween(parsed[0][0], parsed[0][1], parsed[1][0], parsed[1][1]);
+      var co;
+      if(parsed.length == 3) {
+        // old between three land tiles format
+        co = getTileBetween3(parsed[0][0], parsed[0][1], parsed[1][0], parsed[1][1], parsed[2][0], parsed[2][1]);
+      }
+      else if(parsed.length == 2) {
+        // old between two land tiles format
+        co = getWaterTileBetween(parsed[0][0], parsed[0][1], parsed[1][0], parsed[1][1]);
+      }
+      else if(parsed.length == 1) {
+        // new r# format
+        co = [parsed[0][0], parsed[0][1]];
+      } else {
+        throw new Error('unknown water connect format: ' + line);
+      }
+        
       if(co != null) {
         var action = new Action(A_CONNECT_WATER_TOWN);
         action.co = co;
@@ -487,7 +539,11 @@ SnellmanActor.prototype.doAction = function(playerIndex, callback) {
   reorderDigBuildActionsToNotStartWithIncompleteTransforms(player, result);
   this.l++;
   var error = callback(playerIndex, result);
-  if(error != '') globalSnellmanParseDone = true;
+  if(error != '') {
+    snellmanFailureSaveState = saveGameState(game, state, undefined);
+    console.log('snellman loading error: ' + error);
+    globalSnellmanParseDone = true;
+  }
 };
 
 SnellmanActor.prototype.leechPower = function(playerIndex /*receiver*/, fromPlayer /*sender*/, amount, vpcost, roundnum, already, still, callback) {
@@ -500,6 +556,7 @@ SnellmanActor.prototype.leechPower = function(playerIndex /*receiver*/, fromPlay
   }
 
   var line = this.lines[this.l];
+  snellmanDebugLog('DEBUG: executing leechPower: ' + playerIndex + ' ' + line);
   var skipline = false;
   // Lines containing "wait" should be ignored
   if(stringContains(line, 'wait')) skipline = true;
@@ -542,7 +599,7 @@ SnellmanActor.prototype.leechPower = function(playerIndex /*receiver*/, fromPlay
     line = this.lines[this.l];
   }
 
-  if(snellmandebug) addLog('DEBUG: executing leechPower: ' + line);
+  snellmanDebugLog('DEBUG: executing leechPower: ' + playerIndex + ' ' + line);
   var result = false;
   if(isFromCorrectPlayer(line)) {
     if(stringContains(line, 'leech')) {
@@ -555,18 +612,23 @@ SnellmanActor.prototype.leechPower = function(playerIndex /*receiver*/, fromPlay
   }
 
   var error = callback(playerIndex, result);
-  if(error != '') globalSnellmanParseDone = true;
+  if(error != '') {
+    console.log(error);
+    globalSnellmanParseDone = true;
+  }
 };
 
-SnellmanActor.prototype.doRoundBonusSpade = function(playerIndex, num, callback) {
+SnellmanActor.prototype.doRoundBonusSpade = function(playerIndex, callback) {
   if(this.l >= this.lines.length) {
     globalSnellmanParseDone = true;
     return;
   }
 
-  var line = this.lines[this.l];
-  if(snellmandebug) addLog('DEBUG: executing doRoundBonusSpade: ' + line);
   var player = game.players[playerIndex];
+  var num = player.spades;
+
+  var line = this.lines[this.l];
+  snellmanDebugLog('DEBUG: executing doRoundBonusSpade: ' + playerIndex + ' ' + line);
   var result = [];
   var words = getWords(line);
   var numdone = 0;
@@ -574,7 +636,7 @@ SnellmanActor.prototype.doRoundBonusSpade = function(playerIndex, num, callback)
     var word = words[i];
     if(word == 'transform') {
       var co = parseSnellmanCo(words[i + 1]);
-      var tocolor = player.color;
+      var tocolor = player.getMainDigColor();
       if(words[i + 2] == 'to') {
         tocolor = fromSnellmanColorName(words[i + 3]);
         i += 2;
@@ -587,7 +649,10 @@ SnellmanActor.prototype.doRoundBonusSpade = function(playerIndex, num, callback)
   }
   this.l++;
   var error = callback(playerIndex, result);
-  if(error != '') globalSnellmanParseDone = true;
+  if(error != '') {
+    console.log(error);
+    globalSnellmanParseDone = true;
+  }
 };
 
 SnellmanActor.prototype.chooseInitialDwelling = function(playerIndex, callback) {
@@ -597,6 +662,7 @@ SnellmanActor.prototype.chooseInitialDwelling = function(playerIndex, callback) 
   }
 
   var line = this.lines[this.l];
+  snellmanDebugLog('DEBUG: executing chooseInitialDwelling: ' + playerIndex + ' ' + line);
   var words = getWords(line);
   var separatecount = 0; //sometimes two actions are on a single line, e.g. building two starting dwellings, or initial dwelling then pass bonus tile
   for(var i = 0; i < words.length; i++) {
@@ -614,7 +680,10 @@ SnellmanActor.prototype.chooseInitialDwelling = function(playerIndex, callback) 
       if(this.l2 == (j - 1)) {
         var co = parseSnellmanCo(words[i + 1]);
         var error = callback(playerIndex, co);
-        if(error != '') globalSnellmanParseDone = true;
+        if(error != '') {
+          console.log(error);
+          globalSnellmanParseDone = true;
+        }
         i++;
         this.l2++;
         break;
@@ -628,8 +697,12 @@ SnellmanActor.prototype.chooseInitialDwelling = function(playerIndex, callback) 
 };
 
 SnellmanActor.prototype.chooseFaction = function(playerIndex, callback) {
+  snellmanDebugLog('DEBUG: executing chooseFaction: ' + playerIndex + ' ' + this.factionkey);
   var error = callback(playerIndex, fromSnellmanFaction(this.factionkey));
-  if(error != '') globalSnellmanParseDone = true;
+  if(error != '') {
+    console.log(error);
+    globalSnellmanParseDone = true;
+  }
 };
 
 SnellmanActor.prototype.chooseCultistTrack = function(playerIndex, callback) {
@@ -672,6 +745,7 @@ SnellmanActor.prototype.chooseCultistTrack = function(playerIndex, callback) {
   }
 
   var line = this.lines[this.l];
+  snellmanDebugLog('DEBUG: executing chooseCultistTrack: ' + playerIndex + ' ' + line);
   var error = '';
   var cult = -1;
   // Note: a line can sometimes be: "+water. action fav6. +earth." if a cultists choice and cult action were combined on one line. Ensure to take the first word, not the second, as the one now.
@@ -685,7 +759,10 @@ SnellmanActor.prototype.chooseCultistTrack = function(playerIndex, callback) {
     if(cult > -1) break;
   }
   error = callback(playerIndex, cult);
-  if(error != '') globalSnellmanParseDone = true;
+  if(error != '') {
+    console.log(error);
+    globalSnellmanParseDone = true;
+  }
 
   //sometimes the cultists track command is on the same line as an action command. If that happens, cut off that part
   var spliced = false;
@@ -711,12 +788,16 @@ SnellmanActor.prototype.chooseInitialBonusTile = function(playerIndex, callback)
   }
 
   var line = this.lines[this.l];
+  snellmanDebugLog('DEBUG: executing chooseInitialBonusTile: ' + playerIndex + ' ' + line);
   var words = getWords(line);
   for(var i = 0; i < words.length; i++) {
     if(words[i] == 'pass') {
       var tile = fromSnellmanTile[words[i + 1]];
       var error = callback(playerIndex, tile);
-      if(error != '') globalSnellmanParseDone = true;
+      if(error != '') {
+        console.log(error);
+        globalSnellmanParseDone = true;
+      }
       this.l++;
       this.l2 = 0; //could be still set due to Build and Pass on same line.
       return;
@@ -724,3 +805,257 @@ SnellmanActor.prototype.chooseInitialBonusTile = function(playerIndex, callback)
   }
   throw new Error(game.players[playerIndex].name + ': no pass on current line for chooseInitialBonusTile: ' + line);
 };
+
+////////////////////////////////////////////////////////////////////////////////
+////////////////////////////////////////////////////////////////////////////////
+////////////////////////////////////////////////////////////////////////////////
+////////////////////////////////////////////////////////////////////////////////
+
+//determine the map that the snellman game might contain depending on some regex parsing of the full copypasted game log.
+//this because the log does not literally contain the map name, so use coordinates such as "A1", "J1", and initial dwelling colors to distinguish the two same-shaped maps
+function heuristicallyDetermineSnellmapMap(text) {
+  if(!codeNameToWorld['fire_ice'] || !codeNameToWorld['fire_ice_altered']) return 0; //no expansion worlds available.
+  text = text.toLowerCase();
+
+  var newworldclues = ['build j1', 'build j2', 'build j3', 'build j4', 'build j5', 'build j6', 'build j7', 'build j8', 'build j9',
+                       'transform j1', 'transform j2', 'transform j3', 'transform j4', 'transform j5', 'transform j6', 'transform j7', 'transform j8', 'transform j9'];
+  var notnewworldclues = ['build a1', 'build a2', 'build a3', 'build a4', 'build a5', 'build a6', 'build a7', 'build a8', 'build a9',
+                          'transform a1', 'transform a2', 'transform a3', 'transform a4', 'transform a5', 'transform a6', 'transform a7', 'transform a8', 'transform a9'];
+
+
+  var newworld = -1; //-1: unknown, 0: old world OR alternate world, 1: new world (fire and ice world)
+
+  for(var j = 0; j < newworldclues.length; j++) {
+    if(text.indexOf(newworldclues[j]) != -1) {
+      newworld = 1;
+      break;
+    }
+  }
+  for(var j = 0; j < notnewworldclues.length; j++) {
+    if(text.indexOf(notnewworldclues[j]) != -1) {
+      newworld = 0;
+      break;
+    }
+  }
+
+  if(newworld == 1) {
+    return codeNameToWorld['fire_ice'];
+  }
+
+  var prepareTestWorld = function(world, bw, bh, btoggle) {
+    var result = {};
+    for(var y = 0; y < bh; y++) {
+      var n = 1; //x number
+      var l = String.fromCharCode(97 + y + (btoggle ? 1 : 0)); //letter
+      for(var x = 0; x < bw; x++) {
+        var color = world[y * bw + x];
+        if(color == N || color == I) {
+          continue;
+        } else {
+          result[l + n] = color; // e.g. 'a1' : 'red'
+          n++;
+        }
+      }
+    }
+    return result;
+  }
+
+  var standard = prepareTestWorld(standardWorld, 13, 9, false);
+  var fire_ice_altered = prepareTestWorld(fireIceAltered, 13, 9, false);
+  var fire_ice = prepareTestWorld(fireIceWorld, 13, 9, true);
+
+  var xco = ['1', '2', '3', '4', '5', '6', '7', '8', '9', '10', '11', '12', '13'];
+  var yco = ['a', 'b', 'c', 'd', 'e', 'f', 'g', 'h', 'i', 'j'];
+  for(var y = 0; y < yco.length; y++) {
+    for(var x = 0; x < xco.length; x++) {
+      var co = yco[y] + xco[x];
+      var b = text.search('build ' + co + '\\b');
+      if(b < 0) continue;
+      var t = text.search('transform ' + co + '\\b');
+      if(t >= 0 && t < b) continue; //a transform happened on this coordinate before a build. Our heuristics can no longer know what the original tile color was.
+
+      // Now we know there is a build on a tile with an original world color! Find out what faction did it, to know the original tile color. Search for faction name at beginning of line.
+      var begin = text.lastIndexOf('\n', b);
+      if(begin < 0) continue; //something went wrong...
+      begin++; //the new line
+
+      //words that are a digging action before the build may not appear on this line
+      var line = text.substring(begin, b);
+      var tests = ['transform', 'dig', 'actn', 'actg', 'act5', 'act6', 'bon1']; // TODO: others in expansion possibly
+      var ok = true;
+      for(var i = 0; i < tests.length; i++) {
+        if(line.indexOf(tests[i]) >= 0) {
+          ok = false;
+          break;
+        }
+      }
+      if(!ok) continue;
+      
+      var end = begin + 1; //end of the word
+      while(end < text.length && text.charCodeAt(end) >= 97 && text.charCodeAt(end) <= 122) end++;
+      var factionName = text.substring(begin, end);
+      // TODO: the expansion factions - NOTE: we need to find out on which colors they can build though...
+      var faction = fromSnellmanFaction(factionName);
+      if(!faction) continue; //something went wrong or unknown faction
+      var color = faction.color;
+      //color is the original world coler of the tile at those coordinates. Now check which of the worlds have it...
+
+      var maps = [];
+      if(standard[co] == color) maps.push(codeNameToWorld['standard']);
+      if(fire_ice_altered[co] == color) maps.push(codeNameToWorld['fire_ice_altered']);
+      if(fire_ice[co] == color) maps.push(codeNameToWorld['fire_ice']);
+
+      if(maps.length == 1) {
+        return maps[0]; //we found the world! This is a uniquely identified world that has that initial color at that coordiante.
+      }
+      //if maps.length > 2, it is ambiguous. If maps.length == 0, something must have gone wrong...
+    }
+  }
+
+  // Still unknown after all the heuristics ... instead use the worldmap dropdown of the game.
+  var pref = preferences.worldmapdropdown;
+  var name = worldCodeNames[pref];
+  if(name == 'fire_ice' && newworld == 0) return codeNameToWorld['standard']; //we already know the world is not fire_ice, however the dropdown is set to it, so unfortunately cannot use its state
+  if(name == 'fire_ice' || name == 'fire_ice_altered') return pref;
+  return codeNameToWorld['standard'];
+}
+
+var snellmanunittesttext = '';
+
+function deSerializeGameStateSnellmanLog_(text) {
+  // Remove "show history"
+  text = text.replace(/show history/g, '');
+  text = text.replace(/[0-9]+ VP.*[0-9]+\/[0-9]+\/[0-9]+\/[0-9]+/g, ''); // removes the summaries in the center of each action line, such as "67 VP 9 C 9 W 1 P +1 0/1/4 PW 2/2/7/8"
+  // removes add/subtract numbers near said summaries, such as +1
+  text = text.replace(/\+[0-9]+/g, '');
+  text = text.replace(/-[0-9]+/g, '');
+  // make all whitespaces one space
+  text = text.replace(/(\t| )+/g, ' ');
+  // It contains the commands as typed by players, so be case-insensitive
+  text = text.toLowerCase();
+
+  globalSnellmanParseDone = false;
+  snellmanunittesttext = 'show history\n';
+
+  game = new Game();
+  state = new State();
+  logText = '';
+  state.newcultistsrule = stringContains(text, 'errata-cultist-power');
+  state.towntilepromo2013 = stringContains(text, 'mini-expansion-1');
+  state.bonustilepromo2013 = stringContains(text, 'shipping-bonus');
+  state.fireice = false;
+
+  // TODO: the final scoring is not in the snellman log, only the UI. Improve that if they're in the log too.
+  if(text.indexOf('clusters 18/12/6') >= 0) {
+    game.finalscoring = nameToFinalScoring['settlements'];
+  }
+  else if(text.indexOf('sa-sh-distance 18/12/6') >= 0) {
+    game.finalscoring = nameToFinalScoring['sh_sa'];
+  }
+  else if(text.indexOf('distance 18/12/6') >= 0) {
+    game.finalscoring = nameToFinalScoring['distance'];
+  }
+  else if(text.indexOf('edge 18/12/6') >= 0) {
+    game.finalscoring = nameToFinalScoring['outposts'];
+  }
+  else {
+    game.finalscoring = nameToFinalScoring['none'];
+  }
+
+  if(state.newcultistsrule) snellmanunittesttext += 'option errata-cultist-power\n';
+  if(state.towntilepromo2013) snellmanunittesttext += 'option mini-expansion-1\n';
+  if(state.bonustilepromo2013) snellmanunittesttext += 'option shipping-bonus\n';
+
+  var map = heuristicallyDetermineSnellmapMap(text);
+  worldGenerators[map](game); // initStandardWorld(game);
+  initBoard();
+
+  var players = findSnellmanPlayersAndFactions(text);
+  
+  players.length;
+  game.players.length = players.length;
+
+  for(var i = 0; i < players.length; i++) {
+    var player = new Player();
+    player.index = i;
+    player.name = players[i][1];
+    player.human = false;
+    var actor = new SnellmanActor();
+    player.actor = actor;
+    actor.factionkey = toSnellmanFaction(players[i][0]);
+
+    game.players[i] = player;
+  }
+
+  var lines = getNonEmptyLines(text);
+
+  var removed = false;
+  for(var i = 0; i < lines.length; i++) {
+    if(stringContains(lines[i], 'removing tile')) {
+      var words = getWords(lines[i]);
+      for(var j = 0; j < words.length; j++) {
+        if(words[j] == 'removing') game.bonustiles[fromSnellmanTile[words[j + 2]]] = 0;
+      }
+      removed = true;
+      snellmanunittesttext += lines[i].trim() + '\n';
+    }
+    else if(removed) break; //done
+  }
+
+  for(var i = 1; i <= 6; i++) {
+    var pos = text.indexOf('round ' + i + ' scoring: score');
+    game.roundtiles[i] = fromSnellmanTile['score' + text.charAt(pos + 22)];
+    snellmanunittesttext += 'round ' + i + ' scoring: ' + toSnellmanTile[game.roundtiles[i]] + '\n';
+  }
+
+  for(var i = 0; i < players.length; i++) snellmanunittesttext += 'player ' + (i + 1) + ': ' + game.players[i].name + '\n';
+  for(var i = 0; i < players.length; i++) snellmanunittesttext += toSnellmanFaction(players[i][0]) + ' income_for_faction\n';
+
+  var pointer = [snellmanunittesttext];
+  var moves = filterSnellmanMoves(text, players, pointer);
+  snellmanunittesttext = pointer[0];
+  for(var i = 0; i < players.length; i++) game.players[i].actor.lines = moves[i];
+
+  initialGameLogMessage();
+  createSnellmanCo(game);
+
+  var count = 0;
+  state.type = S_INIT_FACTION;
+  gameLoopBlocking(function() {
+    count++;
+    return globalSnellmanParseDone || count > lines.length || state.type == S_GAME_OVER;
+  });
+
+  // Make the players human and AI (TODO: which player should become the human? --> The one who is supposed to do an action now. That check can be combined with the isFinishedFun
+  // of gameLoopBlocking: if all lines consumed, that one must be the player supposed to take an action next)
+  for(var i = 0; i < players.length; i++) {
+    var human = true;
+    var player = game.players[i];
+    player.human = human;
+    player.actor = human ? new Human() : new AI();
+  }
+
+  var result = clone(game);
+  result.logText = logText;//text.replace(/\n/g, '<br/>');
+  result.state = state;
+
+  snellmanunittesttext = snellmanunittesttext.replace(/\n/g, '\\n\\\n');
+  
+  return result;
+}
+
+function deSerializeGameStateSnellmanLog(text) {
+  var temp = null;
+  if(game.buildings && game.buildings.length > 0) temp = saveGameState(game, state, logText);
+  try {
+    var result = deSerializeGameStateSnellmanLog_(text)
+    if(temp) loadGameState(temp); // This is because loading a snellman game overwrites the current game, so put it back
+    return result;
+  }
+  catch(e) {
+    console.log(e + ' ' + e.stack);
+    if(temp) loadGameState(temp);
+    return null;
+  }
+}
+

@@ -38,7 +38,7 @@ callback: function taking two parameter, the playerIndex and the result (type of
           E.g. for leechPower where it is boolean: callback(playerIndex, true)
 */
 
-//callback result (second paramter) should be the chosen faction enum value
+//callback result (second paramter) should be the chosen faction
 Actor.prototype.chooseFaction = function(playerIndex, callback) {
 };
 
@@ -48,6 +48,14 @@ Actor.prototype.chooseInitialDwelling = function(playerIndex, callback) {
 
 //callback result (second paramter) should be the chosen bonus tile emum value
 Actor.prototype.chooseInitialBonusTile = function(playerIndex, callback) {
+};
+
+//callback result (second paramter) should be the chosen favor tile emum value
+Actor.prototype.chooseInitialFavorTile = function(playerIndex, callback) {
+};
+
+//callback result (second paramter) should be the chosen color emum value
+Actor.prototype.chooseAuxColor = function(playerIndex, callback) {
 };
 
 //callback results hould be an array of actions (valid according to the game rules) to execute
@@ -73,6 +81,6 @@ Actor.prototype.chooseCultistTrack = function(playerIndex, callback) {
 //the callback result (second paramter) must be array of [x,y] coordinates. E.g. if num is 2, give it [[x,y],[x,y]] to dig twice on tile x,y
 //the array is allowed to have less than num values, e.g. if there is no reachable spot that can be digged
 //NOTE: this does not get called for giants if num would be 1, but when called, num will be 2 (and 2 dig coordinate pairs must be given, both at the same location)
-Actor.prototype.doRoundBonusSpade = function(playerIndex, num, callback) {
+Actor.prototype.doRoundBonusSpade = function(playerIndex, callback) {
 };
 

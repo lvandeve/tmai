@@ -437,3 +437,28 @@ function getMousePos(e) {
   }
   return [null, null];
 }
+
+// Move the elements with indices given by "elements" to in front of position i of array "array". Make sure to sort elements if order must be preserved.
+// e.g. for array = ['a', 'b', 'c', 'd']; elements = [2, 3], i = 1, the result will be ['a', 'c', 'd', 'b']
+function moveElementsInFront(array, elements, i) {
+  var s = {};
+  for(var j = 0; j < elements.length; j++) s[elements[j]] = true;
+  var before = [];
+  var after = [];
+  for(var j = 0; j < array.length; j++) {
+    if(s[j]) continue;
+    if(j < i) before.push(j);
+    else after.push(j);
+  }
+  var result = [];
+  for(var j = 0; j < before.length; j++) result.push(array[before[j]]);
+  for(var j = 0; j < elements.length; j++) result.push(array[elements[j]]);
+  for(var j = 0; j < after.length; j++) result.push(array[after[j]]);
+  return result;
+}
+
+// Same as moveElementsInFront, but sorts elements so that their relative order is kept.
+function moveElementsInFrontSorted(array, elements, i) {
+  elements.sort();
+  return moveElementsInFront(array, elements, i);
+}

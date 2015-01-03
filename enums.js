@@ -131,7 +131,6 @@ var A_BEGIN = A_index++; // Not an action, first enum value
 var A_NONE = A_index++;
 //Burn & convert power (non-turn actions)
 var A_BURN = A_index++; //burn power
-var A_CONVERT_ACTIONS_BEGIN = A_index++; //not an actual action, used for comparisons
 var A_CONVERT_1PW_1C = A_index++;
 var A_CONVERT_3PW_1W = A_index++;
 var A_CONVERT_5PW_1P = A_index++;
@@ -140,10 +139,9 @@ var A_CONVERT_1W_1C = A_index++;
 var A_CONVERT_1VP_1C = A_index++; //alchemists only
 var A_CONVERT_2C_1VP = A_index++; //alchemists only (TODO: remove this as action? It is only for endgame scoring)
 var A_CONVERT_1W_1P = A_index++; //darklings only, after building their SH, max 3 times (the SH upgrade action must precede)
-var A_CONVERT_ACTIONS_END = A_index++; //not an actual action, used for comparisons
+//Faction specific non-turn actions
 var A_CONNECT_WATER_TOWN = A_index++; //mermaids
 var A_ACOLYTES_CULT = A_index++; //using freecult from spades on cult tracks
-//Faction specific non-turn actions
 var A_DOUBLE = A_index++; //chaos magicians double action
 var A_TUNNEL = A_index++; //dwarves special ability.
 var A_CARPET = A_index++; //fakirs special ability.
@@ -152,6 +150,8 @@ var A_CHEAT_C = A_index++;
 var A_CHEAT_W = A_index++;
 var A_CHEAT_P = A_index++;
 var A_CHEAT_PW = A_index++;
+//Placing bridge is NOT a turn taking action, because it comes after a turn-taking action that gives the bridge as resource. Hence defined before A_PASS
+var A_PLACE_BRIDGE = A_index++; //the A_POWER_BRIDGE and A_ENGINEERS_BRIDGE give a bridge as resource, the A_PLACE_BRIDGE action puts it on the map
 //Pass
 var A_PASS = A_index++;
 //Power resources
@@ -252,10 +252,11 @@ function getActionCodeName(type) {
     case A_AUREN_CULT: return 'aurencult2';
     case A_ADV_SHIP: return 'advshipping';
     case A_ADV_DIG: return 'advdigging';
-    case A_SHIFT: return 'shift';
-    case A_SHIFT2: return 'shift2';
+    case A_SHIFT: return 'shift_pw'; //shift with 3 regular power cost
+    case A_SHIFT2: return 'shift_pt'; //shift with 3 power tokens cost
     case A_POWER_BRIDGE: return 'powbridge';
     case A_ENGINEERS_BRIDGE: return 'engbridge';
+    case A_PLACE_BRIDGE: return 'placebridge';
     case A_TUNNEL: return 'tunnel';
     case A_CARPET: return 'carpet';
     case A_DEBUG_SKIP: return 'debugskip';
@@ -606,5 +607,5 @@ R_B_TP = R_index++; //TODO: use this as a resource for swarmlings TP action
 R_B_TE = R_index++;
 R_B_SH = R_index++;
 R_B_SA = R_index++;
-R_BRIDGE = R_index++; // TODO: use this as a resources for power bridge and engineer bridge action
+R_BRIDGE = R_index++;
 

@@ -801,17 +801,18 @@ function getPossibleActions(player, restrictions) {
   //bridge
   //TODO: the engineers version A_ENGINEERS_BRIDGE
   var bactions = [];
-  if(!game.octogons[A_POWER_BRIDGE] && player.bridges > 0 && canGetResources(player, player.getActionCost(A_POWER_BRIDGE), restrictions, bactions)) {
+  if(!game.octogons[A_POWER_BRIDGE] && player.bridgepool > 0 && canGetResources(player, player.getActionCost(A_POWER_BRIDGE), restrictions, bactions)) {
     tiles = getOccupiedTiles(player);
     var dirs = [D_N, D_NE, D_SE, D_S, D_SW, D_NW];
     for(var t = 0; t < tiles.length; t++) {
       for (var d = 0; d < dirs.length; d++) {
-        var co2 = bridgeCo(tiles[t][0], tiles[t][1], dirs[d]);
+        var co2 = bridgeCo(tiles[t][0], tiles[t][1], dirs[d], game.btoggle);
         if(outOfBounds(co2[0], co2[1])) continue;
         if(getBuilding(co2[0], co2[1])[1] == player.woodcolor && co2[1] > tiles[t][1]) continue; //avoid adding twice the same action with just swapped tiles
         if (canHaveBridge(tiles[t][0], tiles[t][1], co2[0], co2[1], player.woodcolor)) {
+          result.push(new Action(A_POWER_BRIDGE));
           var action = new Action();
-          action.type = A_POWER_BRIDGE;
+          action.type = A_PLACE_BRIDGE;
           action.cos.push(tiles[t]);
           action.cos.push(co2);
           var actions = clone(bactions);
@@ -1102,7 +1103,7 @@ function scoreAction(player, actions, values, roundnum) {
         var y = action.co[1];
         var dirs = [D_N, D_NE, D_SE, D_S, D_SW, D_NW];
         for(var j = 0; j < dirs.length; j++) {
-          var co = bridgeCo(x, y, dirs[j]);
+          var co = bridgeCo(x, y, dirs[j], game.btoggle);
           if(outOfBounds(co[0], co[1])) continue;
           if(canHaveBridge(x, y, co[0], co[1], player.color) && isOccupiedBy(co[0], co[1], player.woodcolor)) forbridge++;
         }

@@ -78,11 +78,13 @@ function serializeGameState(fromgame) {
   result += '' + fromgame.bw + ',' + fromgame.bh + ',' + fromgame.btoggle;
   result += '\n';
 
+  var togglemod = (fromgame.btoggle ? 0 : 1);
+
   result += '\nlandscape:\n';
   for (var i = 0; i < fromgame.world.length; i++) {
     var y = Math.floor(i / fromgame.bw);
     var x = i % fromgame.bw;
-    if(x == 0 && y % 2 == 1) result += ' ';
+    if(x == 0 && y % 2 == togglemod) result += ' ';
     result += colorCodeName[fromgame.world[i]] + ',';
     if(x == fromgame.bw - 1) result += '\n';
   }
@@ -91,7 +93,7 @@ function serializeGameState(fromgame) {
   for (var i = 0; i < fromgame.buildings.length; i++) {
     var y = Math.floor(i / fromgame.bw);
     var x = i % fromgame.bw;
-    if(x == 0 && y % 2 == 1) result += ' ';
+    if(x == 0 && y % 2 == togglemod) result += ' ';
     result += buildingCodeName[fromgame.buildings[i][0]] + ',';
     if(x == fromgame.bw - 1) result += '\n';
   }
@@ -102,7 +104,7 @@ function serializeGameState(fromgame) {
     for(var x = 0; x < fromgame.bw; x++) {
       for(var z = 0; z < 3; z++) {
         if(fromgame.bridges[arCo2(x, y, fromgame.bw)][z] != N) {
-          var co = bridgeCo(x, y, [D_N, D_NE, D_SE][z]);
+          var co = bridgeCo(x, y, [D_N, D_NE, D_SE][z], fromgame.btoggle);
           if (comma) result += ',';
           result += printCo(x, y) + printCo(co[0], co[1]) + colorCodeName[fromgame.bridges[arCo2(x, y, fromgame.bw)][z]];
           comma = true;
@@ -203,7 +205,7 @@ function serializeGameState(fromgame) {
     result += p.c + ',' + p.w + ',' + p.p + ',' + p.pp + ',' + p.pw0 + ',' + p.pw1 + ',' + p.pw2 + ',' + p.vp + '\n';
 
     result += 'buildings=';
-    result += p.b_d + ',' + p.b_tp + ',' + p.b_te + ',' + p.b_sh + ',' + p.b_sa + ',' + p.bridges + '\n';
+    result += p.b_d + ',' + p.b_tp + ',' + p.b_te + ',' + p.b_sh + ',' + p.b_sa + ',' + p.bridgepool + '\n';
 
     result += 'bon=';
     result += '' + getTileCodeName(p.bonustile ? p.bonustile : T_NONE) + '\n';
@@ -398,7 +400,7 @@ function deSerializeGameStateNewFormat(text) {
 
   for(var i = 0; i < el.length; i++) {
     var b = el[i];
-    if(b.length < 5) return null; //expected format something like A1B2R, or larger like A11B12R
+    if(b.length < 5) return null; //expected format something like A1B2R, or larger like A11B12R (last letter is color)
     var secondletterpos = 0;
     for(var j = 1; j < b.length; j++) {
       if(b.charCodeAt(j) >= 65 /*'A'*/ && b.charCodeAt(j) <= 90 /*'Z'*/) {
@@ -409,7 +411,7 @@ function deSerializeGameStateNewFormat(text) {
     var co0 = parsePrintCo(b.substring(0, secondletterpos));
     var co1 = parsePrintCo(b.substring(secondletterpos, b.length - 1));
     var color = codeNameToColor[b[b.length - 1]];
-    addBridgeTo(co0[0], co0[1], co1[0], co1[1], result.bw, color, result.bridges);
+    addBridgeTo(co0[0], co0[1], co1[0], co1[1], result.bw, result.btoggle, color, result.bridges);
   }
 
   s = parseLabelPart(text, 'cultpriests:');
@@ -571,7 +573,7 @@ function deSerializeGameStateNewFormat(text) {
     player.b_te = parseInt(el[2]);
     player.b_sh = parseInt(el[3]);
     player.b_sa = parseInt(el[4]);
-    player.bridges = parseInt(el[5]);
+    player.bridgepool = parseInt(el[5]);
 
     d = decomposeEqualsLine(lines[4]);
     if(d[0] != 'bon') return null;
@@ -672,6 +674,7 @@ function deSerializeGameStateNewFormat(text) {
 }
 
 //The format before new town tiles were introduced. I had accidently made that format not compatible with any game upgrades. The new format should be future proof.
+//TODO: remove this - the old format is very old so mostly gone.
 function deSerializeGameStateLegacyFormat(text) {
   var result = '';
   var comma = false;
@@ -745,7 +748,7 @@ function deSerializeGameStateLegacyFormat(text) {
       if(!!b && b != 'N') {
         var x = i % bw;
         var y = Math.floor(i / bw);
-        var co = bridgeCo(x, y, [D_N, D_NE, D_SE][z]);
+        var co = bridgeCo(x, y, [D_N, D_NE, D_SE][z], false);
         if (comma) result += ',';
         result += printCo(x, y) + printCo(co[0], co[1]) + b;
         comma = true;

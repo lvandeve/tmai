@@ -1,7 +1,7 @@
 /*
 TM AI
 
-Copyright (C) 2013 by Lode Vandevenne
+Copyright (C) 2013-2014 by Lode Vandevenne
 
 This software is provided 'as-is', without any express or implied
 warranty. In no event will the authors be held liable for any damages
@@ -290,6 +290,64 @@ registerFaction(new Dragonlords());
 
 ////////////////////////////////////////////////////////////////////////////////
 
+var Shapeshifters = function() {
+  this.name = 'Shapeshifters';
+  this.codename = 'shapeshifters';
+  this.color = X;
+};
+inherit(Shapeshifters, Faction);
+
+Shapeshifters.prototype.setStartSituation = function(player) {
+  Faction.prototype.setStartSituation(player);
+  player.pw0 = 4;
+  player.pw1 = 4;
+  player.cult = [1,1,0,0];
+  player.maxdigging = 0; // no dig upgrades!
+};
+
+Shapeshifters.prototype.getBuildingIncome = function(d, tp, te, sh, sa) {
+  var income = Faction.prototype.getBuildingIncome(d, tp, te, 0 /*sh done below*/, sa);
+  sumIncome(income, [0, 0, 0, sh * 4, 0]);
+  return income;
+};
+
+Shapeshifters.prototype.getBuildingCost = function(building, neighbor /*for TP*/) {
+  if(building == B_D) return [2,1,0,0,0];
+  if(building == B_TP) return [neighbor ? 3 : 6,2 ,0,0,0];
+  if(building == B_TE) return [5,2,0,0,0];
+  if(building == B_SH) return [6,3,0,0,0]; // only 3 workers for SH
+  if(building == B_SA) return [6,4,0,0,0];
+  throw new Error('unknown building');
+};
+
+//shift = for 3 normal power, shift2 = for 3 power TOKENS
+Shapeshifters.prototype.canTakeFactionAction = function(player, action, opt_reason) {
+  if(action == A_SHIFT || action == A_SHIFT2) {
+    if(built_sh(player)) return true;
+    if(opt_reason) opt_reason.push('Must built stronghold for action ' + getActionCodeName(action));
+    return false;
+  }
+  return Faction.prototype.canTakeFactionAction(player, action, opt_reason);
+};
+
+// resource order: c,w,p,pw,vp,pp, keys,spades,pt,cult,freecult, pt0,pt1,pt2, darklingconverts,spadevp, fire,water,earth,air, d,tp,te,sh,sa, bridge
+Shapeshifters.prototype.getActionIncome = function(player, actiontype) {
+  if(actiontype == A_SHIFT || actiontype == A_SHIFT2) return [0,0,0,0,2,0, 0,0,0,0, 0,0,0]; //2VP for shifting
+  return Faction.prototype.getActionIncome(player, actiontype);
+};
+
+Shapeshifters.prototype.getGaveLeechIncome = function(player, leeched) {
+  if(leeched) {
+    player.pw2++; //a whole new token in pw2!
+  } else {
+    addPower(player, 1);
+  }
+};
+
+registerFaction(new Shapeshifters());
+
+////////////////////////////////////////////////////////////////////////////////
+
 // Riverwalkers
 /*var Riverwalkers = function() {
   this.name = 'Riverwalkers';
@@ -297,6 +355,12 @@ registerFaction(new Dragonlords());
   this.color = X;
 };
 inherit(Riverwalkers, Faction);
+
+// resource order: c,w,p,pw,vp,pp, keys,spades,pt,cult,freecult, pt0,pt1,pt2, darklingconverts,spadevp, fire,water,earth,air, d,tp,te,sh,sa, bridge
+Riverwalkers.prototype.getActionIncome = function(player, actiontype) {
+  if(actiontype == A_UPGRADE_SH) return [0,0,0,0,0,0, 0,0,0,0,0, 0,0,0, 0,0, 0,0,0,0, 0,0,0,0,0, Math.min(player.bridgepool, 2) ]; // 2 bridges for building SH
+  return Faction.prototype.getActionIncome(player, actiontype);
+};
 
 registerFaction(new Riverwalkers());*/
 
@@ -325,15 +389,15 @@ registerWorld('Fire & Ice Altered', 'fire_ice_altered', function(game) {
   game.world = clone(fireIceAltered);
 });
 
-var fireIceWorld = [N,U,I,U,K,Y,I,S,G,R,B,Y,B,
-                     R,Y,I,B,S,R,I,I,I,Y,U,K,S,
-                    N,G,K,I,I,I,U,G,Y,I,I,I,I,
-                     Y,S,G,Y,K,I,B,R,U,I,G,B,G,
-                    N,I,I,U,I,I,R,K,G,S,I,U,K,
-                     G,R,I,I,G,I,I,I,U,B,I,S,R,
-                    N,S,I,Y,S,B,R,G,I,R,S,I,K,
-                     K,B,I,K,U,S,B,I,Y,K,I,R,B,
-                    N,S,G,I,R,Y,K,Y,I,B,U,I,U];
+var fireIceWorld = [ U,I,U,K,Y,I,S,G,R,B,Y,B,N,
+                    R,Y,I,B,S,R,I,I,I,Y,U,K,S,
+                     G,K,I,I,I,U,G,Y,I,I,I,I,N,
+                    Y,S,G,Y,K,I,B,R,U,I,G,B,G,
+                     I,I,U,I,I,R,K,G,S,I,U,K,N,
+                    G,R,I,I,G,I,I,I,U,B,I,S,R,
+                     S,I,Y,S,B,R,G,I,R,S,I,K,N,
+                    K,B,I,K,U,S,B,I,Y,K,I,R,B,
+                     S,G,I,R,Y,K,Y,I,B,U,I,U,N];
 
 
 registerWorld('Fire & Ice World', 'fire_ice', function(game) {

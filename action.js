@@ -113,7 +113,15 @@ function isBuildDwellingAction(action) {
 
 //any build action that can be involved in founding a town, includes dwelling and mermaids watertown tile
 function isBridgeAction(action) {
-  return action.type == A_POWER_BRIDGE || action.type == A_ENGINEERS_BRIDGE;
+  return action.type == A_PLACE_BRIDGE;
+}
+
+function isConvertAction(action) {
+  return action.type > A_BURN && action.type <= A_CONVERT_1W_1P;
+}
+
+function isConvertOrBurnAction(action) {
+  return action.type >= A_BURN && action.type <= A_CONVERT_1W_1P;
 }
 
 //whether this is a faction-specific action

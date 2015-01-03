@@ -77,12 +77,13 @@ function showGreyDialogAtMouse(text, e) {
 //the result is the center of where the hex cell should be
 //hex grid uses the type of coordinate system where odd and even rows are different
 function pixelCo(x, y) {
+  var togglemod = (game.btoggle ? 0 : 1);
   x++;
   y++;
   var xsize = 63;
   var ysize = 64;
   var px = x * xsize;
-  if(y % 2) px -= Math.floor(xsize / 2);
+  if(y % 2 == togglemod) px -= Math.floor(xsize / 2);
   //var py = y * ysize * 21 / 23;
   var py = y * ysize * 11 / 15;
   return [px, py - 24];
@@ -179,7 +180,7 @@ function drawBridge(x0, y0, x1, y1, color) {
     temp = y0; y0 = y1; y1 = temp;
   }
   var co = pixelCo(x0, y0);
-  var dir = getBridgeDir(x0, y0, x1, y1);
+  var dir = getBridgeDir(x0, y0, x1, y1, game.btoggle);
 
   var tilesize = 64;
   if(dir == D_NE) {
@@ -203,11 +204,11 @@ function drawBridges() {
       drawBridge(x, y, x, y - 2, bridges[0]);
     }
     if(bridges[1] != N) {
-      var co = bridgeCo(x , y, D_NE);
+      var co = bridgeCo(x , y, D_NE, game.btoggle);
       drawBridge(x, y, co[0], co[1], bridges[1]);
     }
     if(bridges[2] != N) {
-      var co = bridgeCo(x, y, D_SE);
+      var co = bridgeCo(x, y, D_SE, game.btoggle);
       drawBridge(x, y, co[0], co[1], bridges[2]);
     }
   }
@@ -298,7 +299,7 @@ for(var i = COLOR_BEGIN; i <= COLOR_END; i++) highc[i] = getHighContrastColor(ge
 var altco = false; //have coordinates like 0,0 instead of A1 on the map (for debugging)
 
 function drawMap() {
-  mapElement.style.left = (game.btoggle ? -20 : 0) + 'px';
+  mapElement.style.left = 0 + 'px';
   var drawMapTile = function(x, y) {
     var tile = getWorld(x, y);
     if(tile != N) {
@@ -1132,7 +1133,8 @@ function drawPlayerActions(px, py, playerIndex, parent /*parent DOM element*/) {
     button.title = '3pw to build a bridge';
     button.style.backgroundColor = '#ff4';
     button.onclick = function() {
-      letClickMapForBridge(new Action(A_POWER_BRIDGE));
+      prepareAction(new Action(A_POWER_BRIDGE));
+      letClickMapForBridge(1);
     };
   }
   if(player.getFaction().canTakeAction(player, A_POWER_1P, game)) {
@@ -1382,13 +1384,14 @@ function drawPlayerActions(px, py, playerIndex, parent /*parent DOM element*/) {
     button = makeLinkButton(px2, py + 112, getActionName(A_ENGINEERS_BRIDGE), parent);
     button.title = '2wto build a bridge';
     button.onclick = function() {
-      letClickMapForBridge(new Action(A_ENGINEERS_BRIDGE));
+      prepareAction(new Action(A_ENGINEERS_BRIDGE));
+      letClickMapForBridge(1);
     };
     px2 += 60;
   }
   if(player.getFaction().canTakeAction(player, A_SHIFT, game)) {
     button = makeLinkButton(px2, py + 112, getActionName(A_SHIFT), parent);
-    button.title = 'TODO';
+    button.title = 'Shapeshift to new color (3pw cost)';
     button.onclick = function() {
       chooseActionColor(new Action(A_SHIFT));
     };
@@ -1396,7 +1399,7 @@ function drawPlayerActions(px, py, playerIndex, parent /*parent DOM element*/) {
   }
   if(player.getFaction().canTakeAction(player, A_SHIFT2, game)) {
     button = makeLinkButton(px2, py + 112, getActionName(A_SHIFT2), parent);
-    button.title = 'TODO';
+    button.title = 'Shapeshift to new color (3 power tokens cost)';
     button.onclick = function() {
       chooseActionColor(new Action(A_SHIFT2));
     };
@@ -1460,7 +1463,7 @@ function drawMapClick() {
           if(b[0] == B_NONE && getWorld(x, y) != I && getWorld(x, y) != N) {
             //digAndBuildMode = DBM_BUILD;
             //prepareAutoDigAndBuildActions(x, y);
-            var tactions = getAutoTransformActions(player, x, y, player.color, getFreeSpades(player, pactions), 999);
+            var tactions = getAutoTransformActions(player, x, y, player.getMainDigColor(), getFreeSpades(player, pactions), 999);
             for(var i = 0; i < tactions.length; i++) prepareAction(tactions[i]);
             if(digAndBuildMode == DBM_BUILD) prepareAction(makeActionWithXY(A_BUILD, x, y));
           } else if(b[1] == player.woodcolor) {

@@ -184,6 +184,9 @@ Faction.prototype.canTakeAction = function(player, action, game, opt_reason) {
 // Get one-time resources for building SH, if any (e.g. 12 power tokens for Alchemists, 1 shipping for mermaids,
 // tunnelcarpetdistance for fakirs, darkling priest conversions, halflings spades, ...)
 // Applies it to the player object.
+// NOTE: Some other one time stronghold income may come from Faction.prototype.getActionIncome with A_UPGRADE_SH instead!!
+//       However, this can have effects on the player object that simple resource income rules currently can't describe, e.g. named VPs, ...
+// TODO: merge this fully with Faction.prototype.getActionIncome.
 Faction.prototype.getOneTimeStrongholdIncome = function(player) {
   // By default it's nothing
 };
@@ -715,17 +718,17 @@ Engineers.prototype.getPassVP = function(player) {
     var bridges = game.bridges[arCo(x, y)];
 
     if(bridges[0] == player.woodcolor) {
-      var co = bridgeCo(x, y, D_N);
+      var co = bridgeCo(x, y, D_N, game.btoggle);
       if(outOfBounds(co[0], co[1])) continue;
       if(isOccupiedBy(x, y, player.woodcolor) && isOccupiedBy(co[0], co[1], player.woodcolor)) result += 3;
     }
     if(bridges[1] == player.woodcolor) {
-      var co = bridgeCo(x, y, D_NE);
+      var co = bridgeCo(x, y, D_NE, game.btoggle);
       if(outOfBounds(co[0], co[1])) continue;
       if(isOccupiedBy(x, y, player.woodcolor) && isOccupiedBy(co[0], co[1], player.woodcolor)) result += 3;
     }
     if(bridges[2] == player.woodcolor) {
-      var co = bridgeCo(x, y, D_SE);
+      var co = bridgeCo(x, y, D_SE, game.btoggle);
       if(outOfBounds(co[0], co[1])) continue;
       if(isOccupiedBy(x, y, player.woodcolor) && isOccupiedBy(co[0], co[1], player.woodcolor)) result += 3;
     }

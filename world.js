@@ -44,26 +44,28 @@ function arCo2(x, y, bw) {
 }
 
 //returns coordinates of neighbor tile in given direction
-function dirCo(x, y, dir) {
-  if(dir == D_NE) result = [y % 2 ? x + 1 : x, y - 1];
+function dirCo(x, y, dir, btoggle) {
+  var togglemod = (btoggle ? 0 : 1);
+  if(dir == D_NE) result = [(y % 2 == togglemod) ? x + 1 : x, y - 1];
   else if(dir == D_E) result = [x + 1, y];
-  else if(dir == D_SE) result = [y % 2 ? x + 1 : x, y + 1];
-  else if(dir == D_SW) result = [y % 2 ? x : x - 1, y + 1];
+  else if(dir == D_SE) result = [(y % 2 == togglemod) ? x + 1 : x, y + 1];
+  else if(dir == D_SW) result = [(y % 2 == togglemod) ? x : x - 1, y + 1];
   else if(dir == D_W) result = [x - 1, y];
-  else if(dir == D_NW) result = [y % 2 ? x : x - 1, y - 1];
+  else if(dir == D_NW) result = [(y % 2 == togglemod) ? x : x - 1, y - 1];
   else return null; //ERROR
   if(outOfBounds(result[0], result[1])) return null; //out of bounds
   return result;
 }
 
 //returns coordinates of other side of bridge pointing in that direction
-function bridgeCo(x, y, dir) {
+function bridgeCo(x, y, dir, btoggle) {
+  var togglemod = (btoggle ? 0 : 1);
   if(dir == D_N) return [x, y - 2];
-  if(dir == D_NE) return [y % 2 ? x + 2 : x + 1, y - 1];
-  if(dir == D_SE) return [y % 2 ? x + 2 : x + 1, y + 1];
+  if(dir == D_NE) return [(y % 2 == togglemod) ? x + 2 : x + 1, y - 1];
+  if(dir == D_SE) return [(y % 2 == togglemod) ? x + 2 : x + 1, y + 1];
   if(dir == D_S) return [x, y + 2];
-  if(dir == D_SW) return [y % 2 ? x - 1 : x - 2, y + 1];
-  if(dir == D_NW) return [y % 2 ? x - 1 : x - 2, y - 1];
+  if(dir == D_SW) return [(y % 2 == togglemod) ? x - 1 : x - 2, y + 1];
+  if(dir == D_NW) return [(y % 2 == togglemod) ? x - 1 : x - 2, y - 1];
   return [x, y]; //ERROR
 }
 
@@ -276,10 +278,11 @@ function randomizeWorld(small) {
 
 //slightly different format than in the savegame: semicolons denote the width
 function serializeWorld() {
+  var togglemod = (game.btoggle ? 0 : 1);
   var result = '';
   for(var y = 0; y < game.bh; y++) {
     var w = game.bw;
-    if(y % 2 == 1) {
+    if(y % 2 == togglemod) {
       result += ' ';
       w--;
     }
@@ -293,8 +296,14 @@ function serializeWorld() {
 }
 
 //slightly different format than in the savegame: semicolons denote the width
+//TODO: let newlines denote the width
+//TODO: don't save in global game object but in a given one
 function parseWorld(text) {
   var lines = text.split(';');
+  game.btoggle = false;
+  if(lines.length >= 2 && lines[0][0] == ' ' && lines[1][0] != ' ') game.btoggle = true; //TODO: maybe instead check line 1 has less of any whitespace than line 2...
+
+  var togglemod = (game.btoggle ? 0 : 1);
 
   game.bh = lines.length - 1;
   game.bw = 0;
@@ -307,7 +316,7 @@ function parseWorld(text) {
   for(var y = 0; y < game.bh; y++)
   for(var x = 0; x < game.bw; x++)
   {
-    setWorld(x, y, (y % 2 == 1 && x + 1 >= game.bw) ? N : I);
+    setWorld(x, y, (y % 2 == togglemod && x + 1 >= game.bw) ? N : I);
   }
 
   var x = 0;
@@ -319,7 +328,7 @@ function parseWorld(text) {
       if(codeNameToColor[c] != undefined) {
         setWorld(x, y, codeNameToColor[c]);
         x++;
-        if(x >= game.bw || (y % 2 == 1 && x + 1 >= game.bw)) break;
+        if(x >= game.bw || (y % 2 == togglemod && x + 1 >= game.bw)) break;
       }
     }
     x = 0;
@@ -389,7 +398,7 @@ function getNeighborTiles(x, y) {
   var result = [];
   var dirs = [D_NE, D_E, D_SE, D_SW, D_W, D_NW];
   for(var i = 0; i < dirs.length; i++) {
-    var t = dirCo(x, y, dirs[i]);
+    var t = dirCo(x, y, dirs[i], game.btoggle);
     if(t) result.push(t);
   }
   return result;
@@ -923,13 +932,10 @@ function isInTown(x, y) {
 //out of range of the hex board
 function outOfBounds(x, y) {
   if(x < 0 || y < 0 || x >= game.bw || y >= game.bh) return true;
+  var togglemod = (game.btoggle ? 0 : 1);
 
   // TODO: is this check actually needed? Those tiles are already of type "N".
-  if(game.btoggle ) {
-    if(y % 2 == 0 && x == 0) return true;
-  } else {
-    if(y % 2 == 1 && x == game.bw - 1) return true;
-  }
+  if(y % 2 == togglemod && x == game.bw - 1) return true;
 
   return false;
 }
@@ -1018,8 +1024,10 @@ function onlyReachableThroughFactionSpecialWithBackupWorldBuildings(player, x, y
 }
 
 function hexDist(x0, y0, x1, y1) {
-  function sign(x) { return x ? x < 0 ? -1 : 1 : 0; }
-  var dx = (x1 - Math.floor(y1/2)) - (x0 - Math.floor(y0/2));
+  var sign = function(x) { return x ? x < 0 ? -1 : 1 : 0; }
+  var dx;
+  if(game.btoggle) dx = (x1 - Math.floor((y1 + 1) / 2)) - (x0 - Math.floor((y0 + 1) / 2));
+  else dx = (x1 - Math.floor(y1/2)) - (x0 - Math.floor(y0/2));
   var dy = y1 - y0;
 
   if(sign(dx) == sign(dy))
@@ -1029,29 +1037,30 @@ function hexDist(x0, y0, x1, y1) {
 }
 
 //get dir from 0 to 1
-function getBridgeDir(x0, y0, x1, y1) {
+function getBridgeDir(x0, y0, x1, y1, btoggle) {
+  var togglemod = (btoggle ? 0 : 1);
   if(x0 == x1 && y0 == y1 + 2) return D_N;
-  if(x0 == (y0 % 2 ? x1 - 2 : x1 - 1) && y0 == y1 + 1) return D_NE;
-  if(x0 == (y0 % 2 ? x1 - 2 : x1 - 1) && y0 == y1 - 1) return D_SE;
+  if(x0 == ((y0 % 2 == togglemod) ? x1 - 2 : x1 - 1) && y0 == y1 + 1) return D_NE;
+  if(x0 == ((y0 % 2 == togglemod) ? x1 - 2 : x1 - 1) && y0 == y1 - 1) return D_SE;
   if(x0 == x1 && y0 == y1 - 2) return D_S;
-  if(x0 == (y0 % 2 ? x1 + 1 : x1 + 2) && y0 == y1 - 1) return D_SW;
-  if(x0 == (y0 % 2 ? x1 + 1 : x1 + 2) && y0 == y1 + 1) return D_NW;
+  if(x0 == ((y0 % 2 == togglemod) ? x1 + 1 : x1 + 2) && y0 == y1 - 1) return D_SW;
+  if(x0 == ((y0 % 2 == togglemod) ? x1 + 1 : x1 + 2) && y0 == y1 + 1) return D_NW;
   return D_INVALID;
 }
 
-function addBridgeTo(x0, y0, x1, y1, bw, color, bridges) {
+function addBridgeTo(x0, y0, x1, y1, bw, btoggle, color, bridges) {
   if(y0 < y1) {
     var temp;
     temp = x0; x0 = x1; x1 = temp;
     temp = y0; y0 = y1; y1 = temp;
   }
-  var dir = getBridgeDir(x0, y0, x1, y1);
+  var dir = getBridgeDir(x0, y0, x1, y1, btoggle);
 
   if(dir == D_NE) {
     bridges[arCo2(x0, y0, bw)][1] = color;
   }
   else if(dir == D_NW) {
-    var co = dirCo(x0 - 1, y0, D_NW);
+    var co = dirCo(x0 - 1, y0, D_NW, btoggle);
     bridges[arCo2(co[0], co[1], bw)][2] = color;
   }
   else if(dir == D_N) {
@@ -1060,7 +1069,7 @@ function addBridgeTo(x0, y0, x1, y1, bw, color, bridges) {
 }
 
 function addBridge(x0, y0, x1, y1, color) {
-  addBridgeTo(x0, y0, x1, y1, game.bw, color, game.bridges);
+  addBridgeTo(x0, y0, x1, y1, game.bw, game.btoggle, color, game.bridges);
 }
 
 //returns the bridge color at that area, or N if no bridge
@@ -1070,13 +1079,13 @@ function getBridge(x0, y0, x1, y1, color) {
     temp = x0; x0 = x1; x1 = temp;
     temp = y0; y0 = y1; y1 = temp;
   }
-  var dir = getBridgeDir(x0, y0, x1, y1);
+  var dir = getBridgeDir(x0, y0, x1, y1, game.btoggle);
 
   if(dir == D_NE) {
     return game.bridges[arCo(x0, y0)][1];
   }
   else if(dir == D_NW) {
-    var co = dirCo(x0 - 1, y0, D_NW);
+    var co = dirCo(x0 - 1, y0, D_NW, game.btoggle);
     if(!co) return N; //out of bounds
     return game.bridges[arCo(co[0], co[1])][2];
   }
@@ -1113,19 +1122,19 @@ function worldCanHaveBridge(x0, y0, x1, y1) {
   var co1;
   var co2;
 
-  var dir = getBridgeDir(x0, y0, x1, y1);
+  var dir = getBridgeDir(x0, y0, x1, y1, game.btoggle);
 
   if(dir == D_NE) {
-    co1 = dirCo(x0, y0, D_NE);
-    co2 = dirCo(x0, y0, D_E);
+    co1 = dirCo(x0, y0, D_NE, game.btoggle);
+    co2 = dirCo(x0, y0, D_E, game.btoggle);
   }
   else if(dir == D_NW) {
-    co1 = dirCo(x0, y0, D_NW);
-    co2 = dirCo(x0, y0, D_W);
+    co1 = dirCo(x0, y0, D_NW, game.btoggle);
+    co2 = dirCo(x0, y0, D_W, game.btoggle);
   }
   else if(dir == D_N) {
-    co1 = dirCo(x0, y0, D_NE);
-    co2 = dirCo(x0, y0, D_NW);
+    co1 = dirCo(x0, y0, D_NE, game.btoggle);
+    co2 = dirCo(x0, y0, D_NW, game.btoggle);
   }
   else return false;
 
@@ -1263,17 +1272,17 @@ function hasOwnNeighbor(x, y, color) {
 //returns whether this tile has a neighboring color from yourself (only touching on land, no bridges, hex dist 1 only) --> for sandstorm
 function hasOwnNeighborNoBridge(x, y, color) {
   var co;
-  co = dirCo(x, y, D_NE);
+  co = dirCo(x, y, D_NE, game.btoggle);
   if(co != null && isOccupiedBy(co[0], co[1], color)) return true;
-  co = dirCo(x, y, D_E);
+  co = dirCo(x, y, D_E, game.btoggle);
   if(co != null && isOccupiedBy(co[0], co[1], color)) return true;
-  co = dirCo(x, y, D_SE);
+  co = dirCo(x, y, D_SE, game.btoggle);
   if(co != null && isOccupiedBy(co[0], co[1], color)) return true;
-  co = dirCo(x, y, D_SW);
+  co = dirCo(x, y, D_SW, game.btoggle);
   if(co != null && isOccupiedBy(co[0], co[1], color)) return true;
-  co = dirCo(x, y, D_W);
+  co = dirCo(x, y, D_W, game.btoggle);
   if(co != null && isOccupiedBy(co[0], co[1], color)) return true;
-  co = dirCo(x, y, D_NW);
+  co = dirCo(x, y, D_NW, game.btoggle);
   if(co != null && isOccupiedBy(co[0], co[1], color)) return true;
 }
 

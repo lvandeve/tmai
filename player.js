@@ -55,7 +55,7 @@ var Player = function() {
   this.b_sh = 1;
   this.b_sa = 1;
   //bridges NOT placed on the map
-  this.bridges = 3;
+  this.bridgepool = 3;
 
   this.bonustile = T_NONE; //pass tile
   this.towntiles = {}; //not an array but a map
@@ -87,6 +87,7 @@ var Player = function() {
   this.mayaddmorespades = false; //set to true as soon as any spade giving action is taken. That means it's allowed to add additional A_SPADE actions (despite the fact that numactions will be 0).
   this.transformed = false; //set to true as soon as you do any transform action (that means it's allowed to do a A_BUILD after this even if numactions is 0)
   this.transformdir = A_NONE; //A_TRANSFORM_CW or A_TRANSFORM_CCW. This is kept track of because you may not change direction on a tile.
+  this.bridges = 0; //bridges as resource (can be placed)
   //coordinates of last transform, used to keep track of where overflow spades go. e.g. [0,0]
   //set back to null when starting new spade giving action, because chaos magicians double action may cause new series where it's allowed
   this.transformco = null;
@@ -109,6 +110,7 @@ var Player = function() {
 function initPlayerTemporaryTurnState(player) {
   player.numactions = 1;
   player.spades = 0;
+  player.bridges = 0;
   player.mayaddmorespades = false;
   player.gotspades = false;
   player.transformed = false;
@@ -168,7 +170,7 @@ function built_sa(player) {
 }
 
 function built_bridges(player) {
-  return 3 - player.bridges;
+  return 3 - player.bridgepool;
 }
 
 //initialize player parameters based on faction: shipping and digging, cults, staring resources
@@ -211,11 +213,11 @@ function getBuildingIncome(player) {
 function getIncomeForNextBuilding(player, building) {
   var b0 = [built_d(player), built_tp(player), built_te(player), built_sh(player), built_sa(player)];
   var b1 = [built_d(player), built_tp(player), built_te(player), built_sh(player), built_sa(player)];
-  if(building == B_D) b1[0]--;
-  else if(building == B_TP) b1[1]--;
-  else if(building == B_TE) b1[2]--;
-  else if(building == B_SH) b1[3]--;
-  else if(building == B_SA) b1[4]--;
+  if(building == B_D) b1[0]++;
+  else if(building == B_TP) b1[1]++;
+  else if(building == B_TE) b1[2]++;
+  else if(building == B_SH) b1[3]++;
+  else if(building == B_SA) b1[4]++;
 
   var result = player.getFaction().getBuildingIncome(b1[0], b1[1], b1[2], b1[3], b1[4]);
   var old = player.getFaction().getBuildingIncome(b0[0], b0[1], b0[2], b0[3], b0[4]);

@@ -45,7 +45,7 @@ function beginGame() {
 var Game = function() {
   this.bw = 13; //board width
   this.bh = 9; //board height
-  this.btoggle = false; //toggle to be rendered more left rather than more right
+  this.btoggle = false; //toggle so that first line is one tile smaller rather than one tile bigger than next (shifted more to right rather than more to left than next line)
 
   //The world array has the color of each hex. It is inited with the standard world map.
   this.world = [];
@@ -182,13 +182,6 @@ function initWorldForParams(params) {
       location.search.indexOf('playtest') >= 0 &&
       localStorage['karteneditor_world']) {
     parseWorld(localStorage['karteneditor_world']);
-    if(game.bw > 1 && game.bw < 50 && game.bh > 1 && game.bh < 50) {
-      game.btoggle = true;
-      for(var i = 0; i < game.bh; i += 2) {
-        if(game.world[game.bw * i] != N) game.btoggle = false;
-      }
-      return;
-    }
   }
 
   params.worldGenerator(game);

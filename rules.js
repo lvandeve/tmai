@@ -220,6 +220,7 @@ function addPriests(player, p) {
 //not to be confused with "sumIncome"
 //This can also add VP, if that case give reason
 function addIncome(player, income, opt_reason, opt_detail) {
+  if(income.length < 5) throw 'resource array size must be at least 5';
   player.c += income[R_C];
   player.w += income[R_W];
   addPriests(player, income[R_P]);
@@ -241,6 +242,11 @@ function addIncome(player, income, opt_reason, opt_detail) {
     if(income[R_EARTH]) giveCult(player, C_E, income[R_EARTH]);
     if(income[R_AIR]) giveCult(player, C_A, income[R_AIR]);
     if(income[R_SPADEVP]) player.spadevp += income[R_SPADEVP];
+    if(income[R_BRIDGE]) {
+      var num = Math.min(income[R_BRIDGE], player.bridgepool);
+      player.bridgepool -= num;
+      player.bridges += num;
+    }
   }
 }
 
@@ -248,6 +254,7 @@ function addIncome(player, income, opt_reason, opt_detail) {
 //precondition: player has enough resources
 //TODO: give custom VP reason for consumed resources
 function consume(player, consumed) {
+  if(consumed.length < 5) throw 'resource array size must be at least 5';
   player.c -= consumed[R_C];
   player.w -= consumed[R_W];
   player.p -= consumed[R_P];
@@ -281,10 +288,12 @@ function consume(player, consumed) {
     if(consumed[R_EARTH]) giveCult(player, C_E, -consumed[R_EARTH]);
     if(consumed[R_AIR]) giveCult(player, C_A, -consumed[R_AIR]);
     if(consumed[R_SPADEVP]) player.spadevp -= consumed[R_SPADEVP];
+    if(consumed[R_BRIDGE]) player.bridges -= consumed[R_BRIDGE];
   }
 }
 
 function canConsume(player, consumed) {
+  if(consumed.length < 5) throw 'resource array size must be at least 5';
   var result = player.c >= consumed[R_C] && player.w >= consumed[R_W] && player.p >= consumed[R_P]
       && player.pw2 >= consumed[R_PW] && player.vp >= consumed[R_VP];
 
@@ -305,6 +314,7 @@ function canConsume(player, consumed) {
     if(consumed[R_EARTH] && player.cult[C_E] < consumed[R_EARTH]) return false;
     if(consumed[R_AIR] && player.cult[C_A] < consumed[R_AIR]) return false;
     if(consumed[R_SPADEVP] && player.spadevp < consumed[R_SPADEVP]) return false;
+    if(consumed[R_BRIDGE] && player.bridges < consumed[R_BRIDGE]) return false;
   }
 
   return result;
@@ -691,6 +701,7 @@ function addExtrasForAction(player, action) {
     }
     if(action.type == A_UPGRADE_SH) {
       player.getFaction().getOneTimeStrongholdIncome(player);
+      addIncome(player, player.getFaction().getActionIncome(player, action.type)); //TODO: ensure this is not done more globally elsewhere already. This is currently only used by shapeshifters SH for the two bridges.
     }
   }
 
@@ -836,7 +847,7 @@ function tryAction(player, action /*Action object*/) {
     }
     burnPower(player, 1);
   }
-  else if(action.type > A_CONVERT_ACTIONS_BEGIN && action.type < A_CONVERT_ACTIONS_END) {
+  else if(isConvertAction(action)) {
     error = tryConversion(player, action.type);
   }
   else if(action.type == A_ADV_SHIP) {
@@ -1002,6 +1013,11 @@ function tryAction(player, action /*Action object*/) {
       player.w -= 2;
     }
 
+    if(player.bridgepool <= 0) return 'not enough bridges in pool';
+    player.bridgepool--;
+    player.bridges++;
+  }
+  else if(action.type == A_PLACE_BRIDGE) {
     if(player.bridges <= 0) return 'not enough bridges';
     var x0 = action.cos[0][0];
     var y0 = action.cos[0][1];
@@ -1120,7 +1136,7 @@ function tryAction(player, action /*Action object*/) {
   }
   else if(action.type == A_SHIFT || action.type == A_SHIFT2) {
     if(action.type == A_SHIFT) {
-      error = tryConsume(player, [0,0,0,3], action.type);
+      error = tryConsume(player, [0,0,0,3,0], action.type);
     } else {
       error = tryConsume(player, [0,0,0,0,0, 0,0,0,3], action.type);
     }
@@ -1208,7 +1224,6 @@ function tryActions(player, actions /*array of Action objects*/) {
 
 //aka coordinatesToString
 function printCo(x, y) {
-  if(game.btoggle && y % 2 == 0) x--;
   //return ['A','B','C','D','E','F','G','H','I'][y] + (1 + x);
   return String.fromCharCode(65 + y) + (1 + x);
 }
@@ -1217,7 +1232,6 @@ function printCo(x, y) {
 function parsePrintCo(text) {
   var y = text.charCodeAt(0) - 65 /*'A'*/;
   var x = parseInt(text.substr(1)) - 1;
-  if(game.btoggle && y % 2 == 0) x++;
   return [x, y];
 }
 function printCos(cos) {
@@ -1709,22 +1723,6 @@ function getTunnelCarpetCost(player) {
 function temporaryTunnelCarpetOk(player, x, y) {
   return player.tunnelcarpet && player.tunnelcarpet[0] == x && player.tunnelcarpet[1] == y;
 }
-
-//for end game resource scoring. Returns endgame score
-//function convertEverythingToCoinsAndReturnScore(player) {
-  //while(player.pw1 >= 2) {
-    //burnPower(player, 1);
-  //}
-  //player.c += player.pw2;
-  //usePower(player, player.pw2);
-  //player.c += player.w;
-  //player.w = 0;
-  //player.c += player.p;
-  //player.p = 0;
-  //if(player.faction == F_ALCHEMISTS) return Math.floor(player.c / 2);
-  //else return Math.floor(player.c / 3);
-//}
-
 
 function getResourceEndGameScoring(player) {
   var num = player.c + player.w + player.p + player.pw2 + Math.floor(player.pw1 / 2);

@@ -337,6 +337,7 @@ SnellmanActor.prototype.doAction = function(playerIndex, callback) {
       var a = fromSnellmanActionOctogon[words[i + 1]];
       var action = new Action(a);
       result.push(action);
+      if(a == A_POWER_BRIDGE) result.push(new Action(A_PLACE_BRIDGE));
       if(a == A_POWER_SPADE) spades += 1;
       if(a == A_BONUS_SPADE) spades += 1;
       if(a == A_POWER_2SPADE) spades += 2;
@@ -416,6 +417,7 @@ SnellmanActor.prototype.doAction = function(playerIndex, callback) {
             //the favor tile taking can change pw
             //therefore, in fact the upgrade action must be executed after those convert actions
             //so swap the order
+            //TODO: use convertActionsToMove and moveElementsInFrontSorted system from the town tiles below. The convert actions should be shifted, not change order.
             if(j != result.length - 1) {
               var temp = result[j];
               result[j] = result[result.length - 1];
@@ -426,11 +428,21 @@ SnellmanActor.prototype.doAction = function(playerIndex, callback) {
         }
       }
       else if(isTownTile(tile)) {
-        // Find which of the actions made the town
         var townformations = actionsCreateTowns(player, result, result.length);
-        for(var j = 0; j < result.length; j++) {
+        var convertActionsToMove = [];
+        // Find which of the actions made the town
+        for(var j = result.length - 1; j >= 0; j--) {
+          // If there is a convert action between the town forming action and the +TW# command, the convert actually happened before the town action.
+          // E.g. build G7. convert 4PW to 4C. +TW4 --> that is the +8pw town tile. The order matters! convert happens before build.
+          if(isConvertOrBurnAction(result[j])) {
+            convertActionsToMove.push(j);
+          }
           if(townformations[j] > result[j].twtiles.length) {
             result[j].twtiles.push(tile);
+            if(convertActionsToMove.length > 0) {
+              result = moveElementsInFrontSorted(result, convertActionsToMove, j);
+              convertActionsToMove = [];
+            }
             if(num <= 0) break;
             if(num > 1) j--;
             num--;
@@ -479,8 +491,10 @@ SnellmanActor.prototype.doAction = function(playerIndex, callback) {
           } else if(to == 'w') result.push(new Action(A_CONVERT_1P_1W));
         } else if(from == 'w') {
           if(to == 'c') result.push(new Action(A_CONVERT_1W_1C));
-          else if(to == 'bridge') result.push(new Action(A_ENGINEERS_BRIDGE));
-          else if(to == 'p') result.push(new Action(A_CONVERT_1W_1P));
+          else if(to == 'bridge') {
+          result.push(new Action(A_ENGINEERS_BRIDGE));
+          result.push(new Action(A_PLACE_BRIDGE));
+        } else if(to == 'p') result.push(new Action(A_CONVERT_1W_1P));
         } else if(from == 'vp') {
           if(to == 'c') result.push(new Action(A_CONVERT_1VP_1C));
         }
@@ -597,6 +611,18 @@ SnellmanActor.prototype.leechPower = function(playerIndex /*receiver*/, fromPlay
     this.lines.splice(m, 1);
     this.lines.splice(this.l, 0, line);
     line = this.lines[this.l];
+  }
+
+  // A line may actually contain part of an action and a leech statement, all in one line!!
+  // For example:
+  // Convert pw to c. Decline 5 from nomads
+  // The convert is actually part of the NEXT action. So let's move it to there.
+  if(stringContains(line, 'convert')) {
+    var end = line.indexOf('leech');
+    if(end < 0) end = line.indexOf('decline');
+    if(end > 0 && this.lines.length > m + 1) {
+      this.lines[m + 1] = line.substr(0, end) + '. ' + this.lines[m + 1];
+    }
   }
 
   snellmanDebugLog('DEBUG: executing leechPower: ' + playerIndex + ' ' + line);
@@ -811,115 +837,6 @@ SnellmanActor.prototype.chooseInitialBonusTile = function(playerIndex, callback)
 ////////////////////////////////////////////////////////////////////////////////
 ////////////////////////////////////////////////////////////////////////////////
 
-//determine the map that the snellman game might contain depending on some regex parsing of the full copypasted game log.
-//this because the log does not literally contain the map name, so use coordinates such as "A1", "J1", and initial dwelling colors to distinguish the two same-shaped maps
-function heuristicallyDetermineSnellmapMap(text) {
-  if(!codeNameToWorld['fire_ice'] || !codeNameToWorld['fire_ice_altered']) return 0; //no expansion worlds available.
-  text = text.toLowerCase();
-
-  var newworldclues = ['build j1', 'build j2', 'build j3', 'build j4', 'build j5', 'build j6', 'build j7', 'build j8', 'build j9',
-                       'transform j1', 'transform j2', 'transform j3', 'transform j4', 'transform j5', 'transform j6', 'transform j7', 'transform j8', 'transform j9'];
-  var notnewworldclues = ['build a1', 'build a2', 'build a3', 'build a4', 'build a5', 'build a6', 'build a7', 'build a8', 'build a9',
-                          'transform a1', 'transform a2', 'transform a3', 'transform a4', 'transform a5', 'transform a6', 'transform a7', 'transform a8', 'transform a9'];
-
-
-  var newworld = -1; //-1: unknown, 0: old world OR alternate world, 1: new world (fire and ice world)
-
-  for(var j = 0; j < newworldclues.length; j++) {
-    if(text.indexOf(newworldclues[j]) != -1) {
-      newworld = 1;
-      break;
-    }
-  }
-  for(var j = 0; j < notnewworldclues.length; j++) {
-    if(text.indexOf(notnewworldclues[j]) != -1) {
-      newworld = 0;
-      break;
-    }
-  }
-
-  if(newworld == 1) {
-    return codeNameToWorld['fire_ice'];
-  }
-
-  var prepareTestWorld = function(world, bw, bh, btoggle) {
-    var result = {};
-    for(var y = 0; y < bh; y++) {
-      var n = 1; //x number
-      var l = String.fromCharCode(97 + y + (btoggle ? 1 : 0)); //letter
-      for(var x = 0; x < bw; x++) {
-        var color = world[y * bw + x];
-        if(color == N || color == I) {
-          continue;
-        } else {
-          result[l + n] = color; // e.g. 'a1' : 'red'
-          n++;
-        }
-      }
-    }
-    return result;
-  }
-
-  var standard = prepareTestWorld(standardWorld, 13, 9, false);
-  var fire_ice_altered = prepareTestWorld(fireIceAltered, 13, 9, false);
-  var fire_ice = prepareTestWorld(fireIceWorld, 13, 9, true);
-
-  var xco = ['1', '2', '3', '4', '5', '6', '7', '8', '9', '10', '11', '12', '13'];
-  var yco = ['a', 'b', 'c', 'd', 'e', 'f', 'g', 'h', 'i', 'j'];
-  for(var y = 0; y < yco.length; y++) {
-    for(var x = 0; x < xco.length; x++) {
-      var co = yco[y] + xco[x];
-      var b = text.search('build ' + co + '\\b');
-      if(b < 0) continue;
-      var t = text.search('transform ' + co + '\\b');
-      if(t >= 0 && t < b) continue; //a transform happened on this coordinate before a build. Our heuristics can no longer know what the original tile color was.
-
-      // Now we know there is a build on a tile with an original world color! Find out what faction did it, to know the original tile color. Search for faction name at beginning of line.
-      var begin = text.lastIndexOf('\n', b);
-      if(begin < 0) continue; //something went wrong...
-      begin++; //the new line
-
-      //words that are a digging action before the build may not appear on this line
-      var line = text.substring(begin, b);
-      var tests = ['transform', 'dig', 'actn', 'actg', 'act5', 'act6', 'bon1']; // TODO: others in expansion possibly
-      var ok = true;
-      for(var i = 0; i < tests.length; i++) {
-        if(line.indexOf(tests[i]) >= 0) {
-          ok = false;
-          break;
-        }
-      }
-      if(!ok) continue;
-      
-      var end = begin + 1; //end of the word
-      while(end < text.length && text.charCodeAt(end) >= 97 && text.charCodeAt(end) <= 122) end++;
-      var factionName = text.substring(begin, end);
-      // TODO: the expansion factions - NOTE: we need to find out on which colors they can build though...
-      var faction = fromSnellmanFaction(factionName);
-      if(!faction) continue; //something went wrong or unknown faction
-      var color = faction.color;
-      //color is the original world coler of the tile at those coordinates. Now check which of the worlds have it...
-
-      var maps = [];
-      if(standard[co] == color) maps.push(codeNameToWorld['standard']);
-      if(fire_ice_altered[co] == color) maps.push(codeNameToWorld['fire_ice_altered']);
-      if(fire_ice[co] == color) maps.push(codeNameToWorld['fire_ice']);
-
-      if(maps.length == 1) {
-        return maps[0]; //we found the world! This is a uniquely identified world that has that initial color at that coordiante.
-      }
-      //if maps.length > 2, it is ambiguous. If maps.length == 0, something must have gone wrong...
-    }
-  }
-
-  // Still unknown after all the heuristics ... instead use the worldmap dropdown of the game.
-  var pref = preferences.worldmapdropdown;
-  var name = worldCodeNames[pref];
-  if(name == 'fire_ice' && newworld == 0) return codeNameToWorld['standard']; //we already know the world is not fire_ice, however the dropdown is set to it, so unfortunately cannot use its state
-  if(name == 'fire_ice' || name == 'fire_ice_altered') return pref;
-  return codeNameToWorld['standard'];
-}
-
 var snellmanunittesttext = '';
 
 function deSerializeGameStateSnellmanLog_(text) {
@@ -927,8 +844,8 @@ function deSerializeGameStateSnellmanLog_(text) {
   text = text.replace(/show history/g, '');
   text = text.replace(/[0-9]+ VP.*[0-9]+\/[0-9]+\/[0-9]+\/[0-9]+/g, ''); // removes the summaries in the center of each action line, such as "67 VP 9 C 9 W 1 P +1 0/1/4 PW 2/2/7/8"
   // removes add/subtract numbers near said summaries, such as +1
-  text = text.replace(/\+[0-9]+/g, '');
-  text = text.replace(/-[0-9]+/g, '');
+  text = text.replace(/\s\+[0-9]+/g, ' ');
+  text = text.replace(/\s-[0-9]+/g, ' ');
   // make all whitespaces one space
   text = text.replace(/(\t| )+/g, ' ');
   // It contains the commands as typed by players, so be case-insensitive
@@ -945,29 +862,32 @@ function deSerializeGameStateSnellmanLog_(text) {
   state.bonustilepromo2013 = stringContains(text, 'shipping-bonus');
   state.fireice = false;
 
-  // TODO: the final scoring is not in the snellman log, only the UI. Improve that if they're in the log too.
-  if(text.indexOf('clusters 18/12/6') >= 0) {
-    game.finalscoring = nameToFinalScoring['settlements'];
-  }
-  else if(text.indexOf('sa-sh-distance 18/12/6') >= 0) {
-    game.finalscoring = nameToFinalScoring['sh_sa'];
-  }
-  else if(text.indexOf('distance 18/12/6') >= 0) {
-    game.finalscoring = nameToFinalScoring['distance'];
-  }
-  else if(text.indexOf('edge 18/12/6') >= 0) {
-    game.finalscoring = nameToFinalScoring['outposts'];
-  }
-  else {
-    game.finalscoring = nameToFinalScoring['none'];
-  }
+  game.finalscoring = nameToFinalScoring['none'];
+  //if(stringContains(text, 'fire-and-ice-final-scoring')) {
+    if(stringContains(text, 'connected-clusters')) {
+      game.finalscoring = nameToFinalScoring['settlements'];
+    }
+    else if(stringContains(text, 'connected-sa-sh-distance')) {
+      game.finalscoring = nameToFinalScoring['sh_sa'];
+    }
+    else if(stringContains(text, 'connected-distance')) {
+      game.finalscoring = nameToFinalScoring['distance'];
+    }
+    else if(stringContains(text, 'building-on-edge')) {
+      game.finalscoring = nameToFinalScoring['outposts'];
+    }
+  //}
 
   if(state.newcultistsrule) snellmanunittesttext += 'option errata-cultist-power\n';
   if(state.towntilepromo2013) snellmanunittesttext += 'option mini-expansion-1\n';
   if(state.bonustilepromo2013) snellmanunittesttext += 'option shipping-bonus\n';
 
-  var map = heuristicallyDetermineSnellmapMap(text);
-  worldGenerators[map](game); // initStandardWorld(game);
+  var map = 0;
+  if(codeNameToWorld['fire_ice'] && codeNameToWorld['fire_ice_altered']) {
+    if(stringContains(text, '95a66999127893f5925a5f591d54f8bcb9a670e6')) map = codeNameToWorld['fire_ice'];
+    else if(stringContains(text, 'be8f6ebf549404d015547152d5f2a1906ae8dd90')) map = codeNameToWorld['fire_ice_altered'];
+  }
+  worldGenerators[map](game); // Create the world map
   initBoard();
 
   var players = findSnellmanPlayersAndFactions(text);

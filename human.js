@@ -150,7 +150,8 @@ function prepareAction(action) {
   actionEl.innerHTML = actionsToString(pactions);
 
   var cults = []; //for acolytes
-  var cultincome = player.getFaction().getActionIncome(player, action.type, R)[R_FREECULT];
+  var cultincome = player.getFaction().getActionIncome(player, action.type)[R_FREECULT];
+  var actionincome = player.getFaction().getActionIncome(player, action.type);
 
   // Recursive because multiple decisions may be required for a single action.
   function tryPrepareAction(action) {
@@ -207,6 +208,9 @@ function prepareAction(action) {
       };
       queueHumanState(HS_CULT, 'choose cult track to increase', fun);
     }
+    else if(actionincome[R_BRIDGE]) {
+      letClickMapForBridge(actionincome[R_BRIDGE]);
+    }
   }
 
   tryPrepareAction(action);
@@ -216,16 +220,24 @@ function letClickMapForHalflingsStrongholdDigs() {
   digAndBuildFun(DBM_BUILD, 'click where to dig for halflings SH bonus')
 }
 
-function letClickMapForBridge(action) {
-  var remaining = 2;
+// TODO: do this in tryPrepareAction instead
+function letClickMapForBridge(num) {
+  var remaining = num * 2;
+  var cos = [];
   var clickFun = function(x, y) {
     clearHumanState();
     remaining--;
-    action.cos.push([x,y]);
-    if(remaining == 0) {
+    cos.push([x,y]);
+    if(remaining % 2 == 0) {
+      var action = new Action(A_PLACE_BRIDGE);
+      action.cos.push(cos[cos.length - 2]);
+      action.cos.push(cos[cos.length - 1]);
       prepareAction(action);
-    } else {
-      queueHumanState(HS_MAP, 'click bridge end point', clickFun);
+    }
+
+    if(remaining > 0) {
+      var text = (remaining % 2 == 0 ? 'click bridge start point' : 'click bridge end point')
+      queueHumanState(HS_MAP, text, clickFun);
     }
   };
   queueHumanState(HS_MAP, 'click bridge start point', clickFun);

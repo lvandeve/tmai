@@ -656,6 +656,7 @@ option mini-expansion-1\n\
 option shipping-bonus\n\
 option fire-and-ice-final-scoring\n\
 option email-notify\n\
+map be8f6ebf549404d015547152d5f2a1906ae8dd90\n\
 Randomize setup\n\
 Round 1 scoring: SCORE4, SA/SH >> 5\n\
 Round 2 scoring: SCORE1, SPADE >> 2\n\
@@ -670,6 +671,7 @@ Removing tile BON2\n\
 Player 1: Rob\n\
 Player 2: Lode\n\
 Player 3: Jan\n\
+Added final scoring tile: connected-clusters\n\
 swarmlings setup\n\
 chaosmagicians setup\n\
 nomads setup\n\

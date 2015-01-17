@@ -388,7 +388,7 @@ function insertCarpetTunnelActionIfNeeded(player, actions) {
     if(action.type == A_TUNNEL || action.type == A_CARPET) {
       hastunnel = true;
     }
-    if(isBuildDwellingAction(action) || isTransformAction(action)) {
+    if(isBuildDwellingAction(action) || isTransformAction(action.type)) {
       if(!hastunnel && onlyReachableThroughFactionSpecial(player, action.co[0], action.co[1])) {
         var a = new Action(player.faction == F_DWARVES ? A_TUNNEL : A_CARPET);
         a.co = action.co;
@@ -581,6 +581,7 @@ function digLocationChoiceSimple(player, numdig, numbuild, buildcost, digco, bui
 //maxnum is max amount of transformations allowed to do (again set to 999 or so if infinite)
 //returns array of actions
 function getAutoTransformActions(player, x, y, tocolor, freespades, maxnum) {
+  if(player.color == Z) return []; //cannot transform, and doesn't need to assumgint that the color is unlocked
   var fromcolor = getWorld(x, y);
   if(tocolor == O) {
     if(fromcolor == O) return [];
@@ -618,7 +619,7 @@ function reorderDigBuildActionsToNotStartWithIncompleteTransforms(player, action
   var hastransform = false;
   for(var i = 0; i < actions.length; i++) {
     var action = actions[i];
-    if(isTransformAction(action) && action.type != A_SANDSTORM) {
+    if(isTransformAction(action.type) && action.type != A_SANDSTORM) {
       hastransform = true;
     }
   }
@@ -629,7 +630,7 @@ function reorderDigBuildActionsToNotStartWithIncompleteTransforms(player, action
   var count = 0;
   for(var i = 0; i < actions.length; i++) {
     var action = actions[i];
-    if(isTransformAction(action) && action.type != A_SANDSTORM) {
+    if(isTransformAction(action.type) && action.type != A_SANDSTORM) {
       var co = printCo(action.co);
       if(!transformactions[co]) {
         transformactions[co] = [];
@@ -656,7 +657,7 @@ function reorderDigBuildActionsToNotStartWithIncompleteTransforms(player, action
   var lastcomplete = 0;
   for(var i = 0; i < actions.length; i++) {
     var action = actions[i];
-    if(isTransformAction(action) && action.type != A_SANDSTORM) {
+    if(isTransformAction(action.type) && action.type != A_SANDSTORM) {
       var co = printCo(action.co);
       if(virtualworld[co] == player.getMainDigColor()) lastcomplete = i;
     }
@@ -666,7 +667,7 @@ function reorderDigBuildActionsToNotStartWithIncompleteTransforms(player, action
 
   for(var i = 0; i < lastcorrect; i++) {
     var action = actions[i];
-    if(isTransformAction(action) && action.type != A_SANDSTORM) {
+    if(isTransformAction(action.type) && action.type != A_SANDSTORM) {
       var co = printCo(action.co);
       if(virtualworld[co] != player.getMainDigColor()) {
         actions.splice(i, 1);

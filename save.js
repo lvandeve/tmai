@@ -94,7 +94,7 @@ function serializeGameState(fromgame) {
     var y = Math.floor(i / fromgame.bw);
     var x = i % fromgame.bw;
     if(x == 0 && y % 2 == togglemod) result += ' ';
-    result += buildingCodeName[fromgame.buildings[i][0]] + ',';
+    result += buildingCodeName[fromgame.buildings[i][0]] + colorCodeName[fromgame.buildings[i][1]] + ',';
     if(x == fromgame.bw - 1) result += '\n';
   }
 
@@ -195,8 +195,13 @@ function serializeGameState(fromgame) {
     result += '\nplayer:\n';
 
     result += 'bio=';
+    var riverwalkerscolorstring = ''; //e.g. 1010101, indicates which of the 7 colors are available
+    if(p.color == Z) {
+      riverwalkerscolorstring = ',';
+      for(var j = 0; j < p.colors.length; j++) riverwalkerscolorstring += (p.colors[j] ? '1' : '0');
+    }
     result += p.name + ',' + (p.human ? 'human' : 'ai') + ',' + getFactionCodeName(p.getFaction()) + ',' +
-        colorCodeName[p.color] + ',' + colorCodeName[p.auxcolor] + ',' + colorCodeName[p.woodcolor] + '\n'
+        colorCodeName[p.color] + ',' + colorCodeName[p.auxcolor] + ',' + colorCodeName[p.woodcolor] + riverwalkerscolorstring + '\n'
 
     result += 'passed=';
     result += p.passed + '\n';
@@ -388,9 +393,16 @@ function deSerializeGameStateNewFormat(text) {
   s = parseWorldString(text, 'buildings:');
   if(!s || s.length < result.bw * result.bh) return null;
   for(var i = 0; i < result.bw * result.bh; i++) {
-    var building = codeNameToBuilding[s[i]];
-    var color = building == B_NONE ? N : result.world[i];
-    if(building == B_MERMAIDS) color = B;
+    var building = codeNameToBuilding[s[i].substr(0, 1)];
+    var char1 = s[i].substr(1, 2);
+    var color;
+    if(char1) {
+      color = codeNameToColor[char1];
+    } else {
+      color = building == B_NONE ? N : result.world[i];
+      if(building == B_MERMAIDS) color = B;
+    }
+    
     result.buildings[i] = [building, color];
   }
 
@@ -534,7 +546,7 @@ function deSerializeGameStateNewFormat(text) {
     d = decomposeEqualsLine(lines[0]);
     if(d[0] != 'bio') return null;
     el = getCommas(d[1]);
-    if(el.length != 4 && el.length != 5 && el.length != 6) return null;
+    if(el.length != 4 && el.length != 5 && el.length != 6 && el.length != 7) return null;
     player.name = el[0];
     player.human = (el[1] == 'human');
     if(player.human) player.actor = new Human();
@@ -543,6 +555,11 @@ function deSerializeGameStateNewFormat(text) {
     player.color = codeNameToColor[el[3]];
     player.auxcolor = (el.length > 4 ? codeNameToColor[el[4]] : player.color);
     player.woodcolor = (el.length > 5 ? codeNameToColor[el[5]] : player.color);
+    var riverwalkerscolorstring = el[6];
+    player.colors = [false,false,false,false,false,false,false];
+    if(riverwalkerscolorstring) {
+      for(var i = 0; i < riverwalkerscolorstring.length; i++) player.colors[i] = (riverwalkerscolorstring[i] == '1');
+    }
     
     player.getFaction().setStartSituation(player); //this also inits resources and cults, so ensure that those get loaded after this, not before
 

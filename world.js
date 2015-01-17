@@ -943,8 +943,9 @@ function outOfBounds(x, y) {
 //Checks if two tiles are connected by the player's land or shipping ability, but does NOT take intermediate jumps using
 //other buildings of the player into account, so does not determine if two far apart buildings are connected to each other through the whole players network.
 //tunnelcarpet: whether to include connections with extra cost: dwarves tunneling and fakirs carpets
+//To be used only for testing if tiles are in reach for building. Not for scoring, since for riverwalkers, landconnectedness is not taken into account by this function, but should for scoring.
 function networkConnected(player, x0, y0, x1, y1, tunnelcarpet) {
-  if(landConnected(x0, y0, x1, y1)) {
+  if(player.landdist == 1 && landConnected(x0, y0, x1, y1)) {
     return true;
   }
   if(waterDistance(x0, y0, x1, y1) <= getShipping(player) /*this should be always 0 for dwarves and fakirs, hence correctly supporting their non-shipping*/) {

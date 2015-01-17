@@ -46,6 +46,8 @@ var HS_FAVOR_TILE = 6;
 var HS_TOWN_TILE = 7;
 var HS_OTHER = 8; //custom dialog, ...
 
+var last_helptext = ''; // used to provide more helpful text in the action area as well when having to click on map, otherwise it's kind of confusing
+
 var humanstate = HS_MAIN;
 
 var undoGameStates = []; //remember game state from last action
@@ -60,7 +62,10 @@ function setHumanState(state, helptext, fun) {
     throw new Error('should not set callback if one is already active');
   }
   humanstate = state;
-  if(helptext) setHelp(helptext);
+  if(helptext) {
+    setHelp(helptext);
+    last_helptext = helptext;
+  }
   if(state == HS_MAP) mapClickFun = fun;
   else if(state == HS_DIG) mapClickFun = fun;
   else if(state == HS_BONUS_TILE || state == HS_FAVOR_TILE || state == HS_TOWN_TILE) tileClickFun = fun;
@@ -121,7 +126,7 @@ function prepareAction(action) {
 
   //automatically add tunneling/carpet if needed
   if(player.faction == F_FAKIRS || player.faction == F_DWARVES) {
-    if(isBuildDwellingAction(action) || isTransformAction(action)) {
+    if(isBuildDwellingAction(action) || isTransformAction(action.type)) {
       var hastunnel = false;
       for(var i = 0; i < pactions.length; i++) {
         if(pactions[i].type == A_TUNNEL || pactions[i].type == A_CARPET) {
@@ -189,8 +194,8 @@ function prepareAction(action) {
     else if(action.type == A_UPGRADE_SH && player.faction == F_HALFLINGS) {
       letClickMapForHalflingsStrongholdDigs();
     }
-    //else if(action.cult == C_NONE && isTransformAction(action) && player.getFaction().getTransformActionCost(player, action.type, R)[R_CULT]) {
-    else if(action.cult == C_NONE && isTransformAction(action) && player.getFaction().getTransformActionCost(player, action.type, R)[R_CULT]) {
+    //else if(action.cult == C_NONE && isTransformAction(action.type) && player.getFaction().getTransformActionCost(player, action.type, R)[R_CULT]) {
+    else if(action.cult == C_NONE && isTransformAction(action.type) && player.getFaction().getTransformActionCost(player, action.type, R)[R_CULT]) {
       var fun = function(cult) {
         action.cult = cult;
         clearHumanState();
@@ -366,17 +371,21 @@ Human.prototype.chooseFaction = function(playerIndex, callback) {
 
 Human.prototype.chooseAuxColor = function(playerIndex, callback) {
   //return AI.prototype.chooseAuxColor(playerIndex, callback);
+  var player = game.players[playerIndex];
 
   var buttonClickFun = function(color) {
     var error = callback(playerIndex, color);
     if(error != '') setHelp('invalid color: ' + error + ' - Please try again');
   };
 
+  var ispriestcolor = false;
+  if(player.color == Z && player.colors[player.woodcolor - R]) ispriestcolor = true;
+
   var colors = [];
   for(var i = CIRCLE_BEGIN; i <= CIRCLE_END; i++) {
-    if(auxColorToPlayerMap[i] == undefined && colorToPlayerMap[i] == undefined) colors.push(i);
+    if(!ispriestcolor && auxColorToPlayerMap[i] == undefined && colorToPlayerMap[i] == undefined) colors.push(i);
+    if(ispriestcolor && !player.colors[i - R]) colors.push(i);
   }
-
 
   var bg = makeSizedDiv(300, 100, 200, 300, popupElement);
   bg.style.backgroundColor = '#FFFFFF';
@@ -386,6 +395,10 @@ Human.prototype.chooseAuxColor = function(playerIndex, callback) {
   for(var i = 0; i < colors.length; i++) {
     var el = makeLinkButton(305, 100 + (i + 1) * 16, getColorName(colors[i]), popupElement);
     el.onclick = bind(buttonClickFun, colors[i]);
+  }
+  if(ispriestcolor) {
+    var el = makeLinkButton(305, 100 + (colors.length + 1) * 16, 'as priest', popupElement);
+    el.onclick = bind(buttonClickFun, N);
   }
 };
 

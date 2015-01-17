@@ -605,24 +605,43 @@ AI.prototype.chooseInitialFavorTile = function(playerIndex, callback) {
   }
 };
 
-//callback result (second paramter) should be the chosen color emum value
+//callback result (second parameter) should be the chosen color emum value
 AI.prototype.chooseAuxColor = function(playerIndex, callback) {
+  var player = game.players[playerIndex];
+
+  var ispriestcolor = false;
+  if(player.color == Z && player.colors[player.woodcolor - R]) ispriestcolor = true;
+
   var colors = [];
   for(var i = CIRCLE_BEGIN; i <= CIRCLE_END; i++) {
-    if(auxColorToPlayerMap[i] == undefined && colorToPlayerMap[i] == undefined) colors.push(i);
+    if(!ispriestcolor && auxColorToPlayerMap[i] == undefined && colorToPlayerMap[i] == undefined) colors.push(i);
+    if(ispriestcolor && !player.colors[i - R]) colors.push(i);
   }
 
-  var scores = [];
-  for(var i = 0; i < colors.length; i++) {
-    var color = colors[i];
-    var score = 0;
-    if(auxColorToPlayerMap[wrap(color - 1, R, S + 1)] == undefined) score++;
-    if(auxColorToPlayerMap[wrap(color + 1, R, S + 1)] == undefined) score++;
-    scores[i] = score;
+  var chosen;
+
+  var numunlocked = 0;
+  if(player.color == Z) {
+    for(var i = CIRCLE_BEGIN; i <= CIRCLE_END; i++) {
+      if(player.colors[i - R]) numunlocked++;
+    }
   }
 
-  var i = pickWithBestScore(colors, scores, false);
-  var chosen = colors[i];
+  if(numunlocked > 4) {
+    chosen = N; //riverwalkers choosing priest - just always prefer is as soon as 5 colors unlocked (not smart AI, TODO: improve)
+  } else {
+    var scores = [];
+    for(var i = 0; i < colors.length; i++) {
+      var color = colors[i];
+      var score = 0;
+      if(auxColorToPlayerMap[wrap(color - 1, R, S + 1)] == undefined) score++;
+      if(auxColorToPlayerMap[wrap(color + 1, R, S + 1)] == undefined) score++;
+      scores[i] = score;
+    }
+
+    var i = pickWithBestScore(colors, scores, false);
+    chosen = colors[i];
+  }
 
   var error = callback(playerIndex, chosen);
   if(error != '') {
@@ -652,6 +671,7 @@ AI.prototype.chooseInitialDwelling = function(playerIndex, callback) {
   for(var y = 0; y < game.bh; y++)
   for(var x = 0; x < game.bw; x++)
   {
+    if(player.landdist == 0 && !touchesWater(x, y)) continue;
     if(getWorld(x, y) != player.auxcolor) continue;
     if(getBuilding(x, y)[0] != B_NONE) continue;
     positions.push([x, y]);

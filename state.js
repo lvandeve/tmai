@@ -64,11 +64,13 @@ function getCallBackStateDebugString() {
 //Constructor
 var State = function() {
   this.type = S_PRE;
-  this.typestack = []; //TODO: also support different currentPlayer and other vars on the stack. TODO: replace everything with stack.
+  this.typestack = []; //TODO: also support different currentPlayer and other vars on the stack. TODO: replace everything with stack and put all variables on it.
+  this.currentPlayerStack = [];
   this.next_type = S_NONE;
   this.round = 0; //the round for actions. 0 = pre-rounds, 1-6 = game rounds.
   this.startPlayer = 0;
   this.currentPlayer = 0;
+  this.prevPlayer = 0;
   this.showResourcesPlayer = 0;
 
   this.numHandledForState = 0; //counter for bookkeeping for how much of something already done, e.g. to know when each player chose a faction
@@ -363,17 +365,39 @@ State.prototype.initNewStateType = function(type) {
 // because every combination of from- and to- state may require its own code path.
 State.prototype.transitionState = function() {
 
+  if(this.type != S_PRIEST_COLOR && game.players[this.currentPlayer].priestorcolor > 0) {
+    this.typestack.push(this.type);
+    this.currentPlayerStack.push(this.currentPlayer);
+    this.type = S_PRIEST_COLOR;
+    return;
+  }
+
+  if(this.type != S_PRIEST_COLOR && game.players[this.prevPlayer].priestorcolor > 0) {
+    this.typestack.push(this.type);
+    this.currentPlayerStack.push(this.currentPlayer);
+    this.type = S_PRIEST_COLOR;
+    this.currentPlayer = this.prevPlayer;
+    return;
+  }
+
   // This if is specifically for having free cult income from spades at the end of the round (for acolytes)
   if((this.type == S_ROUND_END_DIG || this.type == S_CULT) && game.players[this.currentPlayer].freecult > 0) {
     // TODO: support this with state stack instead
-    if(this.type != S_CULT) this.typestack.push(this.type);
+    if(this.type != S_CULT) {
+      this.typestack.push(this.type);
+      this.currentPlayerStack.push(this.currentPlayer);
+    }
     this.type = S_CULT;
     return;
   }
 
   if(this.typestack.length > 0) {
     this.type = this.typestack.pop();
+    this.currentPlayer = this.currentPlayerStack.pop();
   }
+
+  var prevPlayer = this.currentPlayer;
+  this.prevPlayer = this.currentPlayer;
 
   callbackState = CS_TRANSITION;
   var next_state = this.next_type == S_NONE ? this.type : this.next_type;
@@ -492,6 +516,9 @@ State.prototype.transitionState = function() {
   else if(this.type == S_CULT) {
     // Nothing to do, should go to previous state with stack
   }
+  else if(this.type == S_PRIEST_COLOR) {
+    // Nothing to do, should go to previous state with stack
+  }
   else if(this.type == S_ROUND_END_DIG) {
     for(;;) {
       this.currentPlayer = wrapPlayer(this.currentPlayer + 1);
@@ -511,6 +538,16 @@ State.prototype.transitionState = function() {
 
   //gameLoopNonBlocking(next_state, true);
   this.type = next_state;
+
+  // TODO: this is so hacky, improve it
+  if(this.type != S_PRIEST_COLOR && (game.players[prevPlayer].priestorcolor > 0 || game.players[this.currentPlayer].priestorcolor > 0)) {
+    var p = (game.players[prevPlayer].priestorcolor > 0 ? prevPlayer : this.currentPlayer);
+    this.typestack.push(this.type);
+    this.currentPlayerStack.push(this.currentPlayer);
+    this.type = S_PRIEST_COLOR;
+    this.currentPlayer = p;
+    return;
+  }
 };
 
 
@@ -541,7 +578,7 @@ State.prototype.executeActor = function(callback, transitionIfNoActorCallback) {
   }
   else if(this.type == S_INIT_FACTION_COLOR) {
     var player = game.players[this.currentPlayer];
-    if(player.color == X || player.color == W) {
+    if(player.color == X || player.color == W || player.color == Z) {
       setHelp('player ' + player.name + ' choose faction color');
       callbackState = CS_ACTOR;
       player.actor.chooseAuxColor(this.currentPlayer, callback);
@@ -608,6 +645,10 @@ State.prototype.executeActor = function(callback, transitionIfNoActorCallback) {
   else if(this.type == S_CULT) {
     callbackState = CS_ACTOR;
     game.players[this.currentPlayer].actor.chooseCultistTrack(this.currentPlayer, callback);
+  }
+  else if(this.type == S_PRIEST_COLOR) {
+    callbackState = CS_ACTOR;
+    game.players[this.currentPlayer].actor.chooseAuxColor(this.currentPlayer, callback);
   }
   else if(this.type == S_ROUND_END_DIG) {
     var j = this.currentPlayer;
@@ -683,6 +724,11 @@ State.prototype.executeResult = function(playerIndex, result) {
       error = 'color already chosen';
     } else {
       if(player.color == X) player.woodcolor = player.auxcolor = color;
+      else if(player.color == Z) {
+        player.auxcolor = color;
+        player.woodcolor = color;
+        player.colors[color - R] = true;
+      }
       else player.auxcolor = color;
       recalculateColorMaps();
     }
@@ -783,6 +829,30 @@ State.prototype.executeResult = function(playerIndex, result) {
     giveCult(player, cult, 1);
     player.freecult--;
     addLog(logPlayerNameFun(player) + ' chose cult track ' + getCultName(cult) + getGreyedResourcesLogString(player));
+  }
+  else if(this.type == S_PRIEST_COLOR) {
+    var color = result;
+    var error = '';
+    // TODO: extract this to function in rules.js
+    if(!(color >= CIRCLE_BEGIN && color <= CIRCLE_END) && color != N) {
+      error = 'invalid color';
+    } else if(player.colors[color - R]) {
+      error = 'already have this color';
+    } else {
+      if(color == N) {
+        if(player.p < player.pp) player.p++;
+      } else {
+        player.colors[color - R] = true;
+        player.pp++; //priest goes to priest pool
+      }
+      player.priestorcolor--;
+    }
+    if(error == '') {
+      if(color == N) addLog(logPlayerNameFun(player) + ' chose priest instead of color. ' + getGreyedResourcesLogString(player));
+      else addLog(logPlayerNameFun(player) + ' chose priest color: ' + getColorName(color) + getGreyedResourcesLogString(player));
+    }
+    else addLog(logPlayerNameFun(player) + ' chose illegal priest color: ' + getColorName(color));
+    return error;
   }
   else if(this.type == S_ROUND_END_DIG) {
     var digs = result;

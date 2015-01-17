@@ -747,18 +747,29 @@ function drawPlayerPanel(px, py, player, scoreProjection) {
   bg.style.backgroundColor = '#fff0e0';
 
   function drawDigCircle(px, py) {
-    var num = CIRCLE_END - CIRCLE_BEGIN + 1;
-    var b = CIRCLE_BEGIN;
-    var color = player.auxcolor;
-    if(!(color >= CIRCLE_BEGIN && color <= CIRCLE_END)) color = player.woodcolor;
-    if(!(color >= CIRCLE_BEGIN && color <= CIRCLE_END)) return;
-    drawOrb(px + 0, py + 0, color);
-    drawOrb(px + 16, py + 8, b + (color + 1 - b) % num);
-    drawOrb(px + -16, py + 8, b + (color + 6 - b) % num);
-    drawOrb(px + 20, py + 25, b + (color + 2 - b) % num);
-    drawOrb(px + -20, py + 25, b + (color + 5 - b) % num);
-    drawOrb(px + 9, py + 39, b + (color + 3 - b) % num);
-    drawOrb(px + -9, py + 39, b + (color + 4 - b) % num);
+    if(player.color == Z) {
+      var colors = player.colors;
+      if(colors[S - R]) drawOrb(px + 0, py + 39 - 0, S);
+      if(colors[G - R]) drawOrb(px + 16, py + 39 - 8, G);
+      if(colors[R - R]) drawOrb(px - 16, py + 39 - 8, R);
+      if(colors[B - R]) drawOrb(px + 20, py + 39 - 25, B);
+      if(colors[Y - R]) drawOrb(px - 20, py + 39 - 25, Y);
+      if(colors[K - R]) drawOrb(px + 9, py + 39 - 39, K);
+      if(colors[U - R]) drawOrb(px - 9, py + 39 - 39, U);
+    } else {
+      var num = CIRCLE_END - CIRCLE_BEGIN + 1;
+      var b = CIRCLE_BEGIN;
+      var color = player.auxcolor;
+      if(!(color >= CIRCLE_BEGIN && color <= CIRCLE_END)) color = player.woodcolor;
+      if(!(color >= CIRCLE_BEGIN && color <= CIRCLE_END)) return;
+      drawOrb(px + 0, py + 0, color);
+      drawOrb(px + 16, py + 8, b + (color + 1 - b) % num);
+      drawOrb(px + -16, py + 8, b + (color + 6 - b) % num);
+      drawOrb(px + 20, py + 25, b + (color + 2 - b) % num);
+      drawOrb(px + -20, py + 25, b + (color + 5 - b) % num);
+      drawOrb(px + 9, py + 39, b + (color + 3 - b) % num);
+      drawOrb(px + -9, py + 39, b + (color + 4 - b) % num);
+    }
   }
   var name = getFullName(player);
   var playertext = makeText(px, py, name, hudElement);
@@ -1083,6 +1094,9 @@ function drawHumanUI(px, py, playerIndex) {
     else if(humanstate == HS_MAP) {
       drawIcon(cx, cy, 0, player.woodcolor, parent);
       makeText(px, py + 2, 'click a valid location on the map to continue', parent);
+      makeText(px, py + 18, last_helptext, parent);
+      var button = makeLinkButton(px, py + 34, 'cancel', parent);
+      button.onclick = clearHumanState;
     }
     else if(humanstate == HS_CULT) {
       makeText(px, py + 2, 'click on a cult track, right of the map, to continue', parent);

@@ -87,8 +87,8 @@ function getColorName(color) {
     case S: return 'grey';
     case W: return 'white';
     case O: return 'orange';
-    case X: return 'any';
-    case Z: return 'many';
+    case X: return 'any'; // like the shapeshifters
+    case Z: return 'many'; // like the riverwalkers
     default: return 'unknown';
   }
 }
@@ -544,6 +544,7 @@ S_ACTION = S_index++; //Taking actions, for 6 rounds long.
 S_LEECH = S_index++; //Player making leeching decision
 S_CULTISTS = S_index++; //Cultists player choosing cult track after leeching
 S_CULT = S_index++; //Choosing cult track
+S_PRIEST_COLOR = S_index++; //Choosing color with priest
 //States between rounds. Next state is again itself, or S_ACTION
 S_ROUND_END_DIG = S_index++; //Player digging due to round end cult bonus
 //Final state after all actions and rounds are done.

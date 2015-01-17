@@ -38,23 +38,24 @@ callback: function taking two parameter, the playerIndex and the result (type of
           E.g. for leechPower where it is boolean: callback(playerIndex, true)
 */
 
-//callback result (second paramter) should be the chosen faction
+//callback result (second parameter) should be the chosen faction
 Actor.prototype.chooseFaction = function(playerIndex, callback) {
 };
 
-//callback result (second paramter) object should be [x, y]
+//callback result (second parameter) object should be [x, y]
 Actor.prototype.chooseInitialDwelling = function(playerIndex, callback) {
 };
 
-//callback result (second paramter) should be the chosen bonus tile emum value
+//callback result (second parameter) should be the chosen bonus tile emum value
 Actor.prototype.chooseInitialBonusTile = function(playerIndex, callback) {
 };
 
-//callback result (second paramter) should be the chosen favor tile emum value
+//callback result (second parameter) should be the chosen favor tile emum value
 Actor.prototype.chooseInitialFavorTile = function(playerIndex, callback) {
 };
 
-//callback result (second paramter) should be the chosen color emum value
+//callback result (second parameter) should be the chosen color emum value
+//this function gets called during faction selection for factions where needed, but also later in game when unlocking new colors. In that case, return N for getting the priest instead.
 Actor.prototype.chooseAuxColor = function(playerIndex, callback) {
 };
 
@@ -67,18 +68,18 @@ Actor.prototype.doAction = function(playerIndex, callback) {
 //roundnum: which round the game is in
 //already: amount of players who have already taken power for this action. If 0, it means your decision will affect the cultists result
 //still: how much players after you receive non-0 amount of power due to the action
-//callback result (second paramter) should be "true" or "false"
+//callback result (second parameter) should be "true" or "false"
 Actor.prototype.leechPower = function(playerIndex /*receiver*/, fromPlayer /*sender*/, amount, vpcost, roundnum, already, still, callback) {
 };
 
 //when other players leech from you and you're cultist, choose the cult track here
-//callback result (second paramter) should be the chosen cult track enum value
+//callback result (second parameter) should be the chosen cult track enum value
 Actor.prototype.chooseCultistTrack = function(playerIndex, callback) {
 };
 //TODO (maybe): choose cult track when multiple of your cult tracks are at 9, and you choose the cult town bonus tile, and you have fewer keys than the cult tracks at 9.
 
 //bonus from the cult track.
-//the callback result (second paramter) must be array of [x,y] coordinates. E.g. if num is 2, give it [[x,y],[x,y]] to dig twice on tile x,y
+//the callback result (second parameter) must be array of [x,y] coordinates. E.g. if num is 2, give it [[x,y],[x,y]] to dig twice on tile x,y
 //the array is allowed to have less than num values, e.g. if there is no reachable spot that can be digged
 //NOTE: this does not get called for giants if num would be 1, but when called, num will be 2 (and 2 dig coordinate pairs must be given, both at the same location)
 Actor.prototype.doRoundBonusSpade = function(playerIndex, callback) {

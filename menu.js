@@ -46,7 +46,7 @@ function renderPreScreen(px, py, standardButtonFun, randomButtonFun, beginnerBut
       + 'Programmed by Lode Vandevenne.<br/>'
       + 'Drawings by Giordano Segatta.<br/>'
       + 'Based on: <a href="http://boardgamegeek.com/boardgame/120677/terra-mystica">http://boardgamegeek.com/boardgame/120677/terra-mystica</a><br/>'
-      + 'version: v.20141204<br/>'
+      + 'version: v.20150108<br/>'
       + '<br/>'
       + '*: Choices with an asterix are outside of the regular game rules.<br/>'
       , parent);
@@ -205,6 +205,7 @@ function renderPreScreen(px, py, standardButtonFun, randomButtonFun, beginnerBut
 
   makeText(px, py + 480, '<h3>Documentation:</h3>' +
     '<h4>Updates</h4>' +
+    '<p>20150108: Riverwalkers added (possibly still with bugs).<p/>' +
     '<p>20141021: The alternate Fire & Ice world also added.<p/>' +
     '<p>20141019: Fire & Ice expansion: 4 of the 6 new factions added, new map and new final scorings. It is still somewhat beta (may contain bugs).<p/>' +
     '<p>20140406: When taking a power action, it will now auto-burn power if needed. Some game setup dropdowns now remember their state.<p/>' +

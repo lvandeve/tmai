@@ -349,12 +349,25 @@ registerFaction(new Shapeshifters());
 ////////////////////////////////////////////////////////////////////////////////
 
 // Riverwalkers
-/*var Riverwalkers = function() {
+var Riverwalkers = function() {
   this.name = 'Riverwalkers';
   this.codename = 'riverwalkers';
-  this.color = X;
+  this.color = Z;
 };
 inherit(Riverwalkers, Faction);
+
+Riverwalkers.prototype.setStartSituation = function(player) {
+  Faction.prototype.setStartSituation(player);
+  player.maxshipping = 1;
+  player.shipping = 1;
+  player.pw0 = 10;
+  player.pw1 = 2;
+  player.pw2 = 0;
+  player.cult = [1,0,0,1];
+  player.maxdigging = 0; // no dig upgrades!
+  player.pp = 1; //the other priests are not in the pool but on the locked colors
+  player.landdist = 0; //can only use shipping
+};
 
 // resource order: c,w,p,pw,vp,pp, keys,spades,pt,cult,freecult, pt0,pt1,pt2, darklingconverts,spadevp, fire,water,earth,air, d,tp,te,sh,sa, bridge
 Riverwalkers.prototype.getActionIncome = function(player, actiontype) {
@@ -362,7 +375,16 @@ Riverwalkers.prototype.getActionIncome = function(player, actiontype) {
   return Faction.prototype.getActionIncome(player, actiontype);
 };
 
-registerFaction(new Riverwalkers());*/
+Riverwalkers.prototype.canTakeAction = function(player, action, game, opt_reason) {
+  if(isSpadeGivingAction(action) || isTransformAction(action)) {
+    if(opt_reason) opt_reason[0] = 'Riverwalkers cannot transform nor get spades';
+    return false;
+  }
+
+  return Faction.prototype.canTakeAction(player, action, game, opt_reason);
+};
+
+registerFaction(new Riverwalkers());
 
 ////////////////////////////////////////////////////////////////////////////////
 ////////////////////////////////////////////////////////////////////////////////

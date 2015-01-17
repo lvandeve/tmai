@@ -34,8 +34,9 @@ var Player = function() {
 
   this.faction = F_NONE; //this is an integer index, so that the deep copying of player object would not copy the factions. Use the getFaction() function to get the faction object.
   this.color = N; // the faction color
-  this.auxcolor = N;
+  this.auxcolor = N; // for fire and ice factions, this is their currently active/main color out of the 7 classic landscape colors (aka the starting color)
   this.woodcolor = N; // the color of the player's game pieces
+  this.colors = [false,false,false,false,false,false,false]; // unlocked colors out of the 7 classic colors for factions with color 'Z' (riverwalkers). First one is R, use 'color - R' as index.
 
   this.passed = false;
 
@@ -47,6 +48,8 @@ var Player = function() {
   this.pw1 = 7; //power middle bowl
   this.pw2 = 0; //power usable bowl
   this.vp = 20; //victory points
+
+  this.priestorcolor = 0; //priest income in case of riverwalkers who unlock colors with priests, when they receive that income outside of an action (round income)
 
   //amount of buildings NOT placed on the map
   this.b_d = 8;
@@ -75,6 +78,7 @@ var Player = function() {
   this.maxdigging = 2;
   this.tunnelcarpetdistance = 0; // 1 for dwarves, 1-4 for fakirs
   this.maxtunnelcarpetdistance = 0;
+  this.landdist = 1; //0 for those that only operate through shipping (riverwalkers). 1 otherwise. Other numbers not supported (that is tunnelcarpetdistance instead)
 
   //for more detailed VP statistics (these are shown on mouseover over VP in player panel, and some in the end game stats)
   this.vp_reason = {start:20}; //map of named vp reasons to number. This is a rough reason, e.g. any passing bonus tile has reason 'bonus'

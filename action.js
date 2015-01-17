@@ -62,18 +62,18 @@ function isTurnAction(action) {
 }
 
 //Does NOT include halflings SH upgrade.
-function isSpadeGivingAction(action) {
-  return action.type >= A_SPADE && action.type <= A_GIANTS_2SPADE;
+function isSpadeGivingAction(actiontype) {
+  return actiontype >= A_SPADE && actiontype <= A_GIANTS_2SPADE;
 }
 
 //A transform action is any action that transforms terrain and allows also doing A_BUILD afterwards.
-function isTransformAction(action) {
-  return action.type >= A_TRANSFORM_CW && action.type <= A_SANDSTORM;
+function isTransformAction(actiontype) {
+  return actiontype >= A_TRANSFORM_CW && actiontype <= A_SANDSTORM;
 }
 
 //This excludes the sandstorm. This are actions that consume spades, so are ok in the same turn after using a power or bonus action that gives spades.
-function isSpadeConsumingAction(action) {
-  return action.type >= A_TRANSFORM_CW && action.type <= A_TRANSFORM_SPECIAL;
+function isSpadeConsumingAction(actiontype) {
+  return actiontype >= A_TRANSFORM_CW && actiontype <= A_TRANSFORM_SPECIAL;
 }
 
 //returns how many spades the action produces (positive) or consumes (negative). Includes halflings SH etc...

@@ -212,6 +212,23 @@ function burnPower(player, pw) {
 }
 
 function addPriests(player, p) {
+  if(p <= 0) return;
+
+  var numunlocked = 0;
+  if(player.color == Z) {
+    for(var i = CIRCLE_BEGIN; i <= CIRCLE_END; i++) {
+      if(player.colors[i - R]) numunlocked++;
+    }
+  }
+
+  if(player.color == Z) {
+    while(p > 0 && numunlocked < 7) { // normally p is 1 so while loop is no prob
+      player.priestorcolor++;
+      p--;
+      numunlocked++;
+    }
+  }
+  
   player.p += p;
   if(player.p > player.pp) player.p = player.pp;
 }
@@ -409,7 +426,7 @@ function tryBuild(player, action) {
 
   var tile = getWorld(x, y);
   if(tile == I || tile == N) return 'invalid tile type';
-  if(tile != (player.color == X ? player.auxcolor : player.color)) return 'tile must have your color to build';
+  if(tile != (player.color == X ? player.auxcolor : player.color) && !player.colors[tile - R]) return 'tile must have your color to build';
 
   player.b_d--;
   setBuilding(x, y, B_D, player.woodcolor);
@@ -679,7 +696,7 @@ function addExtrasForAction(player, action) {
     }
   }
 
-  if(isSpadeConsumingAction(action)) {
+  if(isSpadeConsumingAction(action.type)) {
     var num = action.type == A_GIANTS_TRANSFORM ? 2 : 1;
     if(getRoundTile() == T_ROUND_DIG2VP_1E1C) {
       player.addVP(num * 2, 'round', getTileVPDetail(getRoundTile()));
@@ -796,7 +813,8 @@ function canTransform(player, x, y) {
 function canBuildOn(player, x, y) {
   var color = getWorld(x, y);
   if(color == player.color) return true;
-  // TODO: shapeshifters
+  if(player.color == X && color == player.auxcolor) return true; // shapeshifters
+  if(player.colors[color - R]) return true; // riverwalkers
   return false;
 }
 
@@ -811,13 +829,15 @@ function tryAction(player, action /*Action object*/) {
   if(player.passed) return 'cannot take action if passed'; //avoid passing twice with chaos magicions double action
 
   var factionreason = [];
-  if(!player.getFaction().canTakeAction(player, action.type, game, factionreason)) return factionreason[0]; //tests for: valid for faction, has sh if needed, octogon action not already taken
+
+  //tests for: valid for faction, has sh if needed, octogon action not already taken
+  if(!player.getFaction().canTakeAction(player, action.type, game, factionreason)) return factionreason[0] || 'error unknown because canTakeAction forgot to put it in opt_reason';
 
   // Check turn action amount
   if (isTurnAction(action)) {
     var turn = true;
     if(action.type == A_SPADE && player.mayaddmorespades && !player.built) turn = false;
-    if(isSpadeConsumingAction(action) && player.spades) turn = false;
+    if(isSpadeConsumingAction(action.type) && player.spades) turn = false;
     if(action.type == A_BUILD && player.transformed && !player.built) turn = false;
     if(turn) {
       if(player.numactions == 0) {
@@ -863,7 +883,7 @@ function tryAction(player, action /*Action object*/) {
     player.addVP(6, 'advance', 'advdig');
     player.digging++;
   }
-  else if(isSpadeGivingAction(action)) {
+  else if(isSpadeGivingAction(action.type)) {
     /*
     The following rules for spades are not directly in the rulebook, but posted by a designer on the bgg forum:
 
@@ -916,7 +936,7 @@ function tryAction(player, action /*Action object*/) {
     }
     else return 'unknown spade action';
   }
-  else if(isTransformAction(action)) {
+  else if(isTransformAction(action.type)) {
     if(action.type == A_SANDSTORM) player.nodigreachco = null;
 
     var x = action.co[0];
@@ -1458,8 +1478,18 @@ function giveBonusTile(player, tile) {
   }
 }
 
+// Is the tile next to river?
+var touchesWater = function(x, y) {
+  var n = getNeighborTiles(x, y);
+  for(var i = 0; i < n.length; i++) {
+    if(getWorld(n[i][0], n[i][1]) == I) return true;
+  }
+  return false;
+};
+
 //returns true if successful, false if house could not be placed there
 function placeInitialDwelling(player, x, y) {
+  if(player.landdist == 0 && !touchesWater(x, y)) return 'not allowed to build there, must touch river';
   if(getWorld(x, y) != player.auxcolor) return 'wrong tile color';
   if(getBuilding(x, y)[0] != B_NONE) return 'already has building';
   if(player.b_d <= 0) return 'no dwellings left. This error should never happen.';

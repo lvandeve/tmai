@@ -809,9 +809,11 @@ function drawPlayerPanel(px, py, player, scoreProjection) {
 
 
   if(player.maxdigging > 0) makeText(px, py + 120, 'digging: <b>' + player.digging + '</b> (' + player.digging + '/' + player.maxdigging + ') advcost: ' + costToString(player.getActionCost(A_ADV_DIG)), hudElement);
+  else if(player.maxdigging == 0) makeText(px, py + 120, 'digging: 0/0', hudElement);
   else makeText(px, py + 120, 'digging: N/A', hudElement);
   if(player.maxshipping > 0) makeText(px, py + 135, 'shipping: <b>' + getShipping(player, false) + '</b> (' + player.shipping + '/' + player.maxshipping + (player.bonusshipping ? ' + ' + player.bonusshipping : '') + ') advcost: ' + costToString(player.getActionCost(A_ADV_SHIP)), hudElement);
   else if(player.maxtunnelcarpetdistance > 0) makeText(px, py + 135, 'range: <b>' + player.tunnelcarpetdistance + '/' + player.maxtunnelcarpetdistance, hudElement);
+  else if(player.maxshipping == 0) makeText(px, py + 135, 'shipping: 0/0', hudElement);
   else makeText(px, py + 135, 'shipping: N/A', hudElement);
 
   if(state.round == 6 && state.type != S_GAME_OVER) {
@@ -1278,8 +1280,8 @@ function drawPlayerActions(px, py, playerIndex, parent /*parent DOM element*/) {
   upgr2button.onclick = upgrade2fun;
 
   makeText(px, py + 80, 'ADVANCE: ', parent);
-  addSimpleActionButton(px + 90, py + 80, getActionName(A_ADV_DIG), A_ADV_DIG);
-  addSimpleActionButton(px + 170, py + 80, getActionName(A_ADV_SHIP), A_ADV_SHIP);
+  if(player.digging < player.maxdigging) addSimpleActionButton(px + 90, py + 80, getActionName(A_ADV_DIG), A_ADV_DIG);
+  if(player.shipping < player.maxshipping) addSimpleActionButton(px + ((player.digging < player.maxdigging) ? 170 : 90), py + 80, getActionName(A_ADV_SHIP), A_ADV_SHIP);
 
   var px2;
 

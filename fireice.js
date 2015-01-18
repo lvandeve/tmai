@@ -162,7 +162,7 @@ Acolytes.prototype.setStartSituation = function(player) {
   player.pw0 = 6;
   player.pw1 = 6;
   player.pw2 = 0;
-  player.maxdigging = 0;
+  player.maxdigging = -1;
 };
 
 Acolytes.prototype.getBuildingIncome = function(d, tp, te, sh, sa) {
@@ -233,7 +233,7 @@ Dragonlords.prototype.setStartSituation = function(player) {
   player.pw0 = 4;
   player.pw1 = 4;
   player.pw2 = 0;
-  player.maxdigging = 0;
+  player.maxdigging = -1;
 };
 
 Dragonlords.prototype.getBuildingIncome = function(d, tp, te, sh, sa) {
@@ -364,7 +364,7 @@ Riverwalkers.prototype.setStartSituation = function(player) {
   player.pw1 = 2;
   player.pw2 = 0;
   player.cult = [1,0,0,1];
-  player.maxdigging = 0; // no dig upgrades!
+  player.maxdigging = -1; // can never dig
   player.pp = 1; //the other priests are not in the pool but on the locked colors
   player.landdist = 0; //can only use shipping
 };

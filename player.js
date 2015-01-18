@@ -49,7 +49,7 @@ var Player = function() {
   this.pw2 = 0; //power usable bowl
   this.vp = 20; //victory points
 
-  this.priestorcolor = 0; //priest income in case of riverwalkers who unlock colors with priests, when they receive that income outside of an action (round income)
+  this.priestorcolor = 0; //priest income in case of riverwalkers who unlock colors with priests
 
   //amount of buildings NOT placed on the map
   this.b_d = 8;
@@ -147,9 +147,11 @@ Player.prototype.getVPForDetail = function(detail) {
   return undef0(this.vp_detail[detail]);
 };
 
-function getShipping(player) {
-  var result = player.shipping
-  if(state.type != S_ROUND_END_DIG) result += player.bonusshipping; //shipping bonus tile does not work during round bonus digging
+//if endscoring is true, shipping bonus tile is not taken into account
+function getShipping(player, endscoring) {
+  var result = player.shipping;
+  //shipping bonus tile does not work during round bonus digging
+  if(!endscoring && state.type != S_ROUND_END_DIG) result += player.bonusshipping;
   return result;
 }
 

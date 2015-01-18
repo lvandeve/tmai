@@ -724,7 +724,7 @@ function getFullVPDetailsText(player) {
   for(var i = 0; i < arr.length; i++) {
     vpbreakdown += arr[i][0] + ': ' + arr[i][1] + '\n';
   }
-  
+
   return 'VP: ' + player.vp + '\n' + vpbreakdown;
 }
 
@@ -810,7 +810,7 @@ function drawPlayerPanel(px, py, player, scoreProjection) {
 
   if(player.maxdigging > 0) makeText(px, py + 120, 'digging: <b>' + player.digging + '</b> (' + player.digging + '/' + player.maxdigging + ') advcost: ' + costToString(player.getActionCost(A_ADV_DIG)), hudElement);
   else makeText(px, py + 120, 'digging: N/A', hudElement);
-  if(player.maxshipping > 0) makeText(px, py + 135, 'shipping: <b>' + getShipping(player) + '</b> (' + player.shipping + '/' + player.maxshipping + (player.bonusshipping ? ' + ' + player.bonusshipping : '') + ') advcost: ' + costToString(player.getActionCost(A_ADV_SHIP)), hudElement);
+  if(player.maxshipping > 0) makeText(px, py + 135, 'shipping: <b>' + getShipping(player, false) + '</b> (' + player.shipping + '/' + player.maxshipping + (player.bonusshipping ? ' + ' + player.bonusshipping : '') + ') advcost: ' + costToString(player.getActionCost(A_ADV_SHIP)), hudElement);
   else if(player.maxtunnelcarpetdistance > 0) makeText(px, py + 135, 'range: <b>' + player.tunnelcarpetdistance + '/' + player.maxtunnelcarpetdistance, hudElement);
   else makeText(px, py + 135, 'shipping: N/A', hudElement);
 
@@ -1196,11 +1196,11 @@ function drawPlayerActions(px, py, playerIndex, parent /*parent DOM element*/) {
 
   makeText(px, py + 16, 'CONVERT: ', parent);
   addSimpleActionButton(px + 90, py+16, 'burn', A_BURN).title = 'sacrifice power from second bowl to get one in your main bowl';
-  addSimpleActionButton(px+130, py+16, 'pw->c', A_CONVERT_1PW_1C);
-  addSimpleActionButton(px+180, py+16, 'pw->w', A_CONVERT_3PW_1W);
-  addSimpleActionButton(px+235, py+16, 'pw->p', A_CONVERT_5PW_1P);
-  addSimpleActionButton(px+290, py+16, 'p->w', A_CONVERT_1P_1W);
-  addSimpleActionButton(px+330, py+16, 'w->c', A_CONVERT_1W_1C);
+  addSimpleActionButton(px+130, py+16, '1pw->c', A_CONVERT_1PW_1C);
+  addSimpleActionButton(px+188, py+16, '3pw->w', A_CONVERT_3PW_1W);
+  addSimpleActionButton(px+247, py+16, '5pw->p', A_CONVERT_5PW_1P);
+  addSimpleActionButton(px+306, py+16, 'p->w', A_CONVERT_1P_1W);
+  addSimpleActionButton(px+348, py+16, 'w->c', A_CONVERT_1W_1C);
 
   makeText(px, py + 32, 'PRIEST: ', parent);
 

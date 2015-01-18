@@ -474,7 +474,7 @@ var networkmap = [];
 
 function calculateNetworkClusters() {
   calculateClustersGeneric(networkclusters, networkmap, function(b) { return b!= B_NONE && b != B_MERMAIDS }, function(player, x, y) {
-    return getReachableTiles(player, x, y, true);
+    return getNetworkConnectedTiles(player, x, y, true, true);
   });
 }
 
@@ -943,12 +943,14 @@ function outOfBounds(x, y) {
 //Checks if two tiles are connected by the player's land or shipping ability, but does NOT take intermediate jumps using
 //other buildings of the player into account, so does not determine if two far apart buildings are connected to each other through the whole players network.
 //tunnelcarpet: whether to include connections with extra cost: dwarves tunneling and fakirs carpets
-//To be used only for testing if tiles are in reach for building. Not for scoring, since for riverwalkers, landconnectedness is not taken into account by this function, but should for scoring.
-function networkConnected(player, x0, y0, x1, y1, tunnelcarpet) {
-  if(player.landdist == 1 && landConnected(x0, y0, x1, y1)) {
+//endscoring: if true:
+//-riverwalkers get a virtual land-distance of 1, so some tiles that are normally not reachable for them are: for final scoring their touching buildings are connected.
+//-bonus tile shipping is not taken into account
+function networkConnected(player, x0, y0, x1, y1, tunnelcarpet, endscoring) {
+  if((endscoring || player.landdist == 1) && landConnected(x0, y0, x1, y1)) {
     return true;
   }
-  if(waterDistance(x0, y0, x1, y1) <= getShipping(player) /*this should be always 0 for dwarves and fakirs, hence correctly supporting their non-shipping*/) {
+  if(waterDistance(x0, y0, x1, y1) <= getShipping(player, endscoring) /*this should be always 0 for dwarves and fakirs, hence correctly supporting their non-shipping*/) {
     return true;
   }
   if(tunnelcarpet && factionConnected(player, x0, y0, x1, y1)) {
@@ -966,7 +968,7 @@ function inReach(player, x, y, tunnelcarpet) {
 //dongcountco: coordinates to exclude for reachability, e.g. because player just built dwelling there. May be null/undefined to allow all coords
 function inReachButDontCountCo(player, x, y, tunnelcarpet, dontcountco) {
   var color = player.woodcolor;
-  var extra = getShipping(player);
+  var extra = getShipping(player, false);
   if(player.faction == F_DWARVES || player.faction == F_FAKIRS) extra = player.tunnelcarpetdistance + 1;
   if(extra < 1) extra = 1; //for bridges
   for(var tx = x - extra - 1; tx <= x + extra + 1; tx++)
@@ -975,7 +977,7 @@ function inReachButDontCountCo(player, x, y, tunnelcarpet, dontcountco) {
     if(dontcountco && tx == dontcountco[0] && ty == dontcountco[1]) continue;
     var building = getBuilding(tx, ty);
     if(building[0] == B_NONE || building[0] == B_MERMAIDS || building[1] != color) continue;
-    if(networkConnected(player, x, y, tx, ty, tunnelcarpet)) {
+    if(networkConnected(player, x, y, tx, ty, tunnelcarpet, false)) {
       return true;
     }
   }
@@ -984,16 +986,19 @@ function inReachButDontCountCo(player, x, y, tunnelcarpet, dontcountco) {
 
 //get all tiles reachable from x,y for the given player (this assumes the player has a building on x,y), reachable through shipping etc... too.
 //tunnelcarpet: whether to include connections with extra cost: dwarves tunneling and fakirs carpets
-function getReachableTiles(player, x, y, tunnelcarpet) {
+//endscoring: if true:
+//-riverwalkers get a virtual land-distance of 1, so some tiles that are normally not reachable for them are: for final scoring their touching buildings are connected.
+//-bonus tile shipping is not taken into account
+function getNetworkConnectedTiles(player, x, y, tunnelcarpet, endscoring) {
   var result = [];
   var color = player.woodcolor;
-  var extra = getShipping(player);
+  var extra = getShipping(player, endscoring);
   if(player.faction == F_DWARVES || player.faction == F_FAKIRS) extra = player.tunnelcarpetdistance + 1;
   if(extra < 1) extra = 1; //for bridges
   for(tx = x - extra - 1; tx <= x + extra + 1; tx++)
   for(ty = y - extra - 1; ty <= y + extra + 1; ty++) {
     if(outOfBounds(tx, ty)) continue;
-    if(networkConnected(player, x, y, tx, ty, tunnelcarpet)) {
+    if(networkConnected(player, x, y, tx, ty, tunnelcarpet, endscoring)) {
       result.push([tx,ty]);
     }
   }

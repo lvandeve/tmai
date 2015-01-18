@@ -46,7 +46,7 @@ function renderPreScreen(px, py, standardButtonFun, randomButtonFun, beginnerBut
       + 'Programmed by Lode Vandevenne.<br/>'
       + 'Drawings by Giordano Segatta.<br/>'
       + 'Based on: <a href="http://boardgamegeek.com/boardgame/120677/terra-mystica">http://boardgamegeek.com/boardgame/120677/terra-mystica</a><br/>'
-      + 'version: v.20150108<br/>'
+      + 'version: v.20150118<br/>'
       + '<br/>'
       + '*: Choices with an asterix are outside of the regular game rules.<br/>'
       , parent);
@@ -135,7 +135,7 @@ function renderPreScreen(px, py, standardButtonFun, randomButtonFun, beginnerBut
     finalScoringDropdown.title = 'Final scoring: random for regular ';
     assignPreferenceToDropdown(finalScoringDropdown, preferences.finalscoringdropdown);
   }
-  
+
   //var allc = makeCheckbox(px + 450, ppy - 5, parent, 'Preset bonus tiles', 'check the preferred bonus tiles, those are given precedence during random selection. Check a small enough amount of tiles, and those are ensured to be in the game. Or check all except a few, and those few are ensured to be excluded. Selecting all or selecting none does exactly the same: fully randomize them according to the normal game rules.');
   var allc = makeLinkButton(px, ppy + 200, 'Reset to defaults', parent);
   allc.title = 'resets all presets to defaults';

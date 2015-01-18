@@ -123,7 +123,7 @@ Yetis.prototype.getActionCost = function(player, action) {
 //Yetis SH and SA is worth 4 power for clusters
 Yetis.prototype.getBuildingPower = function(building) {
   if(building == B_SH || building == B_SA) return 4;
-  return Faction.prototype.getBuildingPower(building); 
+  return Faction.prototype.getBuildingPower(building);
 };
 
 Yetis.prototype.canTakeOctogonAction = function(player, action, octogons) {
@@ -194,7 +194,7 @@ Acolytes.prototype.getBuildingCost = function(building, neighbor) {
 Acolytes.prototype.getTransformActionCost = function(player, actiontype, fromcolor) {
   if(actiontype == A_TRANSFORM_SPECIAL2) {
     var cheap = colorIsCheapForLava(fromcolor);
-    return [0,0,0,0,0,0, 0,0,0,cheap?3:4]; 
+    return [0,0,0,0,0,0, 0,0,0,cheap?3:4];
   }
   return Faction.prototype.getTransformActionCost(player, actiontype, fromcolor);
 };
@@ -384,6 +384,29 @@ Riverwalkers.prototype.canTakeAction = function(player, action, game, opt_reason
   return Faction.prototype.canTakeAction(player, action, game, opt_reason);
 };
 
+Riverwalkers.prototype.getBuildingIncome = function(d, tp, te, sh, sa) {
+  var income = [0,0,0,0,0];
+
+  var w = d + 1;
+  if(w > 6) w--;
+  if(w > 3) w--;
+  sumIncome(income, [0, w, 0, 0, 0]);
+
+  Faction.getTradingPostIncome_(income, tp, [2, 2, 2, 2], [1, 1, 2, 2]);
+
+  var p = te;
+  var pw = 0;
+  if(te >= 2) {
+    p--;
+    pw += 5;
+  }
+  sumIncome(income, [0, 0, p, pw, 0]);
+
+  sumIncome(income, [0, 0, 0, sh * 2, 0]);
+  sumIncome(income, [0, 0, sa, 0, 0]);
+  return income;
+};
+
 registerFaction(new Riverwalkers());
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -485,7 +508,7 @@ function getSantuaryStrongholdEndScores() {
   var values = [];
 
   calculateNetworkClusters();
-  
+
   for(var i = 0; i < game.players.length; i++) {
     var player = game.players[i];
     if(!built_sh(player) || !built_sa(player)) {

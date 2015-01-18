@@ -44,7 +44,8 @@ var HS_CULT = 4; //must go on the cult track
 var HS_BONUS_TILE = 5;
 var HS_FAVOR_TILE = 6;
 var HS_TOWN_TILE = 7;
-var HS_OTHER = 8; //custom dialog, ...
+var HS_PRIEST_COLOR = 8;
+var HS_OTHER = 9; //custom dialog, ...
 
 var last_helptext = ''; // used to provide more helpful text in the action area as well when having to click on map, otherwise it's kind of confusing
 
@@ -57,19 +58,24 @@ function humanStateBusy() {
   return mapClickFun != null || tileClickFun != null || cultClickFun != null;
 }
 
-function setHumanState(state, helptext, fun) {
+//Sets the game to wait for the human to click on something, e.g. click on the map to choose dig/build location.
+//hstate: the HS state, e.g. HS_DIG
+//helptext: text shown in the action area of the human
+//fun: a callback called with the click result of the human. E.g. the tile coordinates in case of HS_MAP, color in case of HS_PRIEST_COLOR, ...
+//NOTE: Typically your callback should call "clearHumanState()" at the end.
+function setHumanState(hstate, helptext, fun) {
   if(humanStateBusy()) {
     throw new Error('should not set callback if one is already active');
   }
-  humanstate = state;
+  humanstate = hstate;
   if(helptext) {
     setHelp(helptext);
     last_helptext = helptext;
   }
-  if(state == HS_MAP) mapClickFun = fun;
-  else if(state == HS_DIG) mapClickFun = fun;
-  else if(state == HS_BONUS_TILE || state == HS_FAVOR_TILE || state == HS_TOWN_TILE) tileClickFun = fun;
-  else if(state == HS_CULT) cultClickFun = fun;
+  if(hstate == HS_MAP || hstate == HS_DIG) mapClickFun = fun;
+  else if(hstate == HS_BONUS_TILE || hstate == HS_FAVOR_TILE || hstate == HS_TOWN_TILE) tileClickFun = fun;
+  else if(hstate == HS_CULT) cultClickFun = fun;
+  else if(hstate == HS_PRIEST_COLOR) Human.chooseColorDialog(state.currentPlayer, fun);
   drawHud();
 }
 
@@ -90,6 +96,7 @@ function clearHumanState() {
 
 //necessary for those cases where multiple happenings requiring human states are triggered at once
 //e.g. when forming town while using multi-spade dig action, where you need to pick town tile, then continue digging
+//see setHumanState for documentation on the parameters
 function queueHumanState(state, helptext, fun) {
   if(humanStateBusy()) {
     onClearHumanState.push(function() {
@@ -215,6 +222,13 @@ function prepareAction(action) {
     }
     else if(actionincome[R_BRIDGE]) {
       letClickMapForBridge(actionincome[R_BRIDGE]);
+    }
+    else if((action.type == A_POWER_1P || action.type == A_CONVERT_5PW_1P) && action.color == N && mayGetPriestAsColor(player)) {
+      queueHumanState(HS_PRIEST_COLOR, 'choose priest or color to unlock', function(color) {
+        action.color = color;
+        clearHumanState();
+        tryPrepareAction(action);
+      });
     }
   }
 
@@ -369,13 +383,15 @@ Human.prototype.chooseFaction = function(playerIndex, callback) {
   }
 };
 
-Human.prototype.chooseAuxColor = function(playerIndex, callback) {
-  //return AI.prototype.chooseAuxColor(playerIndex, callback);
+// callback receives chosen color
+Human.chooseColorDialog = function(playerIndex, callback) {
   var player = game.players[playerIndex];
 
+  var bg;
+
   var buttonClickFun = function(color) {
-    var error = callback(playerIndex, color);
-    if(error != '') setHelp('invalid color: ' + error + ' - Please try again');
+    popupElement.removeChild(bg);
+    callback(color);
   };
 
   var ispriestcolor = false;
@@ -387,19 +403,26 @@ Human.prototype.chooseAuxColor = function(playerIndex, callback) {
     if(ispriestcolor && !player.colors[i - R]) colors.push(i);
   }
 
-  var bg = makeSizedDiv(300, 100, 200, 300, popupElement);
+  bg = makeSizedDiv(300, 100, 200, 300, popupElement);
   bg.style.backgroundColor = '#FFFFFF';
   bg.innerHTML = 'choose color';
   bg.style.border = '1px solid black';
 
   for(var i = 0; i < colors.length; i++) {
-    var el = makeLinkButton(305, 100 + (i + 1) * 16, getColorName(colors[i]), popupElement);
+    var el = makeLinkButton(5, (i + 1) * 16, getColorName(colors[i]), bg);
     el.onclick = bind(buttonClickFun, colors[i]);
   }
   if(ispriestcolor) {
-    var el = makeLinkButton(305, 100 + (colors.length + 1) * 16, 'as priest', popupElement);
-    el.onclick = bind(buttonClickFun, N);
+    var el = makeLinkButton(5, (colors.length + 1) * 16, 'as priest', bg);
+    el.onclick = bind(buttonClickFun, Z);
   }
+};
+
+Human.prototype.chooseAuxColor = function(playerIndex, callback) {
+  Human.chooseColorDialog(playerIndex, function(color) {
+    var error = callback(playerIndex, color);
+    if(error != '') setHelp('invalid color: ' + error + ' - Please try again');
+  });
 };
 
 var autoLeech = false;

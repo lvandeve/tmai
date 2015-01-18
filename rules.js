@@ -211,27 +211,53 @@ function burnPower(player, pw) {
   return true;
 }
 
+// returns 0 if no, the amount of locked colors if riverwalkers with 1 to 7 locked colors
+function mayGetPriestAsColor(player) {
+  if(player.color != Z) return 0;
+
+  var result = 7;
+  for(var i = CIRCLE_BEGIN; i <= CIRCLE_END; i++) {
+    if(player.colors[i - R]) result--;
+  }
+  return result;
+};
+
 function addPriests(player, p) {
   if(p <= 0) return;
 
-  var numunlocked = 0;
   if(player.color == Z) {
-    for(var i = CIRCLE_BEGIN; i <= CIRCLE_END; i++) {
-      if(player.colors[i - R]) numunlocked++;
-    }
-  }
-
-  if(player.color == Z) {
+    var numunlocked = 7 - mayGetPriestAsColor(player);
     while(p > 0 && numunlocked < 7) { // normally p is 1 so while loop is no prob
       player.priestorcolor++;
       p--;
       numunlocked++;
     }
   }
-  
+
   player.p += p;
   if(player.p > player.pp) player.p = player.pp;
 }
+
+// Color Z means to unlock it as regular priest
+// Returns error string if error, empty string if ok
+function unlockColorPriest(player, color) {
+  var error = '';
+  if(!(color >= CIRCLE_BEGIN && color <= CIRCLE_END) && color != Z) {
+    error = 'invalid color';
+  } else if(player.colors[color - R]) {
+    error = 'already have this color';
+  } else {
+    if(color == Z) {
+      if(player.p < player.pp) player.p++;
+    } else {
+      player.colors[color - R] = true;
+      player.pp++; //priest goes to priest pool
+    }
+    player.priestorcolor--;
+  }
+  return error;
+}
+
 
 //aka "giveResources"
 //not to be confused with "sumIncome"
@@ -375,25 +401,26 @@ function tryConsumeForAction(player, actiontype) {
 }
 
 //returns true if the player had enough resources for the conversion
-function tryConversion(player, action /*type*/) {
+function tryConversion(player, action) {
+  var actiontype = action.type;
   var consumed = null;
   var produced = null;
-  if(action == A_CONVERT_1PW_1C) { consumed = [0,0,0,1,0]; produced = [1,0,0,0,0]; }
-  else if(action == A_CONVERT_3PW_1W) { consumed = [0,0,0,3,0]; produced = [0,1,0,0,0]; }
-  else if(action == A_CONVERT_5PW_1P) { consumed = [0,0,0,5,0]; produced = [0,0,1,0,0]; }
-  else if(action == A_CONVERT_1P_1W) { consumed = [0,0,1,0,0]; produced = [0,1,0,0,0]; }
-  else if(action == A_CONVERT_1W_1C) { consumed = [0,1,0,0,0]; produced = [1,0,0,0,0]; }
-  else if(action == A_CONVERT_1VP_1C) {
+  if(actiontype == A_CONVERT_1PW_1C) { consumed = [0,0,0,1,0]; produced = [1,0,0,0,0]; }
+  else if(actiontype == A_CONVERT_3PW_1W) { consumed = [0,0,0,3,0]; produced = [0,1,0,0,0]; }
+  else if(actiontype == A_CONVERT_5PW_1P) { consumed = [0,0,0,5,0]; produced = [0,0,1,0,0]; }
+  else if(actiontype == A_CONVERT_1P_1W) { consumed = [0,0,1,0,0]; produced = [0,1,0,0,0]; }
+  else if(actiontype == A_CONVERT_1W_1C) { consumed = [0,1,0,0,0]; produced = [1,0,0,0,0]; }
+  else if(actiontype == A_CONVERT_1VP_1C) {
     if(player.faction != F_ALCHEMISTS) return 'only alchemists can do this';
     consumed = [0,0,0,0,1];
     produced = [1,0,0,0,0];
   }
-  else if(action == A_CONVERT_2C_1VP) {
+  else if(actiontype == A_CONVERT_2C_1VP) {
     if(player.faction != F_ALCHEMISTS) return 'only alchemists can do this';
     consumed = [2,0,0,0,0];
     produced = [0,0,0,0,1];
   }
-  else if(action == A_CONVERT_1W_1P) {
+  else if(actiontype == A_CONVERT_1W_1P) {
     player.darklingconverts--;
     consumed = [0,1,0,0,0];
     produced = [0,0,1,0,0];
@@ -401,8 +428,15 @@ function tryConversion(player, action /*type*/) {
   else return 'invalid faction or convert action';
   if(consumed != null && canConsume(player, consumed)) {
     consume(player, consumed);
-    if(player.pp - player.p < produced[2]) return 'not enough priests in pool to get priest from this conversion';
     addIncome(player, produced);
+
+    if(player.priestorcolor) {
+      var error = unlockColorPriest(player, action.color);
+      if(error != '') return error;
+    }
+
+    if(player.p > player.pp) return 'not enough priests in pool to get priest from this conversion';
+
     return '';
   }
   return 'could not convert';
@@ -762,8 +796,9 @@ function getRoundBonusDigsForCults(cult, round) {
   return 0;
 }
 
-//amount of digs from the round end based on cult track
+//amount of spades from the round end based on cult track
 function getRoundBonusDigs(player, round) {
+  if(player.color == Z) return 0; // riverwalkers cannot use these digs
   return getRoundBonusDigsForCults(player.cult, round);
 }
 
@@ -868,7 +903,7 @@ function tryAction(player, action /*Action object*/) {
     burnPower(player, 1);
   }
   else if(isConvertAction(action)) {
-    error = tryConversion(player, action.type);
+    error = tryConversion(player, action);
   }
   else if(action.type == A_ADV_SHIP) {
     if(!canAdvanceShip(player)) return 'already max shipping';
@@ -1057,6 +1092,10 @@ function tryAction(player, action /*Action object*/) {
     error = tryConsumeForAction(player, action.type);
     if(error != '') return error;
     addIncome(player, [0,0,1,0,0]);
+    if(player.priestorcolor) {
+      error = unlockColorPriest(player, action.color);
+      if(error != '') return error;
+    }
   }
   else if(action.type == A_POWER_2W) {
     game.octogons[action.type] = 1;
@@ -1084,7 +1123,6 @@ function tryAction(player, action /*Action object*/) {
     if(!finalround) error = giveBonusTile(player, action.bontile);
     else error = giveBonusTile(player, T_NONE);
     if(error) return error;
-
   }
   else if(action.type == A_DOUBLE) {
     if(player.faction != F_CHAOS) return 'wrong faction for this action';
@@ -1287,7 +1325,7 @@ function transformDirAction(player, fromcolor, tocolor) {
 
   var diff = (tocolor == W ? player.auxcolor : tocolor) - (fromcolor == W ? player.auxcolor : fromcolor);
   if(diff < 0) diff += 7;
-  
+
   var result = [];
   if(tocolor == W) {
     if(diff == 0) return [A_TRANSFORM_SPECIAL];
@@ -1327,7 +1365,7 @@ function actionToString(action) {
   if(action.cult != C_NONE) {
     result += ' @' + getCultName(action.cult);
   }
-  if(action.color != N) {
+  if(action.color != N && action.color != Z) {
     result += ' ' + getColorName(action.color);
   }
   return result;

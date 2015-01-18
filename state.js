@@ -225,7 +225,7 @@ function addEndGameScore() {
   addLog('');
   for(var j = 0; j < networkscores.length; j++) {
     if(networkscores[j][0] != 0) {
-      addLog(logPlayerNameFun(game.players[j]) + ' gets ' + networkscores[j][0] + ' VP from network ' + networkscores[j][1]);
+      addLog(logPlayerNameFun(game.players[j]) + ' gets ' + networkscores[j][0] + ' VP from network size ' + networkscores[j][1]);
       game.players[j].addVP(networkscores[j][0], 'network', 'network');
     }
   }
@@ -832,23 +832,9 @@ State.prototype.executeResult = function(playerIndex, result) {
   }
   else if(this.type == S_PRIEST_COLOR) {
     var color = result;
-    var error = '';
-    // TODO: extract this to function in rules.js
-    if(!(color >= CIRCLE_BEGIN && color <= CIRCLE_END) && color != N) {
-      error = 'invalid color';
-    } else if(player.colors[color - R]) {
-      error = 'already have this color';
-    } else {
-      if(color == N) {
-        if(player.p < player.pp) player.p++;
-      } else {
-        player.colors[color - R] = true;
-        player.pp++; //priest goes to priest pool
-      }
-      player.priestorcolor--;
-    }
+    var error = unlockColorPriest(player, color);
     if(error == '') {
-      if(color == N) addLog(logPlayerNameFun(player) + ' chose priest instead of color. ' + getGreyedResourcesLogString(player));
+      if(color == Z) addLog(logPlayerNameFun(player) + ' chose priest instead of color. ' + getGreyedResourcesLogString(player));
       else addLog(logPlayerNameFun(player) + ' chose priest color: ' + getColorName(color) + getGreyedResourcesLogString(player));
     }
     else addLog(logPlayerNameFun(player) + ' chose illegal priest color: ' + getColorName(color));

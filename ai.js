@@ -583,7 +583,7 @@ AI.prototype.chooseInitialBonusTile = function(playerIndex, callback) {
   var error = callback(playerIndex, tile);
   if(error != '') {
     addLog('ERROR: AI tried invalid bonus tile. Error: ' + error);
-    throw new Error('AI tried invalid bonus tile');
+    throw new Error('AI tried invalid bonus tile. Error: ' + error);
   }
 };
 
@@ -601,7 +601,7 @@ AI.prototype.chooseInitialFavorTile = function(playerIndex, callback) {
   var error = callback(playerIndex, tile);
   if(error != '') {
     addLog('ERROR: AI tried invalid favor tile. Error: ' + error);
-    throw new Error('AI tried invalid favor tile');
+    throw new Error('AI tried invalid favor tile. Error: ' + error);
   }
 };
 
@@ -620,15 +620,8 @@ AI.prototype.chooseAuxColor = function(playerIndex, callback) {
 
   var chosen;
 
-  var numunlocked = 0;
-  if(player.color == Z) {
-    for(var i = CIRCLE_BEGIN; i <= CIRCLE_END; i++) {
-      if(player.colors[i - R]) numunlocked++;
-    }
-  }
-
-  if(numunlocked > 4) {
-    chosen = N; //riverwalkers choosing priest - just always prefer is as soon as 5 colors unlocked (not smart AI, TODO: improve)
+  if(player.color == Z && mayGetPriestAsColor(player) < 3) {
+    chosen = Z; //riverwalkers choosing priest - just always prefer is as soon as 5 colors unlocked (not smart AI, TODO: improve)
   } else {
     var scores = [];
     for(var i = 0; i < colors.length; i++) {
@@ -646,7 +639,7 @@ AI.prototype.chooseAuxColor = function(playerIndex, callback) {
   var error = callback(playerIndex, chosen);
   if(error != '') {
     addLog('ERROR: AI tried invalid faction color. Error: ' + error);
-    throw new Error('AI tried invalid faction color');
+    throw new Error('AI tried invalid faction color. Error: ' + error);
   }
 };
 
@@ -702,7 +695,7 @@ AI.prototype.chooseInitialDwelling = function(playerIndex, callback) {
   var error = callback(playerIndex, chosen);
   if(error != '') {
     addLog('ERROR: AI tried invalid initial dwelling. Error: ' + error);
-    throw new Error('AI tried invalid initial dwelling');
+    throw new Error('AI tried invalid initial dwelling. Error: ' + error);
   }
 };
 
@@ -732,7 +725,7 @@ AI.prototype.chooseFaction = function(playerIndex, callback) {
   var error = callback(playerIndex, faction);
   if(error != '') {
     addLog('ERROR: AI chose invalid faction. Error: ' + error);
-    throw new Error('AI chose invalid faction');
+    throw new Error('AI chose invalid faction. Error: ' + error);
   }
 };
 
@@ -829,7 +822,7 @@ AI.prototype.doRoundBonusSpade = function(playerIndex, callback) {
   var error = callback(playerIndex, result);
   if(error != '') {
     addLog('ERROR: AI chose invalid round bonus dig. Error: ' + error);
-    throw new Error('AI chose invalid round bonus dig');
+    throw new Error('AI chose invalid round bonus dig. Error: ' + error);
   }
 };
 
@@ -841,7 +834,7 @@ AI.prototype.chooseCultistTrack = function(playerIndex, callback) {
   var error = callback(playerIndex, besttrack);
   if(error != '') {
     addLog('ERROR: AI chose invalid cult track. Error: ' + error);
-    throw new Error('AI chose invalid cult track');
+    throw new Error('AI chose invalid cult track. Error: ' + error);
   }
 };
 

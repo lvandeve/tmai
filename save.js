@@ -178,6 +178,15 @@ function serializeGameState(fromgame) {
   }
   result += '\n';
 
+  if(fromgame.state.turnorder) {
+    result += '\nturnorder:\n';
+    result += fromgame.state.currentOrder + ',' + fromgame.state.passOrder + '\n';
+    for(var i = 0; i < fromgame.state.turnMatrix[0].length; i++) result += (i == 0 ? '' : ',') + fromgame.state.turnMatrix[0][i];
+    result += '\n';
+    for(var i = 0; i < fromgame.state.turnMatrix[1].length; i++) result += (i == 0 ? '' : ',') + fromgame.state.turnMatrix[1][i];
+    result += '\n';
+  }
+
   result += '\noptions:\n';
   comma = false;
   if(state.newcultistsrule) { result += 'newcultistsrule'; comma = true; }
@@ -402,7 +411,7 @@ function deSerializeGameStateNewFormat(text) {
       color = building == B_NONE ? N : result.world[i];
       if(building == B_MERMAIDS) color = B;
     }
-    
+
     result.buildings[i] = [building, color];
   }
 
@@ -507,6 +516,31 @@ function deSerializeGameStateNewFormat(text) {
     result.state.leecharray.push([parseInt(t[0]), parseInt(t[1])]);
   }
 
+  s = parseLabelPart(text, 'turnorder:');
+  if(s) {
+    lines = getNonEmptyLines(s);
+    if(lines.length > 3 || lines.length < 1) return null;
+
+    result.state.turnMatrix = [[],[]];
+    result.state.turnorder = true;
+
+    el = getCommas(lines[0]);
+    if(el.length != 2) return null;
+    result.state.currentOrder = parseInt(el[0]);
+    result.state.passOrder = parseInt(el[1]);
+
+    if(lines.length >= 2) {
+      el = getCommas(lines[1]);
+      for(var i = 0; i < el.length; i++) result.state.turnMatrix[0][i] = parseInt(el[i]);
+    }
+    if(lines.length >= 3) {
+      el = getCommas(lines[2]);
+      for(var i = 0; i < el.length; i++) result.state.turnMatrix[1][i] = parseInt(el[i]);
+    }
+  } else {
+    result.state.turnorder = false;
+  }
+
   s = parseLabelPart(text, 'options:');
   if(s || s == '' /*empty string is falsy*/) {
     result.state.newcultistsrule = stringContains(s, 'newcultistsrule');
@@ -560,7 +594,7 @@ function deSerializeGameStateNewFormat(text) {
     if(riverwalkerscolorstring) {
       for(var i = 0; i < riverwalkerscolorstring.length; i++) player.colors[i] = (riverwalkerscolorstring[i] == '1');
     }
-    
+
     player.getFaction().setStartSituation(player); //this also inits resources and cults, so ensure that those get loaded after this, not before
 
     d = decomposeEqualsLine(lines[1]);

@@ -37,6 +37,7 @@ each button fun receives the following object containing the dropdown states:
   towntilepromo2013
   bonustilepromo2013
   fireice
+  turnorder: variable turn order
 }
 */
 function renderPreScreen(px, py, standardButtonFun, randomButtonFun, beginnerButtonFun, quickButtonFun) {
@@ -46,7 +47,7 @@ function renderPreScreen(px, py, standardButtonFun, randomButtonFun, beginnerBut
       + 'Programmed by Lode Vandevenne.<br/>'
       + 'Drawings by Giordano Segatta.<br/>'
       + 'Based on: <a href="http://boardgamegeek.com/boardgame/120677/terra-mystica">http://boardgamegeek.com/boardgame/120677/terra-mystica</a><br/>'
-      + 'version: v.20150118<br/>'
+      + 'version: v.20150121<br/>'
       + '<br/>'
       + '*: Choices with an asterix are outside of the regular game rules.<br/>'
       , parent);
@@ -79,10 +80,13 @@ function renderPreScreen(px, py, standardButtonFun, randomButtonFun, beginnerBut
   towntilepromo2013cb.checked = preferences.towntilepromo2013;
   var bonustilepromo2013cb = makeCheckbox(px + 350, ppy + 55, parent, 'Bonus tile promo 2013', 'Enable the new bonus tile from the official 2013 mini expansion. If checked, tile may appear randomly just like any other bonus tile.');
   bonustilepromo2013cb.checked = preferences.bonustilepromo2013;
-  var fireicecb = makeCheckbox(px + 550, ppy + 55, parent, 'Fire & Ice expansion', 'Enable the fire & ice expansion. NOTE: With this checkbox disabled, you can still select expansion worlds, factions and scoring in the preset options below and it will work. Disabling this checkbox will prevent them from being chosen by "random" or by the faction choice in-game.');
+  var fireicecb = makeCheckbox(px, ppy + 72, parent, 'Fire & Ice expansion', 'Enable the fire & ice expansion. NOTE: With this checkbox disabled, you can still select expansion worlds, factions and scoring in the preset options below and it will work. Disabling this checkbox will prevent them from being chosen by "random" or by the faction choice in-game.');
   fireicecb.checked = preferences.fireice;
+  // Variable turnorder by Lou
+  var turnordercb = makeCheckbox(px + 160, ppy + 72, parent, ' Variable Turn Order', 'Enable variable turn order expansion. NOTE: With this checkbox disabled, the original fixed turn order after the first player pass is used.');
+  turnordercb.checked = preferences.turnorder;
 
-  ppy += 140;
+  ppy += 160;
   makeText(px, ppy, 'Preset* factions', parent).title = 'Override faction choice. Set to "choose" to choose the faction during the game according to normal game rules. Set to "random" to assign a random faction. Set to a given faction to assign that faction to this player';
   var factionDropDowns = [];
   for(var i = 0; i < 5; i++) {
@@ -181,11 +185,13 @@ function renderPreScreen(px, py, standardButtonFun, randomButtonFun, beginnerBut
     params.towntilepromo2013 = towntilepromo2013cb.checked;
     params.bonustilepromo2013 = bonustilepromo2013cb.checked;
     params.fireice = fireicecb.checked;
+    params.turnorder = turnordercb.checked;
 
     preferences.newcultistsrule = newcultistcb.checked;
     preferences.towntilepromo2013 = towntilepromo2013cb.checked;
     preferences.bonustilepromo2013 = bonustilepromo2013cb.checked;
     preferences.fireice = fireicecb.checked;
+    preferences.turnorder = turnordercb.checked;
 
     preferences.gametypedropdown = gameTypeDropDown.selectedIndex;
     preferences.playertypedropdown = playerTypeDropDown.selectedIndex;
@@ -195,7 +201,7 @@ function renderPreScreen(px, py, standardButtonFun, randomButtonFun, beginnerBut
     fun(params);
   }
 
-  ppy = py + 155;
+  ppy = py + 170;
   makeButton(px, ppy, 'Start', parent, bind(buttonFun, function(params) {
     if(gameTypeDropDown.selectedIndex == 0) standardButtonFun(params);
     if(gameTypeDropDown.selectedIndex == 1) randomButtonFun(params);
@@ -327,7 +333,8 @@ var preferences = {
   newcultistsrule: true,
   towntilepromo2013: true,
   bonustilepromo2013: true,
-  fireice: true
+  fireice: true,
+  turnorder: false
 };
 
 function assignPreferenceToDropdown(dropdown, value) {
@@ -355,6 +362,7 @@ function setLocalStorage() {
   localStorage['towntilepromo2013'] = preferences.towntilepromo2013;
   localStorage['bonustilepromo2013'] = preferences.bonustilepromo2013;
   localStorage['fireice'] = preferences.fireice;
+  localStorage['turnorder'] = preferences.turnorder;
 }
 
 //no longer a cookie, but html5 local storage
@@ -378,6 +386,7 @@ function getLocalStorage() {
   if(localStorage['towntilepromo2013'] != undefined) preferences.towntilepromo2013 = localStorage['towntilepromo2013'] == 'true';
   if(localStorage['bonustilepromo2013'] != undefined) preferences.bonustilepromo2013 = localStorage['bonustilepromo2013'] == 'true';
   if(localStorage['fireice'] != undefined) preferences.fireice = localStorage['fireice'] == 'true';
+  if(localStorage['turnorder'] != undefined) preferences.turnorder = localStorage['turnorder'] == 'true';
 }
 
 window.onbeforeunload = setLocalStorage;

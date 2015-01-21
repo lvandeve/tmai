@@ -84,6 +84,12 @@ var State = function() {
   this.towntilepromo2013 = true; // new town tiles
   this.bonustilepromo2013 = true; // new bonus tile
   this.fireice = true; // Fire & Ice expansion
+
+  // Variable turnorder by Lou
+  this.turnorder = false;
+  this.currentOrder = 0;  //turn position in the order list
+  this.passOrder = 0;     //turn position of next pass
+  this.turnMatrix = [[],[]];   //current round, next round
 };
 
 function logPlayerNameFun(player) {
@@ -260,14 +266,30 @@ function wrapPlayer(i) {
   return wrap(i, 0, game.players.length);
 }
 
+function getOrder(i) {
+  return state.turnMatrix[0][i];
+}
+
 
 State.prototype.selectNextActionPlayer_ = function() {
   var count = 0;
+
   while(true) {
     if(count > game.players.length) throw new Error('this function should not be called if everyone passed');
-    this.currentPlayer = wrapPlayer(this.currentPlayer + 1);
-    if(!game.players[this.currentPlayer].passed) break;
-    count++;
+
+    // Variable turnorder by Lou
+    if(this.turnorder && this.round > 1) {
+      this.currentOrder++;
+      if(this.currentOrder == game.players.length) this.currentOrder = 0;
+      this.currentPlayer = this.turnMatrix[0][this.currentOrder];
+      if(this.currentPlayer < 0) throw new Error('selectNextActionPlayer should not return negative');
+      if(!game.players[this.currentPlayer].passed) break;  //LOU line288
+      count++;
+    } else {
+      this.currentPlayer = wrapPlayer(this.currentPlayer + 1);
+      if(!game.players[this.currentPlayer].passed) break;
+      count++;
+    }
   }
 };
 
@@ -344,6 +366,7 @@ State.prototype.initNewStateType = function(type) {
   }
   else if(type == S_ACTION) {
     this.currentPlayer = this.startPlayer;
+    this.currentOrder = 0;
   }
   else if(type == S_LEECH) {
   }
@@ -353,6 +376,7 @@ State.prototype.initNewStateType = function(type) {
   }
   else if(type == S_ROUND_END_DIG) {
     this.currentPlayer = this.startPlayer;
+    this.currentOrder = 0;
   }
   else if(type == S_GAME_OVER) {
     //Nothing to do here.
@@ -440,6 +464,7 @@ State.prototype.transitionState = function() {
     var nextplayer = wrapPlayer(this.currentPlayer - 1);
     if(game.players[nextplayer].bonustile != T_NONE) {
       startNewRound();
+      this.passOrder = 0;
       next_state = this.initNewStateType(S_ACTION);
     } else {
       this.currentPlayer = nextplayer;
@@ -459,6 +484,7 @@ State.prototype.transitionState = function() {
     }
     if(passcount == game.players.length) {
       this.currentPlayer = this.startPlayer;
+      this.currentOrder = 0;
       if(this.round == 6 && this.next_type == S_ACTION) {
         addEndGameScore();
         next_state = S_GAME_OVER;
@@ -524,6 +550,7 @@ State.prototype.transitionState = function() {
       this.currentPlayer = wrapPlayer(this.currentPlayer + 1);
       if(this.currentPlayer == this.startPlayer) {
         startNewRound();
+        this.passOrder = 0;
         next_state = this.initNewStateType(S_ACTION);
         break;
       }

@@ -853,6 +853,16 @@ function canBuildOn(player, x, y) {
   return false;
 }
 
+//execute passing for the player
+function passPlayer(player) {
+  player.passed = true;
+  // Variable turnorder by Lou
+  if(state.round != 6  && state.turnorder) {
+    state.turnMatrix[1][state.passOrder] = player.index;
+    state.passOrder++;
+  }
+}
+
 //tries to perform the action, returns false if failure (no resources, invalid location, ...),
 //applies the changes and returns empty string on success, error string on fail
 //returns '' on success, else error
@@ -1114,7 +1124,7 @@ function tryAction(player, action /*Action object*/) {
     if(action.bontile == T_NONE && !finalround) return 'must choose 1 bonus tile';
     if(action.bontile != T_NONE && finalround) return 'tried to pass with bonus tile in last round';
     var passcount = 0;
-    player.passed = true;
+    passPlayer(player);
 
     //pass bonuses
     applyPassBonus(player, player);
@@ -1146,7 +1156,7 @@ function tryAction(player, action /*Action object*/) {
   }
   else if(action.type == A_DEBUG_SKIP) {
     //pass for debug reasons
-    player.passed = true;
+    passPlayer(player);
   }
   else if(action.type == A_DEBUG_STEP) {
     //nothing

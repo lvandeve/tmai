@@ -110,6 +110,7 @@ function initParams(params) {
   state.towntilepromo2013 = params.towntilepromo2013;
   state.bonustilepromo2013 = params.bonustilepromo2013;
   state.fireice = params.fireice;
+  state.turnorder = params.turnorder;
 
   var finalscoring = params.finalscoring;
   if(finalscoring == -1) {
@@ -136,6 +137,11 @@ function startNewRound() {
     addLog(logPlayerNameFun(player) + ' Income: ' + incomeToStringWithPluses(income) + getGreyedResourcesLogString(player));
     player.passed = false;
   }
+
+  state.turnMatrix[0] = state.turnMatrix[1];
+  state.turnMatrix[1] = [];
+  while(state.turnMatrix[0].length < game.players.length) state.turnMatrix[0].push(-1);
+
   initOctogons();
   addBonusTileCoins();
 }
@@ -151,6 +157,7 @@ function initialGameLogMessage() {
   if(state.towntilepromo2013) addLog('town tiles promo 2013 enabled');
   if(state.bonustilepromo2013) addLog('shipping bonus tile promo 2013 enabled');
   if(state.fireice) addLog('fire & ice expansion enabled');
+  if(state.turnorder) addLog('variable turn order enabled');
 
   addLog('round 1 tile: ' + tileToStringLong(game.roundtiles[1], true));
   addLog('round 2 tile: ' + tileToStringLong(game.roundtiles[2], true));

@@ -863,48 +863,9 @@ function passPlayer(player) {
   }
 }
 
-//tries to perform the action, returns false if failure (no resources, invalid location, ...),
-//applies the changes and returns empty string on success, error string on fail
-//returns '' on success, else error
-//this is only for a single action of an action sequence. A player can do a full action sequence in one turn.
-//see tryActions for the whole turn
-function tryAction(player, action /*Action object*/) {
+//The inner if-else part of tryAction
+function tryActionCore_(player, action /*Action object*/) {
   var error = '';
-
-  if(player.passed) return 'cannot take action if passed'; //avoid passing twice with chaos magicions double action
-
-  var factionreason = [];
-
-  //tests for: valid for faction, has sh if needed, octogon action not already taken
-  if(!player.getFaction().canTakeAction(player, action.type, game, factionreason)) return factionreason[0] || 'error unknown because canTakeAction forgot to put it in opt_reason';
-
-  // Check turn action amount
-  if (isTurnAction(action)) {
-    var turn = true;
-    if(action.type == A_SPADE && player.mayaddmorespades && !player.built) turn = false;
-    if(isSpadeConsumingAction(action.type) && player.spades) turn = false;
-    if(action.type == A_BUILD && player.transformed && !player.built) turn = false;
-    if(turn) {
-      if(player.numactions == 0) {
-        return player.faction == F_CHAOS && built_sh(player) ?
-            'can only take 1 turn action (or 2 after chaosmag double action)' :
-            'can only take 1 turn action';
-      }
-      player.numactions--;
-      player.built = false; //reset for chaos magicians, otherwise the following action order breaks: chaosdouble. build. dig. transform. build.
-      player.transformed = false; //reset for chaos magicians, otherwise the following action order breaks: chaosdouble. dig. transform. build. build.
-    }
-  }
-
-  // Check town tiles. Also takes care of the T_FAV_2F_6TW tile.
-  var numtw = actionCreatesTown(player, action, null);
-  if(action.twtiles.length < numtw) return action.favtiles.length == 0 ? 'no town tile chosen' : 'too few town tiles chosen';
-  if(action.twtiles.length > numtw) return numtw == 0 ? 'town tile chosen injustly' : 'too many town tiles chosen';
-
-  // Check favor tiles
-  if(action.favtiles.length < actionGivesFavorTile(player, action)) return action.favtiles.length == 0 ? 'no favor tile chosen' : 'too few favor tiles chosen';
-  if(action.favtiles.length > actionGivesFavorTile(player, action)) return 'too many favor tiles chosen';
-
 
   if(action.type == A_BURN) {
     if(player.pw1 < 2) {
@@ -1220,6 +1181,55 @@ function tryAction(player, action /*Action object*/) {
     player.freecult = 0;
   }
   else return 'unknown action';
+
+  return error; //ok if error is ''
+}
+
+//tries to perform the action, returns false if failure (no resources, invalid location, ...),
+//applies the changes and returns empty string on success, error string on fail
+//returns '' on success, else error
+//this is only for a single action of an action sequence. A player can do a full action sequence in one turn.
+//see tryActions for the whole turn
+function tryAction(player, action /*Action object*/) {
+  var error = '';
+
+  if(player.passed) return 'cannot take action if passed'; //avoid passing twice with chaos magicions double action
+
+  var factionreason = [];
+
+  //tests for: valid for faction, has sh if needed, octogon action not already taken
+  if(!player.getFaction().canTakeAction(player, action.type, game, factionreason)) return factionreason[0] || 'error unknown because canTakeAction forgot to put it in opt_reason';
+
+  // Check turn action amount
+  if (isTurnAction(action)) {
+    var turn = true;
+    if(action.type == A_SPADE && player.mayaddmorespades && !player.built) turn = false;
+    if(isSpadeConsumingAction(action.type) && player.spades) turn = false;
+    if(action.type == A_BUILD && player.transformed && !player.built) turn = false;
+    if(turn) {
+      if(player.numactions == 0) {
+        return player.faction == F_CHAOS && built_sh(player) ?
+            'can only take 1 turn action (or 2 after chaosmag double action)' :
+            'can only take 1 turn action';
+      }
+      player.numactions--;
+      player.built = false; //reset for chaos magicians, otherwise the following action order breaks: chaosdouble. build. dig. transform. build.
+      player.transformed = false; //reset for chaos magicians, otherwise the following action order breaks: chaosdouble. dig. transform. build. build.
+    }
+  }
+
+  // Check town tiles. Also takes care of the T_FAV_2F_6TW tile.
+  var numtw = actionCreatesTown(player, action, null);
+  if(action.twtiles.length < numtw) return action.favtiles.length == 0 ? 'no town tile chosen' : 'too few town tiles chosen';
+  if(action.twtiles.length > numtw) return numtw == 0 ? 'town tile chosen injustly' : 'too many town tiles chosen';
+
+  // Check favor tiles
+  if(action.favtiles.length < actionGivesFavorTile(player, action)) return action.favtiles.length == 0 ? 'no favor tile chosen' : 'too few favor tiles chosen';
+  if(action.favtiles.length > actionGivesFavorTile(player, action)) return 'too many favor tiles chosen';
+
+  var error = tryActionCore_(player, action);
+
+  if(error) return error;
 
   // Happens after sending priest to cult track, for payment of acolytes digging, ....
   if(player.fixedcult != 0) {

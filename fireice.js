@@ -158,7 +158,7 @@ inherit(Acolytes, Faction);
 Acolytes.prototype.setStartSituation = function(player) {
   Faction.prototype.setStartSituation(player);
   player.cult = [3,3,3,3];
-  player.w = 4;
+  player.w = 3;
   player.pw0 = 6;
   player.pw1 = 6;
   player.pw2 = 0;

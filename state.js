@@ -384,48 +384,8 @@ State.prototype.initNewStateType = function(type) {
   return type;
 };
 
-// Go from the current state to the next state (which may be the same, or different, type)
-// Some code seems duplicated here (e.g. selectNextInitialDwellingPlayer_ called in two places), but that is
-// because every combination of from- and to- state may require its own code path.
-State.prototype.transitionState = function() {
-
-  if(this.type != S_PRIEST_COLOR && game.players[this.currentPlayer].priestorcolor > 0) {
-    this.typestack.push(this.type);
-    this.currentPlayerStack.push(this.currentPlayer);
-    this.type = S_PRIEST_COLOR;
-    return;
-  }
-
-  if(this.type != S_PRIEST_COLOR && game.players[this.prevPlayer].priestorcolor > 0) {
-    this.typestack.push(this.type);
-    this.currentPlayerStack.push(this.currentPlayer);
-    this.type = S_PRIEST_COLOR;
-    this.currentPlayer = this.prevPlayer;
-    return;
-  }
-
-  // This if is specifically for having free cult income from spades at the end of the round (for acolytes)
-  if((this.type == S_ROUND_END_DIG || this.type == S_CULT) && game.players[this.currentPlayer].freecult > 0) {
-    // TODO: support this with state stack instead
-    if(this.type != S_CULT) {
-      this.typestack.push(this.type);
-      this.currentPlayerStack.push(this.currentPlayer);
-    }
-    this.type = S_CULT;
-    return;
-  }
-
-  if(this.typestack.length > 0) {
-    this.type = this.typestack.pop();
-    this.currentPlayer = this.currentPlayerStack.pop();
-  }
-
-  var prevPlayer = this.currentPlayer;
-  this.prevPlayer = this.currentPlayer;
-
-  callbackState = CS_TRANSITION;
-  var next_state = this.next_type == S_NONE ? this.type : this.next_type;
-
+//The inner if-else part of transitionState
+State.prototype.transitionStateCore_ = function(next_state) {
   if(this.type == S_PRE) {
     next_state = this.initNewStateType(S_INIT_FACTION);
   }
@@ -562,6 +522,53 @@ State.prototype.transitionState = function() {
   else if(this.type == S_GAME_OVER) {
     //Nothing to do here.
   }
+
+  return next_state;
+};
+
+// Go from the current state to the next state (which may be the same, or different, type)
+// Some code seems duplicated here (e.g. selectNextInitialDwellingPlayer_ called in two places), but that is
+// because every combination of from- and to- state may require its own code path.
+State.prototype.transitionState = function() {
+
+  if(this.type != S_PRIEST_COLOR && game.players[this.currentPlayer].priestorcolor > 0) {
+    this.typestack.push(this.type);
+    this.currentPlayerStack.push(this.currentPlayer);
+    this.type = S_PRIEST_COLOR;
+    return;
+  }
+
+  if(this.type != S_PRIEST_COLOR && game.players[this.prevPlayer].priestorcolor > 0) {
+    this.typestack.push(this.type);
+    this.currentPlayerStack.push(this.currentPlayer);
+    this.type = S_PRIEST_COLOR;
+    this.currentPlayer = this.prevPlayer;
+    return;
+  }
+
+  // This if is specifically for having free cult income from spades at the end of the round (for acolytes)
+  if((this.type == S_ROUND_END_DIG || this.type == S_CULT) && game.players[this.currentPlayer].freecult > 0) {
+    // TODO: support this with state stack instead
+    if(this.type != S_CULT) {
+      this.typestack.push(this.type);
+      this.currentPlayerStack.push(this.currentPlayer);
+    }
+    this.type = S_CULT;
+    return;
+  }
+
+  if(this.typestack.length > 0) {
+    this.type = this.typestack.pop();
+    this.currentPlayer = this.currentPlayerStack.pop();
+  }
+
+  var prevPlayer = this.currentPlayer;
+  this.prevPlayer = this.currentPlayer;
+
+  callbackState = CS_TRANSITION;
+  var next_state = this.next_type == S_NONE ? this.type : this.next_type;
+
+  next_state = this.transitionStateCore_(next_state);
 
   //gameLoopNonBlocking(next_state, true);
   this.type = next_state;

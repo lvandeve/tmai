@@ -43,11 +43,13 @@ each button fun receives the following object containing the dropdown states:
 function renderPreScreen(px, py, standardButtonFun, randomButtonFun, beginnerButtonFun, quickButtonFun) {
   var parent = hudElement;
 
-  makeText(px, py - 100, 'TM AI: Play TM against AI players.<br/>'
+  makeText(px, py - 135, 'TM AI: Play TM against AI players.<br/>'
       + 'Programmed by Lode Vandevenne.<br/>'
       + 'Drawings by Giordano Segatta.<br/>'
-      + 'Based on: <a href="http://boardgamegeek.com/boardgame/120677/terra-mystica">http://boardgamegeek.com/boardgame/120677/terra-mystica</a><br/>'
-      + 'version: v.20150121<br/>'
+      + 'version: v.20150315<br/>'
+      + 'Links:<br/>'
+      + 'TM on BGG: <a href="http://boardgamegeek.com/boardgame/120677/terra-mystica">http://boardgamegeek.com/boardgame/120677/terra-mystica</a><br/>'
+      + 'Snellman: <a href="http://terra.snellman.net/">http://terra.snellman.net/</a><br/>'
       + '<br/>'
       + '*: Choices with an asterix are outside of the regular game rules.<br/>'
       , parent);

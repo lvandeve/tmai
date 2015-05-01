@@ -412,11 +412,42 @@ function addPossibleDigBuildAction(resources, player, restrictions, co, dist, dw
       a.co = co;
       actions.push(a);
     }
-    if(dist > 0) {
-      if(type == A_SANDSTORM || type == A_TRANSFORM_SPECIAL2) {
+    //eliminate choices where tile color or location not allowed
+    //  1. check color against acceptable list
+    //  2. check location againt river shipping of 1  
+    if(player.faction == F_RIVERWALKERS) {
+      var colorTile = getWorld(co[0], co[1]);
+      var colorGood = player.colors[colorTile - R];
+      if(!colorGood) return;
+      var reachGood = false; 
+      var tiles;
+      tiles = getFreeTilesReachableByShipping(player, 0);   
+      for(var i = 0; i < tiles.length; i++) {
+        if (tiles[i][0] == co[0] && tiles[i][1] == co[1]) reachGood = true;
+      }
+      tiles = getFreeTilesReachableByShipping(player, 1);   
+      for(var i = 0; i < tiles.length; i++) {
+        if(tiles[i][0] == co[0] && tiles[i][1] == co[1]) reachGood = true;
+      } 
+      if(!reachGood) return;
+    }
+    else if(dist > 0) {
+      //LOU Separate the Nomads and Orange
+      if(type == A_SANDSTORM) {
         // No spades needed for sandstorm
         var action2 = new Action(type);
         action2.co = co;
+        actions.push(action2);
+      }
+
+      //LOU Spades and roundnum not available 
+      else if(type == A_TRANSFORM_SPECIAL2 ) {
+        if((player.pw0 + player.pw1 + player.pw2) <= 5 && state.round < 6 ) return;
+        // if (!dwelling) return;
+        // 1 or 2 Power needed for Transform
+        var action2 = new Action(type);
+        action2.co = co;
+        //LOU used for Acolytes
         if(resources[R_CULT]) {
           //TODO: allow to choose cult track, or output all possibilities for cult tracks
           if(player.cult[C_F] >= resources[R_CULT]) action2.cult = C_F;

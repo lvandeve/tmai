@@ -78,7 +78,7 @@ IceMaidens.prototype.canTakeFactionAction = function(player, action, opt_reason)
   if(action == A_TRANSFORM_SPECIAL) return true;
   return Faction.prototype.canTakeFactionAction(player, action, opt_reason);
 };
-
+var F_ICEMAIDENS = factions.length;
 registerFaction(new IceMaidens());
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -135,7 +135,7 @@ Yetis.prototype.canTakeFactionAction = function(player, action, opt_reason) {
   if(action == A_TRANSFORM_SPECIAL) return true;
   return Faction.prototype.canTakeFactionAction(player, action, opt_reason);
 };
-
+var F_YETIS = factions.length;
 registerFaction(new Yetis());
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -213,7 +213,7 @@ Acolytes.prototype.canTakeFactionAction = function(player, action, opt_reason) {
   if(action == A_TRANSFORM_SPECIAL2) return true;
   return Faction.prototype.canTakeFactionAction(player, action, opt_reason);
 };
-
+var F_ACOLYTES = factions.length;
 registerFaction(new Acolytes());
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -285,7 +285,7 @@ Dragonlords.prototype.canTakeFactionAction = function(player, action, opt_reason
   if(action == A_TRANSFORM_SPECIAL2) return true;
   return Faction.prototype.canTakeFactionAction(player, action, opt_reason);
 };
-
+var F_DRAGONLORDS = factions.length;
 registerFaction(new Dragonlords());
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -343,7 +343,7 @@ Shapeshifters.prototype.getGaveLeechIncome = function(player, leeched) {
     addPower(player, 1);
   }
 };
-
+var F_SHAPESHIFTERS = factions.length;
 registerFaction(new Shapeshifters());
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -406,7 +406,7 @@ Riverwalkers.prototype.getBuildingIncome = function(d, tp, te, sh, sa) {
   sumIncome(income, [0, 0, sa, 0, 0]);
   return income;
 };
-
+F_RIVERWALKERS = factions.length;
 registerFaction(new Riverwalkers());
 
 ////////////////////////////////////////////////////////////////////////////////

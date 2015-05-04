@@ -243,7 +243,10 @@ function addPriests(player, p) {
 function unlockColorPriest(player, color) {
   var error = '';
   if(!(color >= CIRCLE_BEGIN && color <= CIRCLE_END) && color != Z) {
-    error = 'invalid color';
+    //LOU CHEAT next three lines
+    //error = 'invalid unlock color';
+    //addLog ( 'invalid unlock color override, add priest ');
+    player.p++;
   } else if(player.colors[color - R]) {
     error = 'already have this color';
   } else {
@@ -1044,7 +1047,17 @@ function tryActionCore_(player, action /*Action object*/) {
     player.bridges++;
   }
   else if(action.type == A_PLACE_BRIDGE) {
-    if(player.bridges <= 0) return 'not enough bridges';
+    //LOU CHEAT if get here after A_POWER_BRIDGE fails     
+    if (player.bridges <= 0) {
+      game.octogons[A_POWER_BRIDGE] = 1;
+      player.bridgepool--;
+      player.bridges++;
+      player.numactions = 0;
+      player.pw2 -= 3;
+      player.pw0 += 3;
+    }
+    
+    if(player.bridges <= 0) return 'not enough rule bridges';
     var x0 = action.cos[0][0];
     var y0 = action.cos[0][1];
     var x1 = action.cos[1][0];

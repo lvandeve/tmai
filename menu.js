@@ -45,8 +45,9 @@ function renderPreScreen(px, py, standardButtonFun, randomButtonFun, beginnerBut
 
   makeText(px, py - 135, 'TM AI: Play TM against AI players.<br/>'
       + 'Programmed by Lode Vandevenne.<br/>'
+      + 'AI tweaks by Lou New.<br/>'
       + 'Drawings by Giordano Segatta.<br/>'
-      + 'version: v.20150315<br/>'
+      + 'version: v.20150509<br/>'
       + 'Links:<br/>'
       + 'TM on BGG: <a href="http://boardgamegeek.com/boardgame/120677/terra-mystica">http://boardgamegeek.com/boardgame/120677/terra-mystica</a><br/>'
       + 'Snellman: <a href="http://terra.snellman.net/">http://terra.snellman.net/</a><br/>'
@@ -61,9 +62,9 @@ function renderPreScreen(px, py, standardButtonFun, randomButtonFun, beginnerBut
   var startPlayerEl = makeLabeledDropDown(px + 95, ppy, 'Start Player', ['random', 'human', 'ai1', 'ai2', 'ai3', 'ai4'], parent);
   assignPreferenceToDropdown(startPlayerEl, preferences.startplayerdropdown);
 
-  var playerTypeDropDown = makeLabeledDropDown(px + 200, ppy, 'Player Type', ['Human vs AI', 'Observe'], parent);
-  playerTypeDropDown.title = 'Human vs AI: one human player versus AI players. Observe: All AI players.';
-  assignPreferenceToDropdown(playerTypeDropDown, preferences.playertypedropdown);
+  // It's a checkbox now. It used to be a dropdown with "Human vs AI" and "Observe". TODO: rename everything to checkbox and change the preference to boolean instead of int.
+  var playerTypeDropDown = makeCheckbox(px + 200, ppy, parent, 'Observe (only AIs play)', 'Disable to be able to play yourself against the AIs.');
+  playerTypeDropDown.checked = (preferences.playertypedropdown == 1);
 
   ppy += 50;
   var gameTypeDropDown = makeLabeledDropDown(px, ppy, 'Game Type', ['Standard', 'Random*', 'Beginner', 'Quick'], parent);
@@ -179,7 +180,7 @@ function renderPreScreen(px, py, standardButtonFun, randomButtonFun, beginnerBut
       preferences.presetbonustiles[i] = bonusBoxes[i].checked;
     }
 
-    params.allai = (playerTypeDropDown.selectedIndex == 1);
+    params.allai = playerTypeDropDown.checked;
 
     params.finalscoring = thereIsOnlyOneFinalScoring ? 0 : (finalScoringDropdown.selectedIndex - 1);
 
@@ -196,7 +197,7 @@ function renderPreScreen(px, py, standardButtonFun, randomButtonFun, beginnerBut
     preferences.turnorder = turnordercb.checked;
 
     preferences.gametypedropdown = gameTypeDropDown.selectedIndex;
-    preferences.playertypedropdown = playerTypeDropDown.selectedIndex;
+    preferences.playertypedropdown = (playerTypeDropDown.checked ? 1 : 0);
     preferences.worldmapdropdown = worldMapEl.selectedIndex;
     preferences.finalscoringdropdown = thereIsOnlyOneFinalScoring ? 0 : finalScoringDropdown.selectedIndex;
 

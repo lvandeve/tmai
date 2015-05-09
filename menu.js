@@ -214,6 +214,7 @@ function renderPreScreen(px, py, standardButtonFun, randomButtonFun, beginnerBut
 
   makeText(px, py + 480, '<h3>Documentation:</h3>' +
     '<h4>Updates</h4>' +
+    '<p>20150509: AI tweaks by Lou New added.<p/>' +
     '<p>20150108: Riverwalkers added (possibly still with bugs).<p/>' +
     '<p>20141021: The alternate Fire & Ice world also added.<p/>' +
     '<p>20141019: Fire & Ice expansion: 4 of the 6 new factions added, new map and new final scorings. It is still somewhat beta (may contain bugs).<p/>' +

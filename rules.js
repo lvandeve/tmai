@@ -243,10 +243,11 @@ function addPriests(player, p) {
 function unlockColorPriest(player, color) {
   var error = '';
   if(!(color >= CIRCLE_BEGIN && color <= CIRCLE_END) && color != Z) {
-    //LOU CHEAT next three lines
+    //LOU PROBLEM with POW1P for Riverwalkers since color is not Z
     //error = 'invalid unlock color';
-    //addLog ( 'invalid unlock color override, add priest ');
-    player.p++;
+    addLog ( 'invalid unlock color override, add priest ');
+    if(player.p < player.pp) player.p++;
+    player.priestorcolor--;
   } else if(player.colors[color - R]) {
     error = 'already have this color';
   } else {
@@ -1034,6 +1035,7 @@ function tryActionCore_(player, action /*Action object*/) {
     if(action.type == A_POWER_BRIDGE) {
       game.octogons[action.type] = 1;
       error = tryConsumeForAction(player, action.type);
+      addLog('INFO: ' + logPlayerNameFun(player) +' rule problem: '+ error );
       if(error != '') return error;
     }
     if(action.type == A_ENGINEERS_BRIDGE) {

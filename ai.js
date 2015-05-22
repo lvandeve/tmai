@@ -1,4 +1,4 @@
-/*  ai4.js 
+/*  ai5.js 
 TM AI
 
 Copyright (C) 2013 by Lode Vandevenne
@@ -101,6 +101,12 @@ function convertPower (playerIndex) {
               actions.push(action2);
               coin += powerUse;
               break;                              // look for Pow7c or Pow2w;
+              } else if (player.getFaction().canTakeAction(player, A_POWER_7C, game)) {
+              var action2 = new Action(A_POWER_2W);
+              takePower++;
+              actions.push(action2);
+              coin += powerUse;
+              break;                              
               } else {
               powerToCoin(actions, powerUse);
               coin += powerUse;
@@ -343,8 +349,10 @@ AI.prototype.updateScoreActionValues_ = function(player, roundnum) {
   //reduce coin value so not too many (avoid for NOMADS, DARK and BLUE)
   if(roundnum > 3 && player.c > 8 && (player.c > (2.5 * player.w))) s.c /= 2;    
 
-  var sanctuarytwiddle = 3; //The AIs are not building sanctuaries.... let's add some score
-  s.b_sa += sanctuarytwiddle;
+  var sanctuarytwiddle = 3; 
+  //The AIs are not building sanctuaries.... let's add some score
+  //LOU SA seem to be built prematurely, only add score in round 4 or grater.
+  if(roundnum > 3) s.b_sa += sanctuarytwiddle;
 
   // make SH essential, except for the given power actions
   var makeSHEssential = function(pow_7c, pow_2w, pow_dig1, pow_dig2) {
@@ -396,16 +404,15 @@ AI.prototype.updateScoreActionValues_ = function(player, roundnum) {
   }
 
   //Faction specific
+  xfaction = player.faction + 1
 
   if(player.faction == F_CHAOS) {
-    xfaction = 1;
     if(built_d(player) > 1) makeTemple(1,0,0,0,0);
     s.b_te += 2;
     if(player.shipping == 0) s.shipping += 5;
   }
 
   if(player.faction == F_GIANTS) {
-    xfaction = 2;
     makeSHEssential(5, 10, 0, player.w > 6 ? 15:0);
     if(roundnum > 3) makeTemple (1,10,5,0,5);
     if(roundnum > 4) makeShipping(1,0,0,0,0);
@@ -413,7 +420,6 @@ AI.prototype.updateScoreActionValues_ = function(player, roundnum) {
 
   // build TE (70%)
   if(player.faction == F_FAKIRS) {
-    xfaction = 3;
     // Get temple early for priest income
     makeTemple (1,10,10,15,20);
     if(built_sh(player)) s.digging = 0;  //they should go to non-dig places instead
@@ -423,7 +429,6 @@ AI.prototype.updateScoreActionValues_ = function(player, roundnum) {
 
   // either SH first (68%) or TE first
   if(player.faction == F_NOMADS) {
-    xfaction = 4;
     if(player.bonustile == T_BON_PASSSHSAVP_2W  || player.bonustile == T_BON_PASSDVP_2C
       || player.bonustile == T_BON_PASSTPVP_1W) {
       makeSHEssential(10, player.w > 6 ? 0:5, player.w > 7 ? 5:0, player.w > 7 ? 5:0);
@@ -441,7 +446,6 @@ AI.prototype.updateScoreActionValues_ = function(player, roundnum) {
 
   //look for spade>>2 in round 4
   if(player.faction == F_HALFLINGS) {
-    xfaction = 5;
     s.digging = 20;
     s.b_sh = built_te(player) > 0 ? 6 : 0;
     if(roundnum < 6) s.b_d += 2;
@@ -453,7 +457,6 @@ AI.prototype.updateScoreActionValues_ = function(player, roundnum) {
 
   //build TE (72%)
   if(player.faction == F_CULTISTS) {
-    xfaction = 6;
     if(roundnum < 5) s.b_sh = 0; //don't waste resources on the SH
     else s.b_sh = 7;
     s.interacts += 2;
@@ -462,14 +465,12 @@ AI.prototype.updateScoreActionValues_ = function(player, roundnum) {
   }
 
   if(player.faction == F_ALCHEMISTS) {
-    xfaction = 7;
     makeSHEssential(10, 10, 0, player.w > 6 ? 15 : 0);
     if(roundnum < 6) s.b_d += 2; //because alchemists will be low on workers
     if(roundnum > 4) makeShipping(1,0,0,0,0);
   }
 
   if(player.faction == F_DARKLINGS) {
-    xfaction = 8;
     s.p += 2;
     s.dig += 2; //otherwise they'll refuse to use the priests for the digging...
     s.b_sh = (player.w > 6 && player.c >= 4) ? 10 : -5; 
@@ -480,7 +481,6 @@ AI.prototype.updateScoreActionValues_ = function(player, roundnum) {
 
   //build TE (63%); defer town?
   if(player.faction == F_MERMAIDS) {
-    xfaction = 9;
     // if (roundnum == 1) makeTemple (1,0,0,3,9);
     if(roundnum < 6) s.b_te += 5;
     if(roundnum < 6) s.b_d += 10;
@@ -497,7 +497,6 @@ AI.prototype.updateScoreActionValues_ = function(player, roundnum) {
 
   //SH gives free TP per round
   if(player.faction == F_SWARMLINGS) {
-    xfaction = 10;
     if(roundnum > 1) makeSHEssential(10, 10, 0, player.w > 6 ? 15:0); 
     //only in round 2 because I think early SH for swarmlings results in too few dwellings ==> no worker income
     //all their buildings must have increased score, or they'll refuse to spend resources on them
@@ -512,9 +511,13 @@ AI.prototype.updateScoreActionValues_ = function(player, roundnum) {
     if(roundnum > 4) makeShipping(1,10,0,0,0); 
   }
 
+  // most SH start (72%) with 3D, but TE does better
+  if(player.faction == F_AUREN) {
+    if(roundnum > 4) makeShipping(1,0,0,0,0);
+  }
+
   //build SH (50%) soon
   if(player.faction == F_WITCHES) {
-    xfaction = 11;
     if(player.b_sh != 0) {   
       if(built_d(player) >= 2 && built_tp(player) == 0) s.b_tp = 5;
       s.b_sh += 5; 
@@ -525,15 +528,8 @@ AI.prototype.updateScoreActionValues_ = function(player, roundnum) {
     if(roundnum > 4) makeShipping(1,0,0,0,0);
   }
 
-  // most SH start (72%) with 3D, but TE does better
-  if(player.faction == F_AUREN) {
-    xfaction = 12;
-    if(roundnum > 4) makeShipping(1,0,0,0,0);
-  }
-
   //repairs needed; build TE (75%) two TE to get the 5PW; ENG_BRIDGE fix, not ship
   if(player.faction == F_ENGINEERS) {
-    xfaction = 13;
     s.w += 0.5; //do NOT make this number any higher. Setting it to += 1 makes engineers build nothing anymore...
     s.conbridge = 20;
     if(built_bridges(player) == 0) s.forbridge = 5;
@@ -555,13 +551,11 @@ AI.prototype.updateScoreActionValues_ = function(player, roundnum) {
 
   //should TE be earlier?
   if(player.faction == F_DWARVES) {
-    xfaction = 14;
     s.digging = 0; //they should go to non-dig places instead
   }
 
   //add tuning for fireice factions
   if(player.faction == F_ICEMAIDENS) {
-    xfaction = 15;
     s.b_te += 2.0;
     if(built_te(player) >= 2 ) s.b_sh += 9;  
     if(roundnum > 2) makeTemple(1,0,0,0,0);
@@ -570,7 +564,6 @@ AI.prototype.updateScoreActionValues_ = function(player, roundnum) {
 
   //TE first (55%), or SH(23%); has higher value for PW, better with SH
   if(player.faction == F_YETIS) {
-    xfaction = 16;
     // yeti get a discount on power actions and can overlay
     s.specific[A_POWER_1P] = player.p < 2 ? 5 : 3;
     s.specific[A_POWER_2W] = player.w < 4 ? 5 : 2;
@@ -578,12 +571,17 @@ AI.prototype.updateScoreActionValues_ = function(player, roundnum) {
     s.specific[A_POWER_SPADE] = 7;
     s.specific[A_POWER_2SPADE] = 8;
     if(built_d(player) > 2) makeTemple(1,0,0,0,0);
+    if(roundnum > 2) s.b_sh += 2;
     if(roundnum > 4) makeShipping(1,player.c > 8 ? 0:10,0,1,1);
+  }
+
+  if(player.faction == F_ACOLYTES) {
+    if(roundnum > 2) makeTemple(1,0,0,0,0);
+    if(roundnum > 4) makeShipping(1,0,0,0,0);
   }
 
   //Add special tuning for Dragonlords to make SH after Round 1 and keep 4 Power
   if(player.faction == F_DRAGONLORDS) {
-    xfaction = 17;
     if(roundnum > 1) {
       makeSHEssential(15, 5, -50, -50);
     }
@@ -592,24 +590,15 @@ AI.prototype.updateScoreActionValues_ = function(player, roundnum) {
     if((player.pw0 + player.pw1 + player.pw2) <= 5) s.digging = 0;
   }
 
-  if(player.faction == F_ACOLYTES) {
-    xfaction = 18;
-    s.b_te += 1.0;
-    if(roundnum > 2) makeTemple(1,0,0,0,0);
-    if(roundnum > 4) makeShipping(1,0,0,0,0);
-  }
-
   if(player.faction == F_SHAPESHIFTERS) {
-    xfaction = 19;
-    s.b_te += 1.0;  
     //TODO allow AI action when SH is built to spend 3 tokens or 3 power to change color for build
     //makeSHEssential(0, 0, 0, 0);
     if(roundnum > 3) makeTemple(1,0,0,0,0); 
-    if(roundnum > 4) makeShipping(1,0,0,0,0); 
+    if(roundnum > 4) makeShipping(1,0,0,0,0);
+    if(roundnum < 6) s.b_sa = 1;
   }
 
   if(player.faction == F_RIVERWALKERS) {
-    xfaction = 20;
     s.shipping = 0;
     // generally need more coin and priest, not workers  
     s.specific[A_POWER_1P] = roundnum < 3 ? 3 : 2;
@@ -618,14 +607,25 @@ AI.prototype.updateScoreActionValues_ = function(player, roundnum) {
     s.specific[A_POWER_2SPADE] = -50;
     //build temple early for priest
     makeTemple(1,10,0,0,0);
-    //gain from two temples later, avoid sanctuary early
+    //gain from two temples later, avoid sanctuary 
     if(roundnum < 5) {
-      s.b_sa = 0;
       s.b_tp -= 1;
       s.b_te -= 2;
     }
-    s.b_d += 3;
+    s.b_sa = 0;
+    s.b_d += 4;
     if(roundnum > 5) s.b_d += 2;
+
+    //must use power if full or less than replacement
+    if(roundnum > 4 && (player.pw0 + player.pw1) == 0) {
+      if(player.c > 2*player.w) {
+        s.specific[A_POWER_2W] += 4;   
+      } else {
+        if (player.w < 7) s.specific[A_POWER_2W] += 2;
+        s.specific[A_POWER_7C] += 4;
+      }       
+    }
+
     //NEXT- when build stronghold, add two bridges
   }
 
@@ -662,9 +662,8 @@ Rating	Name	        Games
 //Per player it's an array of: total, cult, network, final, resource, passing
 //if(state.round == 6) scoreProjection = projectEndGameScores();
 //var p = scoreProjection[player.index]; 
- if(player.faction == F_FAKIRS || player.faction == F_MERMAIDS 
-   || player.faction == F_DWARVES || player.faction == F_RIVERWALKERS
-   || roundnum < 6 ) { 
+ if(player.faction == F_FAKIRS || player.faction == F_DWARVES 
+   || player.faction == F_RIVERWALKERS || roundnum < 6 ) { 
  } else {  
   var reserveOneShip = 0; 
   var reserveTwoShip = 0;
@@ -678,17 +677,21 @@ Rating	Name	        Games
   var xplayerp = player.p; 
   var xplayerc = player.c;
   var xplayers = player.shipping;
+  var adjustCoin = 0;
+
   //get more coin if needed
   var restrictions = clone(defaultRestrictions);
   var actions = getPossibleActions(player, restrictions);
   if((player.c < 8) && (player.getFaction().canTakeAction(player, A_POWER_7C, game))) {
     s.specific[A_POWER_7C] = 50;
   } else {
-  if(player.c == 3 && player.p > 0 && player.pw2 > 0) powerToCoin(actions, 1); 
-  if(player.c == 7 && player.p > 1 && player.pw2 > 0) powerToCoin(actions, 1);  
-  if(player.p > 0 && player.c > 3 && player.shipping < 3) { 
+  if(player.c == 3 && player.p > 0 && player.pw2 > 0) adjustCoin = 1;
+  if(player.c == 7 && player.p > 1 && player.pw2 > 0) adjustCoin = 1;
+
+  //determine value of more shipping  
+  if(player.p > 0 && player.c > (3-adjustCoin) && player.shipping < 3) { 
     //addLog('INFO: AI endship for: ' + logPlayerNameFun(player) );
-    scoreProjection = projectEndGameScores(); 
+     scoreProjection = projectEndGameScores(); 
     scoreNow = scoreProjection[player.index];
     //addLog('INFO: AI computing scoreNow: ' + scoreNow);
     player.p--;
@@ -700,7 +703,7 @@ Rating	Name	        Games
     if (scoreShip1[0] > (scoreNow[0] + 6)) {
       reserveOneShip = scoreShip1[0] - scoreNow[0];
     }
-    if (player.p > 0 && player.c > 3 && player.shipping < 3) {
+    if (player.p > 0 && player.c > (3-adjustCoin)  && player.shipping < 3) {
       player.p--;
       player.c -= 4; 
       player.shipping++;
@@ -853,33 +856,34 @@ AI.prototype.scoreBonusTile_ = function(player, tile, roundnum) {
   //Add starting preference score for the faction and the bonus tile
   var BONUS_PREF = [
     [0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0],
-    [0,4,1,3,2,3,3,0,0,3,2,2,0,3,3,0,0,1,1,0,-9], // T_BON_SPADE_2C     (BON1)
-    [0,1,2,1,1,1,4,0,1,2,1,3,0,3,3,2,1,3,2,2,3],  // T_BON_CULT_4C      (BON2)
-    [0,3,2,2,1,1,1,0,1,1,1,1,0,1,1,1,1,4,2,1,4],  // T_BON_6C           (BON3)
-    [0,1,3,0,0,1,1,1,1,5,1,3,0,1,0,2,3,2,1,3,-9], // T_BON_3PW_SHIP     (BON4) 
-    [0,1,2,1,2,2,2,4,3,1,1,3,0,3,3,3,4,1,1,3,0],  // T_BON_3PW_1W       (BON5)
-    [0,1,2,1,2,2,1,1,1,1,2,1,0,1,1,1,1,3,2,2,2],  // T_BON_PASSDVP_2C   (BON6)
-    [0,1,1,1,2,1,1,1,1,1,1,1,0,1,1,2,1,1,1,1,0],  // T_BON_PASSTPVP_1W  (BON7)
-    [0,3,4,1,5,1,0,2,2,1,1,1,0,1,1,1,1,4,1,1,0],  // T_BON_PASSSHSAVP_2W(BON8)
-    [0,1,1,3,1,0,2,3,5,1,2,1,0,1,1,1,1,1,2,1,6],  // T_BON_1P           (BON9)
-    [0,1,1,0,0,1,1,1,1,4,1,1,0,0,0,4,1,1,1,4,-9]  // T_BON_PASSSHIPVP_3PW(BON10)
+    [0,4,1,3,2,3,3,0,0,3,2,0,2,3,3,0,0,1,1,0,-9], // T_BON_SPADE_2C     (BON1)
+    [0,1,2,1,1,1,4,0,1,2,1,0,3,3,3,2,1,2,3,2,3],  // T_BON_CULT_4C      (BON2)
+    [0,3,2,2,1,1,1,0,1,1,1,0,1,1,1,1,1,2,4,1,4],  // T_BON_6C           (BON3)
+    [0,1,3,0,0,1,1,1,1,5,1,5,3,1,0,2,3,1,2,3,-9], // T_BON_3PW_SHIP     (BON4) 
+    [0,1,2,1,2,2,2,4,3,1,1,0,3,3,3,3,4,1,1,3,0],  // T_BON_3PW_1W       (BON5)
+    [0,1,2,1,2,2,1,1,1,1,2,0,1,1,1,1,1,2,3,2,2],  // T_BON_PASSDVP_2C   (BON6)
+    [0,1,1,1,2,1,1,1,1,1,1,0,1,1,1,2,1,1,1,1,0],  // T_BON_PASSTPVP_1W  (BON7)
+    [0,3,4,1,5,1,0,2,2,1,1,0,1,1,1,1,1,1,4,1,0],  // T_BON_PASSSHSAVP_2W(BON8)
+    [0,1,1,3,1,0,2,3,5,1,2,0,1,1,1,1,1,2,1,1,6],  // T_BON_1P           (BON9)
+    [0,1,1,0,0,1,1,1,1,4,1,0,1,0,0,4,1,1,1,4,-9]  // T_BON_PASSSHIPVP_3PW(BON10)
     ];
   // originally for roundnum 1,2,3 TODO: different table for roundnum 4,5,6
-  if (roundnum <= 3) score += BONUS_PREF[Math.floor(ybonus)][Math.floor(xfaction)];
+  if (roundnum <= 3) score += BONUS_PREF[Math.floor(ybonus)][Math.floor(xfaction)]; 
+  //addLog('INFO: bonus tile: ' + xfaction + '  ' + ybonus + '  ' + score);  
 
   //Add end preference score for the faction and the bonus tile
   var BONUS_PREF2 = [
     [0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0],
-    [0,0,0,1,0,0,0,0,0,0,2,1,0,0,1,0,0,0,0,0,-9], // T_BON_SPADE_2C     (BON1)
+    [0,0,0,1,0,0,0,0,0,0,2,0,1,0,1,0,0,0,0,0,-9], // T_BON_SPADE_2C     (BON1)
     [0,0,0,0,0,0,2,0,0,0,0,0,0,0,1,0,0,0,0,0,2],  // T_BON_CULT_4C      (BON2)
     [0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,2],  // T_BON_6C           (BON3)
     [0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,3,0,0,0,-9], // T_BON_3PW_SHIP     (BON4) 
     [0,0,0,0,0,1,0,0,0,0,0,0,0,0,1,0,3,0,0,0,1],  // T_BON_3PW_1W       (BON5)
-    [0,1,2,1,4,3,1,1,5,2,2,2,0,1,1,1,1,3,2,2,4],  // T_BON_PASSDVP_2C   (BON6)
-    [0,1,2,1,2,1,1,1,3,0,4,1,0,1,1,2,1,1,1,1,0],  // T_BON_PASSTPVP_1W  (BON7)
-    [0,1,2,0,5,0,1,2,2,0,2,1,0,1,1,1,1,4,1,1,0],  // T_BON_PASSSHSAVP_2W(BON8)
-    [0,1,0,1,1,0,1,3,2,0,1,1,0,1,1,1,1,1,2,1,1],  // T_BON_1P           (BON9)
-    [0,1,1,0,1,0,1,1,1,5,1,1,0,0,0,4,3,1,1,4,-9]  // T_BON_PASSSHIPVP_3PW(BON10)
+    [0,1,2,1,4,3,1,1,5,2,2,0,2,1,1,1,1,2,3,2,4],  // T_BON_PASSDVP_2C   (BON6)
+    [0,1,2,1,2,1,1,1,3,0,4,0,1,1,1,2,1,1,1,1,0],  // T_BON_PASSTPVP_1W  (BON7)
+    [0,1,2,0,5,0,1,2,2,0,2,0,1,1,1,1,1,1,4,1,0],  // T_BON_PASSSHSAVP_2W(BON8)
+    [0,1,0,1,1,0,1,3,2,0,1,0,1,1,1,1,1,2,1,1,1],  // T_BON_1P           (BON9)
+    [0,1,1,0,1,0,1,1,1,5,1,0,1,0,0,4,3,1,1,4,-9]  // T_BON_PASSSHIPVP_3PW(BON10)
     ];
     if (roundnum > 3) score += BONUS_PREF2[Math.floor(ybonus)][Math.floor(xfaction)];
   
@@ -980,12 +984,12 @@ AI.prototype.scoreFavorTile_ = function(player, tile, roundnum) {
     [0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0],  // T_FAV_3E       (FAV3)
     [0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0],  // T_FAV_3A       (FAV4)
     [0,0,0,0,3,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,1],  // T_FAV_2F_6TW   (FAV5)
-    [0,0,0,0,0,0,2,0,0,2,2,0,4,0,0,0,1,0,0,0,0],  // T_FAV_2W_CULT  (FAV6)
+    [0,0,0,0,0,0,2,0,0,2,2,4,0,0,0,0,1,0,0,0,0],  // T_FAV_2W_CULT  (FAV6)
     [0,0,0,0,0,3,2,0,0,0,0,0,0,2,3,0,2,0,0,0,0],  // T_FAV_2E_1PW1W (FAV7)
-    [0,0,0,2,0,0,0,0,0,0,0,2,0,3,2,0,4,0,0,0,0],  // T_FAV_2A_4PW   (FAV8)
+    [0,0,0,2,0,0,0,0,0,0,0,0,2,3,2,0,4,0,0,0,0],  // T_FAV_2A_4PW   (FAV8)
     [0,0,0,2,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0],  // T_FAV_1F_3C    (FAV9)
     [0,0,0,0,3,0,0,0,0,0,4,0,0,0,0,0,0,0,0,0,3],  // T_FAV_1W_TPVP  (FAV10)
-    [0,0,0,2,6,4,0,0,0,4,0,4,0,0,2,0,0,0,0,0,6],  // T_FAV_1E_DVP   (FAV11)
+    [0,0,0,2,6,4,0,0,0,4,0,0,4,0,2,0,0,0,0,0,6],  // T_FAV_1E_DVP   (FAV11)
     [0,0,0,0,0,0,0,0,0,0,3,0,0,0,0,0,0,0,0,0,0]   // T_FAV_1A_PASSTPVP (FAV12)
   ]
   
@@ -1125,7 +1129,7 @@ AI.prototype.chooseAuxColor = function(playerIndex, callback) {
       if(auxColorToPlayerMap[wrap(color + 1, R, S + 1)] == undefined) score++;
       if (color == R) score += 3;
       if (color == Y) score += 2;
-      if (color == G) score += 3;
+      if (color == G) score += 2;
       if (color == K) score += 2;
       if (color == U) score += 1;
       scores[i]= score;
@@ -1138,7 +1142,7 @@ AI.prototype.chooseAuxColor = function(playerIndex, callback) {
     var scores = [];
     var tiles;
     var colorTile;
-    var colorScores = [0,0,1,1,2,0,1,1,1,0,0,0];
+    var colorScores = [0,0,1,1,1,1,0,1,1,0,0,0];
     tiles = getFreeTilesReachableByShipping(player, 0);   
     for(var t = 0; t < tiles.length; t++) {
       colorTile = getWorld(tiles[t][0], tiles[t][1]);
@@ -1159,11 +1163,12 @@ AI.prototype.chooseAuxColor = function(playerIndex, callback) {
          if (color == j) scores[i] = colorScores[j];
       }
     }
+  //colors.length is the number of colors still available
   //addLog('INFO: AI finding RW priest: '+ colors + ' ---- ' + colorScores);
   }
-
-  var i = pickWithBestScore(colors, scores, false);
-  chosen = colors[i];
+    //if !(player.color == Z && ispriestcolor && used)  
+    var i = pickWithBestScore(colors, scores, false);
+    chosen = colors[i];
   }
   var error = callback(playerIndex, chosen);
   if(error != '') {
@@ -1186,9 +1191,98 @@ function getColorTilesAdjacent(player, x, y) {
   return countColor;
 }
 
+//returns true/false for arrays are equal
+function aeq(a, b) {
+  if (a.length != b.length) return false;
+  for(var i = 0; i < a.length; i++) {
+    if (a[i] != b[i])  return false;
+  }
+  return true;
+}
+
 AI.prototype.chooseInitialDwelling = function(playerIndex, callback) {
   var player = game.players[playerIndex];
   var chosen = undefined;
+
+  //LOU poor way to determine world used
+  var windex = 0;
+  var xw = game.world;
+  if(xw[1]==S && xw[2]==G && xw[3]==B && xw[4]==Y) windex = 1;
+  if(xw[1]==S && xw[2]==G && xw[3]==B && xw[4]==U) windex = 2;
+  if(xw[1]==I && xw[2]==U && xw[3]==K && xw[4]==Y) windex = 3;
+  var locxy = [0,0];
+    
+  //LOU Add starting preference score for the faction dwelling locations.
+  //LOU These are based on published experience and preference for a given world.
+  // NOT YET implemented, should be made a constant
+  /* parameters used for matrix
+     0 - World used, 0=none, 1=standard, 2=fireicealtered, 3=fireice
+     1 - player.faction+1 number (like 1=F_CHAOS, 2=F_GIANTS, ...)
+     2 - score modifier
+     3 - first dwelling location [x,y]
+     4 - second dwelling location [x,y]
+     5 = third dwlling location [x,y]
+     6 - enemy faction number (can block)
+     7 - friend faction number (helpful next)
+     8 - spare
+     9 - spare 
+  */  
+     
+  var START_LOCATIONS = [
+    [0, 0,0,[ 0, 0],[ 0, 0],[ 0, 0], 0, 0,0,0],  //  comments
+    [1, 1,6,[ 9, 4],[ 0, 0],[ 0, 0], 0, 0,0,0],  // CHAOS 
+    [1, 1,3,[ 6, 4],[ 0, 0],[ 0, 0], 0, 0,0,0],  // CHAOS 
+    [1, 2,3,[ 6, 4],[ 5, 3],[ 0, 0], 0, 0,0,0],  // GIANTS 
+    [1, 2,2,[ 6, 4],[ 7, 6],[ 0, 0], 0, 0,0,0],  // GIANTS 
+    [1, 2,1,[ 6, 4],[ 9, 4],[ 0, 0], 0, 0,0,0],  // GIANTS  
+    [1, 3,4,[ 3, 4],[ 5, 5],[ 0, 0], 0, 0,0,0],  // FAKIRS  
+    [1, 4,6,[ 3, 4],[ 5, 6],[ 5, 1], 5, 0,0,0],  // NOMADS  
+    [1, 4,4,[ 3, 4],[ 5, 1],[ 6, 2], 0, 0,0,0],  // NOMADS  
+    [1, 4,2,[ 5, 6],[ 3, 4],[ 8, 9], 0, 0,0,0],  // NOMADS  
+    [1, 5,3,[ 4, 2],[ 6, 5],[ 0, 0], 0, 0,0,0],  // HALFLINGS  
+    [1, 5,3,[ 8, 9],[10, 6],[ 0, 0], 0, 0,0,0],  // HALFLINGS  
+    [1, 6,5,[ 6, 5],[ 4, 2],[ 3, 8], 0, 0,0,0],  // CULTISTS  
+    [1, 6,3,[11, 8],[ 8, 9],[10, 6], 0, 0,0,0],  // CULTISTS  
+    [1, 7,1,[ 3, 3],[ 5, 2],[ 0, 0], 0, 0,0,0],  // ALCHEMISTS  
+    [1, 7,4,[11, 7],[ 8, 8],[ 0, 0], 0, 0,0,0],  // ALCHEMISTS  
+    [1, 8,4,[11, 7],[ 8, 8],[ 0, 0], 0, 0,0,0],  // DARKLINGS  
+    [1, 8,2,[ 9, 2],[12, 5],[ 0, 0], 0, 0,0,0],  // DARKLINGS  
+    [1, 9,5,[ 2, 8],[ 4, 5],[ 0, 0], 0, 0,0,0],  // MERMAIDS  
+    [1,10,3,[ 2, 4],[ 2, 8],[ 0, 0], 0, 0,0,0],  // SWARMLINGS  
+    [1,10,3,[ 4, 5],[ 2, 8],[ 0, 0], 0, 0,0,0],  // SWARMLINGS
+    [1,11,3,[ 9, 3],[ 8, 7],[ 0, 0], 0, 0,0,0],  // AUREN    
+    [1,11,7,[ 7, 3],[ 6, 6],[ 0, 0], 0, 0,0,0],  // AUREN    
+    [1,12,5,[ 6, 6],[ 9, 3],[ 0, 0], 0, 0,0,0],  // WITCHES  
+    [1,13,3,[11, 3],[10, 8],[ 0, 0], 0, 0,0,0],  // ENGINEERS  
+    [1,14,4,[ 7, 5],[11, 6],[ 0, 0], 0, 0,0,0],  // DWARVES  
+    [3, 1,4,[ 6, 5],[ 0, 0],[ 0, 0], 0, 0,0,0],   // Fireice CHAOS 
+    [3, 2,4,[ 8, 4],[ 6, 7],[ 0, 0], 0, 0,0,0],   // Fireice GIANTS 
+    [3, 2,4,[ 9, 7],[12, 8],[ 0, 0], 0, 0,0,0],   // Fireice GIANTS 
+    [3, 3,4,[ 8, 3],[ 2, 2],[ 0, 0], 0, 0,0,0],   // Fireice FAKIRS 
+    [3, 4,4,[ 8, 3],[10, 2],[ 5, 1], 0, 0,0,0],   // Fireice NOMADS 
+    [3, 4,4,[ 4, 4],[ 2, 2],[ 3, 7], 0, 0,0,0],   // Fireice NOMADS 
+    [3, 5,4,[11, 5],[11, 2],[ 0, 0], 0, 0,0,0],   // Fireice HALFLINGS 
+    [3, 6,4,[ 5, 8],[ 3, 5],[ 0, 0], 0, 0,0,0],   // Fireice CULTISTS 
+    [3, 7,4,[10, 8],[12, 7],[ 0, 0], 0, 0,0,0],   // Fireice ALCHEMISTS 
+    [3, 8,3,[10, 8],[12, 7],[ 0, 0], 0, 0,0,0],   // Fireice DARKLINGS 
+    [3, 8,4,[12, 5],[12, 2],[ 0, 0], 0, 0,0,0],   // Fireice DARKLINGS 
+    [3, 8,2,[ 7, 5],[ 6, 9],[ 0, 0], 0, 0,0,0],   // Fireice DARKLINGS 
+    [3, 9,4,[10, 6],[12, 4],[ 0, 0], 0, 0,0,0],   // Fireice MERMAIDS 
+    [3,10,4,[ 5, 7],[ 2, 8],[ 0, 0], 0, 0,0,0],   // Fireice SWARMLINGS
+    [3,11,4,[ 7, 7],[ 7, 3],[ 0, 0], 0, 0,0,0],   // Fireice AURENS
+    [3,12,5,[ 5, 6],[ 3, 4],[ 0, 0], 0, 0,0,0],   // Fireice WITCHES   
+    [3,13,4,[ 4, 7],[ 2, 4],[ 0, 0], 0, 0,0,0],   // Fireice ENGINEERS 
+    [3,14,4,[10, 7],[ 6, 8],[ 0, 0], 0, 0,0,0],   // Fireice DWARVES 
+    [3,15,4,[ 6, 3],[ 9, 4],[ 0, 0], 0, 0,0,0],   // Fireice ICEMAIDENS    brown
+    [3,16,4,[ 5, 4],[ 4, 8],[ 0, 0], 0, 0,0,0],   // Fireice YETIS         black
+    [3,16,4,[ 7, 8],[ 7, 4],[ 0, 0], 0, 0,0,0],   // Fireice YETIS         blue
+    [3,17,4,[ 6, 3],[ 3, 5],[ 0, 0], 0, 0,0,0],   // Fireice ACOLYTES      brown
+    [3,18,4,[ 6, 3],[ 3, 5],[ 0, 0], 0, 0,0,0],   // Fireice DRAGONLORDS   brown 
+    [3,19,4,[ 9, 7],[ 6, 7],[ 0, 0], 0, 0,0,0],   // Fireice SHAPESHIFTERS red 
+    [3,20,2,[ 9, 4],[ 6, 3],[ 0, 0], 0, 0,0,0],   // Fireice RIVERWALKERS  brown
+    [3,20,3,[ 8, 3],[ 6, 1],[ 0, 0], 0, 0,0,0],   // Fireice RIVERWALKERS  yellow
+    [3,20,5,[ 6, 5],[ 6, 2],[ 0, 0], 0, 0,0,0]    // Fireice RIVERWALKERS  red
+    ];
 
   var otherDwelling;
   if(player.b_d < 8) {
@@ -1224,29 +1318,53 @@ AI.prototype.chooseInitialDwelling = function(playerIndex, callback) {
     if(neighbors[0] == 0 && neighbors[1] == 0) score /= 2; 
     //tile touches no other proper tiles, discourage this
 
-    //LOU avoid tiles surrounded for R,G,B, and brown (U) factions. 
-    //LOU adjacentCOUNT[land tiles adjacent, edge tiles have water or land ajacent]
+    //LOU avoid tiles surrounded for R,G,B factions. 
+    //LOU adjacentCount[land tiles adjacent, edge tiles have water or land ajacent]
     var adjacentCount = getColorTilesAdjacent(player, x, y);
     var colorCode = player.color;
     if(adjacentCount[0] >= 6 && 
-      (colorCode == R || colorCode == G || colorCode == B || colorCode == U)) score = 0; 
+      (colorCode == R || colorCode == G || colorCode == B)) score = 0;
+    if(adjacentCount[0] >= 6 && player.auxcolor == R) score = 0; 
     //LOU degrade placing tiles on the edge except for Yellow and blacK  (Line#880)
     //LOU allow edge tiles if final scoring is OUTPOST
-    if (game.finalscoring == 1) {
-      if(adjacentCount[1] < 6 && colorCode == Z) score = 0;
-      if(adjacentCount[0] > 3 && colorCode == Z) score = 0;
-    } 
-    else {
+    if(colorCode == Z)  {
+      if(adjacentCount[0] >= 6) score = -10;
+      else if(adjacentCount[0] == adjacentCount[1]) score = -10; 
+      else if(adjacentCount[1] < 6) score = -5;
+      else if(adjacentCount[0] > 3) score = 6-adjacentCount[0];
+    }      
+    else if (game.finalscoring != 1) {
       if(adjacentCount[1] < 6 && (colorCode != Y && colorCode != K)) score = 0;
       if(adjacentCount[0] < 4 && colorCode == B) score -= 4; 
       if(adjacentCount[0] < 4 && colorCode == R) score -= 4;
-      if(adjacentCount[0] < 3 && colorCode == G) score -= 4;
-      if(adjacentCount[0] > 3 && colorCode == Z) score = 0;
+      if(adjacentCount[0] < 3 && colorCode == G) score -= 4;     
+    }
+
+    //add score if primary location is on the preferred list
+    for(var ly = 1; ly < START_LOCATIONS.length; ly++) {
+      if(START_LOCATIONS[ly][0] == windex && (START_LOCATIONS[ly][1]-1) == player.faction) {
+        locxy = [x+1,y+1];
+        if(aeq(START_LOCATIONS[ly][3], locxy)) score += START_LOCATIONS[ly][2]+2;
+        else if(aeq(START_LOCATIONS[ly][4], locxy)) score += START_LOCATIONS[ly][2];
+      }
     }
     
     if(otherDwelling) {
       var h = hexDist(otherDwelling[0], otherDwelling[1], x, y);
-      //LOU replaced! if(h >= 4 && h <= 6) score += 5; //be near your other dwelling but not too near
+
+    //add score if secondary location is on the preferred list
+    for(var ly = 1; ly < START_LOCATIONS.length; ly++) {
+      if(START_LOCATIONS[ly][0] == windex && (START_LOCATIONS[ly][1]-1) == player.faction) {
+        locxy = [x+1,y+1];
+        if(aeq(START_LOCATIONS[ly][3], otherDwelling)) {
+          if(aeq(START_LOCATIONS[ly][4], locxy)) score += START_LOCATIONS[ly][2];
+          else if(aeq(START_LOCATIONS[ly][5], locxy) && otherDwelling) score += START_LOCATIONS[ly][2]-1;
+        }            
+      }
+    }
+
+      //LOU replaced! if(h >= 4 && h <= 6) score += 5; 
+      //be near your other dwelling but not too near
       //LOU add more complexity to distance scoring
       switch(h) {
       case 0: score = 0;
@@ -1265,10 +1383,10 @@ AI.prototype.chooseInitialDwelling = function(playerIndex, callback) {
               break;
       //LOU fireice places premium on network, too far
       case 6: if (!state.fireice) score += 2;
-              if (state.fireice) score = 0;
+              if (state.fireice) score = 2;
               break;
       //LOU discourage really far away
-      default: score = 0;
+      default: score = 1;
       }
       //LOU Notice that build used is first in y direction.  Others are ignored (Nomads)
       if(player.faction == F_NOMADS) {
@@ -1276,89 +1394,18 @@ AI.prototype.chooseInitialDwelling = function(playerIndex, callback) {
         if (done == 2  && h > 3) score -= 2;
         if (done == 2  && h >= 6) score -= 10;
       }
+
       //LOU CHEAT certain combination in fireice world cause problems
       if(state.fireice && otherDwelling[1] == y) {
         if (hexDist(otherDwelling[0], otherDwelling[1], x, y) >= 5) score = 0;
       }
     }
-
-  //LOU Add starting preference score for the faction dwelling locations.
-  //LOU These are based on published experience and preference for a given world.
-  // NOT YET implemented, should be made a constant
-  /* parameters used for matrix
-     0 - World used, 0=none, 1=standard, 2=fireicealtered, 3=fireice
-     1 - faction number from above (can be the name like 1=F_CHAOS, 2=F_GIANTS, ,..)
-     2 - score modifier
-     3 - first dwelling location [x,y]
-     4 - second dwelling location [x,y]
-     5 = third dwlling location [x,y]
-     6 - enemy faction number (can block)
-     7 - friend faction number (helpful next)
-     8 - spare
-     9 - spare   
-     
-  var START_LOCATIONS = [
-    [0, 0,0,[ 0, 0],[ 0, 0],[ 0, 0], 0, 0,0,0],  //  comments
-    [1, 1,5,[ 9, 4],[ 0, 0],[ 0, 0], 0, 0,0,0],  // CHAOS 
-    [1, 1,3,[ 6, 4],[ 0, 0],[ 0, 0], 0, 0,0,0],  // CHAOS 
-    [1, 2,3,[ 6, 4],[ 5, 3],[ 0, 0], 0, 0,0,0],  // GIANTS 
-    [1, 2,2,[ 6, 4],[ 7, 6],[ 0, 0], 0, 0,0,0],  // GIANTS 
-    [1, 2,1,[ 6, 4],[ 9, 4],[ 0, 0], 0, 0,0,0],  // GIANTS  
-    [1, 3,4,[ 3, 4],[ 5, 5],[ 0, 0], 0, 0,0,0],  // FAKIRS  
-    [1, 4,6,[ 3, 4],[ 5, 6],[ 5, 1], 5, 0,0,0],  // NOMADS  
-    [1, 4,4,[ 3, 4],[ 5, 1],[ 6, 2], 0, 0,0,0],  // NOMADS  
-    [1, 4,2,[ 5, 6],[ 3, 4],[ 8, 9], 0, 0,0,0],  // NOMADS  
-    [1, 5,3,[ 4, 2],[ 2, 5],[ 0, 0], 0, 0,0,0],  // HALFLINGS  
-    [1, 5,3,[10, 6],[ 8, 9],[ 0, 0], 0, 0,0,0],  // HALFLINGS  
-    [1, 6,2,[ 6, 5],[10, 6],[ 0, 0], 0, 0,0,0],  // CULTISTS  
-    [1, 6,1,[11, 8],[ 8, 9],[ 0, 0], 0, 0,0,0],  // CULTISTS  
-    [1, 7,2,[ 3, 3],[ 5, 2],[ 0, 0], 0, 0,0,0],  // ALCHEMISTS  
-    [1, 7,4,[11, 7],[12, 5],[ 0, 0], 0, 0,0,0],  // ALCHEMISTS  
-    [1, 8,4,[11, 7],[ 8, 8],[ 0, 0], 0, 0,0,0],  // DARKLINGS  
-    [1, 8,2,[ 9, 2],[12, 5],[ 0, 0], 0, 0,0,0],  // DARKLINGS  
-    [1, 9,5,[ 7, 8],[ 4, 5],[ 0, 0], 0, 0,0,0],  // MERMAIDS  
-    [1,10,3,[ 2, 4],[ 2, 8],[ 0, 0], 0, 0,0,0],  // SWARMLINGS  
-    [1,10,3,[ 4, 5],[ 2, 8],[ 0, 0], 0, 0,0,0],  // SWARMLINGS  
-    [1,11,4,[ 7, 3],[10, 8],[ 0, 0], 0, 0,0,0],  // ENGINEERS  
-    [1,12,4,[ 7, 5],[11, 6],[ 0, 0], 0, 0,0,0],  // DWARVES  
-    [1,13,2,[ 6, 6],[ 7, 3],[ 0, 0], 0, 0,0,0],  // WITCHES  
-    [1,14,2,[ 9, 3],[ 8, 7],[ 0, 0], 0, 0,0,0],  // AUREN  
-    [3, 1,4,[ 6, 5],[ 0, 0],[ 0, 0], 0, 0,0,0],  // Fireice CHAOS 
-    [3, 2,4,[ 8, 4],[ 6, 7],[ 0, 0], 0, 0,0,0]   // Fireice GIANTS 
-    [3, 2,4,[ 9, 7],[12, 8],[ 0, 0], 0, 0,0,0]   // Fireice GIANTS 
-    [3, 3,4,[ 8, 3],[ 2, 2],[ 0, 0], 0, 0,0,0]   // Fireice FAKIRS 
-    [3, 4,4,[ 8, 3],[10, 2],[ 5, 1], 0, 0,0,0]   // Fireice NOMADS 
-    [3, 4,4,[ 4, 4],[ 2, 2],[ 3, 7], 0, 0,0,0]   // Fireice NOMADS 
-    [3, 5,4,[ 9, 4],[11, 2],[ 0, 0], 0, 0,0,0]   // Fireice HALFLINGS 
-    [3, 6,4,[ 5, 8],[ 3, 5],[ 0, 0], 0, 0,0,0]   // Fireice CULTISTS 
-    [3, 7,4,[10, 8],[12, 7],[ 0, 0], 0, 0,0,0]   // Fireice ALCHEMISTS 
-    [3, 8,4,[12, 2],[12, 5],[ 0, 0], 0, 0,0,0]   // Fireice DARKLINGS 
-    [3, 8,4,[10, 8],[12, 7],[ 0, 0], 0, 0,0,0]   // Fireice DARKLINGS 
-    [3, 9,4,[10, 6],[12, 4],[ 0, 0], 0, 0,0,0]   // Fireice MERMAIDS 
-    [3,10,4,[ 5, 7],[ 2, 8],[ 0, 0], 0, 0,0,0]   // Fireice SWARMLINGS 
-    [3,11,4,[ 4, 7],[ 2, 4],[ 0, 0], 0, 0,0,0]   // Fireice ENGINEERS 
-    [3,12,4,[10, 7],[ 6, 8],[ 0, 0], 0, 0,0,0]   // Fireice DWARVES 
-    [3,13,4,[ 5, 6],[ 3, 4],[ 0, 0], 0, 0,0,0]   // Fireice WITCHES 
-    [3,14,4,[ 8, 5],[ 7, 7],[ 0, 0], 0, 0,0,0]   // Fireice AURENS 
-    [3,15,4,[ 7, 5],[ 2, 3],[ 0, 0], 0, 0,0,0]   // Fireice ICEMAIDENS 
-    [3,16,4,[ 5, 4],[ 4, 8],[ 0, 0], 0, 0,0,0]   // Fireice YETIS 
-    [3,17,4,[ 6, 3],[ 3, 5],[ 0, 0], 0, 0,0,0]   // Fireice DRAGONLORDS 
-    [3,18,4,[ 6, 3],[ 3, 5],[ 0, 0], 0, 0,0,0]   // Fireice ACOLYTES 
-    [3,19,4,[ 9, 7],[ 6, 5],[ 0, 0], 0, 0,0,0]   // Fireice SHAPESHIFTERS 
-    [3,20,2,[ 9, 4],[ 6, 3],[ 0, 0], 0, 0,0,0]   // Fireice RIVERWALKERS  brown
-    [3,20,3,[ 8, 3],[ 6, 1],[ 0, 0], 0, 0,0,0]   // Fireice RIVERWALKERS  yellow
-    [3,20,5,[ 6, 5],[ 6, 2],[ 0, 0], 0, 0,0,0]   // Fireice RIVERWALKERS  red
-
-
-    ];
-  */
-  //LOU now apply these values to modify or override the score
-
     scores.push(score);
   }
 
   var i = pickWithBestScore(positions, scores, false);
   var chosen = positions[i];
+  //addLog('INFO: map '+windex+' faction '+(player.faction+1)+'  '+chosen+' scores: '+ scores); 
 
   var error = callback(playerIndex, chosen);
   if(error != '') {
@@ -1416,19 +1463,19 @@ AI.prototype.scoreFaction_ = function(player, already, faction) {
   else if(index == F_FAKIRS) factionwinpercentage = game.finalscoring >= 3 ? 20:15;
   else if(index == F_NOMADS) factionwinpercentage = 24;
   else if(index == F_HALFLINGS) factionwinpercentage = 19;
-  else if(index == F_CULTISTS) factionwinpercentage = 23;
+  else if(index == F_CULTISTS) factionwinpercentage = 18;  //-5
   else if(index == F_ALCHEMISTS) factionwinpercentage = 13;
   else if(index == F_DARKLINGS) factionwinpercentage = 27;
   else if(index == F_MERMAIDS) factionwinpercentage = 23;
   else if(index == F_SWARMLINGS) factionwinpercentage = 22;
-  else if(index == F_WITCHES) factionwinpercentage = 23;
   else if(index == F_AUREN) factionwinpercentage = 14;
-  else if(index == F_ENGINEERS) factionwinpercentage = 26;
+  else if(index == F_WITCHES) factionwinpercentage = 23; 
+  else if(index == F_ENGINEERS) factionwinpercentage = 21; //-5
   else if(index == F_DWARVES) factionwinpercentage = game.finalscoring >= 3 ? 20:15;
   else if(index == F_ICEMAIDENS) factionwinpercentage = 16; 
   else if(index == F_YETIS) factionwinpercentage = 15; 
-  else if(index == F_DRAGONLORDS) factionwinpercentage = 16; 
   else if(index == F_ACOLYTES) factionwinpercentage = 10; 
+  else if(index == F_DRAGONLORDS) factionwinpercentage = 16; 
   else if(index == F_SHAPESHIFTERS) factionwinpercentage = 27;  //should be 34 (before new rules) 
   else if(index == F_RIVERWALKERS) factionwinpercentage = 29; 
   score += (factionwinpercentage - 10) / 20;
@@ -1439,7 +1486,8 @@ AI.prototype.leechPower = function(playerIndex, fromPlayer, amount, vpcost, roun
   var player = game.players[playerIndex];
   //LOU Decline at all times to accept power from Cultists (previously in Rounds 5,6)
   //LOU or Shapeshifters to reduce their power. Normal if human already accepts power.
-  if(game.players[fromPlayer].faction == F_CULTISTS && !already && roundnum >= 1) {
+  //LOU changed back to only rounds 5 and 6 in AI5
+  if(game.players[fromPlayer].faction == F_CULTISTS && !already && roundnum >= 5) {
     callback(playerIndex, false);
     return;
   }

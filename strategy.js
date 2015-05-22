@@ -1,4 +1,4 @@
-/*
+/* strategy2
 TM AI
 
 Copyright (C) 2013 by Lode Vandevenne
@@ -401,6 +401,7 @@ function insertCarpetTunnelActionIfNeeded(player, actions) {
 
 //co is a single coordinate, this function does not support digs over multiple tiles
 //resources MUST include costly cost
+//LOU THIS FUNCTION HAS CHANGED for AI4 dragonlords and riverwalkers
 function addPossibleDigBuildAction(resources, player, restrictions, co, dist, dwelling, type, costly, result) {
   var actions = [];
   if(canGetResources(player, resources, restrictions, actions)) {
@@ -415,10 +416,10 @@ function addPossibleDigBuildAction(resources, player, restrictions, co, dist, dw
     //eliminate choices where tile color or location not allowed
     //  1. check color against acceptable list
     //  2. check location againt river shipping of 1  
-    if(player.faction == F_RIVERWALKERS) {
+    if (player.faction == F_RIVERWALKERS) {
       var colorTile = getWorld(co[0], co[1]);
       var colorGood = player.colors[colorTile - R];
-      if(!colorGood) return;
+      if (!colorGood) return;
       var reachGood = false; 
       var tiles;
       tiles = getFreeTilesReachableByShipping(player, 0);   
@@ -427,9 +428,9 @@ function addPossibleDigBuildAction(resources, player, restrictions, co, dist, dw
       }
       tiles = getFreeTilesReachableByShipping(player, 1);   
       for(var i = 0; i < tiles.length; i++) {
-        if(tiles[i][0] == co[0] && tiles[i][1] == co[1]) reachGood = true;
+        if (tiles[i][0] == co[0] && tiles[i][1] == co[1]) reachGood = true;
       } 
-      if(!reachGood) return;
+      if (!reachGood) return;
     }
     else if(dist > 0) {
       //LOU Separate the Nomads and Orange
@@ -442,7 +443,7 @@ function addPossibleDigBuildAction(resources, player, restrictions, co, dist, dw
 
       //LOU Spades and roundnum not available 
       else if(type == A_TRANSFORM_SPECIAL2 ) {
-        if((player.pw0 + player.pw1 + player.pw2) <= 5 && state.round < 6 ) return;
+        if ((player.pw0 + player.pw1 + player.pw2) <= 5 && state.round < 6 ) return;
         // if (!dwelling) return;
         // 1 or 2 Power needed for Transform
         var action2 = new Action(type);
@@ -456,7 +457,8 @@ function addPossibleDigBuildAction(resources, player, restrictions, co, dist, dw
           else action2.cult = C_A;
         }
         actions.push(action2);
-      } else {
+     
+      } else {             
         //Spades
         actions.push(new Action(type));
 
@@ -841,14 +843,14 @@ function getPossibleActions(player, restrictions) {
         var co2 = bridgeCo(tiles[t][0], tiles[t][1], dirs[d], game.btoggle);
         if(outOfBounds(co2[0], co2[1])) continue;
         if(getBuilding(co2[0], co2[1])[1] == player.woodcolor && co2[1] > tiles[t][1]) continue; //avoid adding twice the same action with just swapped tiles
-        if (canHaveBridge(tiles[t][0], tiles[t][1], co2[0], co2[1], player.woodcolor)) {
+        if (canHaveBridge(tiles[t][0], tiles[t][1], co2[0], co2[1], player.woodcolor)) {         
           result.push(new Action(A_POWER_BRIDGE));
-          var action = new Action();
-          action.type = A_PLACE_BRIDGE;
-          action.cos.push(tiles[t]);
-          action.cos.push(co2);
+          var action2 = new Action();
+          action2.type = A_PLACE_BRIDGE;
+          action2.cos.push(tiles[t]);
+          action2.cos.push(co2);
           var actions = clone(bactions);
-          actions.push(action);
+          actions.push(action2);
           result.push(actions);
         }
       }
@@ -859,6 +861,17 @@ function getPossibleActions(player, restrictions) {
   if(!game.octogons[A_POWER_1P]) addPossibleSimpleAction(player.getActionCost(A_POWER_1P), player, restrictions, A_POWER_1P, result);
   if(!game.octogons[A_POWER_2W]) addPossibleSimpleAction(player.getActionCost(A_POWER_2W), player, restrictions, A_POWER_2W, result);
   if(!game.octogons[A_POWER_7C]) addPossibleSimpleAction(player.getActionCost(A_POWER_7C), player, restrictions, A_POWER_7C, result);
+
+  /*
+  //LOU add resource action for ShapeShifters to change shape for 3 PW or 3 token
+  if(player.faction == F_SHAPESHIFTERS && player.b_sh == 0 && player.pw2 >= 3) 
+    addPossibleSimpleAction(player.getActionCost(A_SHIFT), player, restrictions, A_SHIFT, result);
+  }
+  if(player.faction == F_SHAPESHIFTERS && player.b_sh == 0 && player.pw0+player.pw1 >= 3)) 
+    addPossibleSimpleAction(player.getActionCost(A_SHIFT2), player, restrictions, A_SHIFT2, result);
+  }
+
+  */
 
   //advance actions
   if(canAdvanceShip(player)) addPossibleSimpleAction(player.getActionCost(A_ADV_SHIP), player, restrictions, A_ADV_SHIP, result);
@@ -1024,6 +1037,8 @@ values has the following type:
   existingtown: when doing anything that incrases an existing town's size (which is not useful, so make this number negative)
   towardstown: making an existing cluster (that has at least 3 power) bigger to be closer to a town (TODO: never do this in a too small cluster that is locked in)
   interacts: it's a new dwelling that interacts with another player, that is good because it is a good TP upgrade target, plus may steal a good spot from them
+  shift: value for SHAPESHIFTERS using 3pw to change color
+  shift2: value for SHAPESHIFTERS using 3tokens to change color
   specific: object containing extra score for specific actions (by type), e.g. {A_BURN, A_POWER_7C}
 
   TODO: score for:
@@ -1068,6 +1083,8 @@ function scoreAction(player, actions, values, roundnum) {
   var existingtown = 0;
   var towardstown = 0;
   var interacts = 0;
+  var shift = 0;    //SHAPESHIFTERS
+  var shift2 = 0;   //SHAPESHIFTERS
   //TODO: bonus/favor/town tiles bonus
   for(var i = 0; i < actions.length; i++) {
     var action = actions[i];
@@ -1199,6 +1216,12 @@ function scoreAction(player, actions, values, roundnum) {
       res[4] += 4;
     } else if(type == A_CARPET) {
       res[4] += 4;
+    } else if(type == A_SHIFT) {
+      res[3] -= 3;
+      shift++;
+    } else if(type == A_SHIFT2) {
+      // remove tokens from pw0 and pw1
+      shift2++;
     }
 
     t_fav += action.favtiles.length;
@@ -1285,6 +1308,8 @@ function scoreAction(player, actions, values, roundnum) {
   result = Math.max(Math.min(1, result), result + existingtown * values.existingtown); //don't overpenalize this one
   result += towardstown * values.towardstown;
   result += interacts * values.interacts;
+  result += shift * values.shift;
+  result += shift2 * values.shift2;
   return result;
 }
 

@@ -84,6 +84,10 @@ var Game = function() {
 // The global game object
 var game = new Game();
 
+var newAI = function() {
+  return state.louAI ? new AILou() : new AILode();
+};
+
 ////////////////////////////////////////////////////////////////////////////////
 ////////////////////////////////////////////////////////////////////////////////
 ////////////////////////////////////////////////////////////////////////////////
@@ -92,7 +96,7 @@ var game = new Game();
 function makeNewAIPlayer(name) {
   var player = new Player();
   player.human = false;
-  player.actor = new AI();
+  player.actor = newAI();
   player.name = name;
   return player;
 }
@@ -111,6 +115,7 @@ function initParams(params) {
   state.bonustilepromo2013 = params.bonustilepromo2013;
   state.fireice = params.fireice;
   state.turnorder = params.turnorder;
+  state.louAI = params.louAI;
 
   var finalscoring = params.finalscoring;
   if(finalscoring == -1) {
@@ -158,6 +163,7 @@ function initialGameLogMessage() {
   if(state.bonustilepromo2013) addLog('shipping bonus tile promo 2013 enabled');
   if(state.fireice) addLog('fire & ice expansion enabled');
   if(state.turnorder) addLog('variable turn order enabled');
+  if(state.louAI) addLog('Lou New\'s AI enabled');
 
   addLog('round 1 tile: ' + tileToStringLong(game.roundtiles[1], true));
   addLog('round 2 tile: ' + tileToStringLong(game.roundtiles[2], true));

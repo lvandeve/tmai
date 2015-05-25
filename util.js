@@ -202,6 +202,11 @@ function pseudoRandom3D(x, y, z) {
   return pseudoRandom((z << 32) + (y << 16) + x);
 }
 
+//Integer division because JS does floating point division by default
+function idiv(a, b) {
+  return Math.floor(a / b);
+}
+
 ////////////////////////////////////////////////////////////////////////////////
 // DOM
 ////////////////////////////////////////////////////////////////////////////////

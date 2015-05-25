@@ -435,7 +435,7 @@ var leechNoFun = null; //for shortcuts
 Human.prototype.leechPower = function(playerIndex, fromPlayer, amount, vpcost, roundnum, already, still, callback) {
   var doAutoLeech = function() {
     // Let an AI do the decisions for you.
-    (new AI).leechPower(playerIndex, fromPlayer, amount, vpcost, roundnum, already, still, callback);
+    newAI().leechPower(playerIndex, fromPlayer, amount, vpcost, roundnum, already, still, callback);
     return;
   }
 

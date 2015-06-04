@@ -1,4 +1,4 @@
-/* strategy2
+/* strategy3
 TM AI
 
 Copyright (C) 2013 by Lode Vandevenne
@@ -753,7 +753,8 @@ function getPossibleActions(player, restrictions) {
   var result = [];
   var tiles;
 
-  var orange = (player.getFaction().getActionIncome(player, A_POWER_SPADE)[R_SPADE] == 0); //orange factions (fire) don't get or use spades. Detect it in this more generic way rather than "player.woodcolor == O".
+  var orange = (player.getFaction().getActionIncome(player, A_POWER_SPADE)[R_SPADE] == 0); 
+  //orange factions (fire) don't get or use spades. Detect it in this more generic way rather than "player.woodcolor == O".
 
   //dig&build
   tiles = getReachableTransformableTiles(player, true /*costly: also support the tunneling and carpets*/, true);
@@ -764,6 +765,11 @@ function getPossibleActions(player, restrictions) {
 
     //Try digging in different ways
     var resources; //todo: support darklings priests, house of different price
+
+    if(player.faction == F_RIVERWALKERS ) {
+      var cost = [0,0,0,0,0];
+      addPossibleDigBuildActions(cost, player, restrictions, tiles[t], 0, A_BUILD, false, result);
+    }
 
     if(canTakeOctogonAction(player, A_POWER_2SPADE)) {
       if(orange) {
@@ -805,7 +811,7 @@ function getPossibleActions(player, restrictions) {
       //var cost = [0,0,0,0,0];
       var cost = player.getFaction().getTransformActionCost(player, A_TRANSFORM_SPECIAL2, tile);
       addPossibleDigBuildActions(cost, player, restrictions, tiles[t], dist, A_TRANSFORM_SPECIAL2, costly, result);
-    } else {
+    } else if (player.faction != F_RIVERWALKERS) {
       var cost = mulIncome(player.getActionCost(A_SPADE), dist);
       addPossibleDigBuildActions(cost, player, restrictions, tiles[t], dist, A_SPADE, costly, result);
     }

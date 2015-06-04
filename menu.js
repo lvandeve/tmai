@@ -38,6 +38,7 @@ each button fun receives the following object containing the dropdown states:
   bonustilepromo2013
   fireice
   turnorder: variable turn order
+  louAI: Lou New's AI
 }
 */
 function renderPreScreen(px, py, standardButtonFun, randomButtonFun, beginnerButtonFun, quickButtonFun) {
@@ -45,8 +46,9 @@ function renderPreScreen(px, py, standardButtonFun, randomButtonFun, beginnerBut
 
   makeText(px, py - 135, 'TM AI: Play TM against AI players.<br/>'
       + 'Programmed by Lode Vandevenne.<br/>'
+      + 'AI tweaks by Lou New.<br/>'
       + 'Drawings by Giordano Segatta.<br/>'
-      + 'version: v.20150315<br/>'
+      + 'version: v.20150509<br/>'
       + 'Links:<br/>'
       + 'TM on BGG: <a href="http://boardgamegeek.com/boardgame/120677/terra-mystica">http://boardgamegeek.com/boardgame/120677/terra-mystica</a><br/>'
       + 'Snellman: <a href="http://terra.snellman.net/">http://terra.snellman.net/</a><br/>'
@@ -61,9 +63,9 @@ function renderPreScreen(px, py, standardButtonFun, randomButtonFun, beginnerBut
   var startPlayerEl = makeLabeledDropDown(px + 95, ppy, 'Start Player', ['random', 'human', 'ai1', 'ai2', 'ai3', 'ai4'], parent);
   assignPreferenceToDropdown(startPlayerEl, preferences.startplayerdropdown);
 
-  var playerTypeDropDown = makeLabeledDropDown(px + 200, ppy, 'Player Type', ['Human vs AI', 'Observe'], parent);
-  playerTypeDropDown.title = 'Human vs AI: one human player versus AI players. Observe: All AI players.';
-  assignPreferenceToDropdown(playerTypeDropDown, preferences.playertypedropdown);
+  // It's a checkbox now. It used to be a dropdown with "Human vs AI" and "Observe". TODO: rename everything to checkbox and change the preference to boolean instead of int.
+  var playerTypeDropDown = makeCheckbox(px + 200, ppy, parent, 'Observe (only AIs play)', 'Disable to be able to play yourself against the AIs.');
+  playerTypeDropDown.checked = (preferences.playertypedropdown == 1);
 
   ppy += 50;
   var gameTypeDropDown = makeLabeledDropDown(px, ppy, 'Game Type', ['Standard', 'Random*', 'Beginner', 'Quick'], parent);
@@ -85,8 +87,11 @@ function renderPreScreen(px, py, standardButtonFun, randomButtonFun, beginnerBut
   var fireicecb = makeCheckbox(px, ppy + 72, parent, 'Fire & Ice expansion', 'Enable the fire & ice expansion. NOTE: With this checkbox disabled, you can still select expansion worlds, factions and scoring in the preset options below and it will work. Disabling this checkbox will prevent them from being chosen by "random" or by the faction choice in-game.');
   fireicecb.checked = preferences.fireice;
   // Variable turnorder by Lou
-  var turnordercb = makeCheckbox(px + 160, ppy + 72, parent, ' Variable Turn Order', 'Enable variable turn order expansion. NOTE: With this checkbox disabled, the original fixed turn order after the first player pass is used.');
+  var turnordercb = makeCheckbox(px + 160, ppy + 72, parent, 'Variable Turn Order', 'Enable variable turn order expansion. NOTE: With this checkbox disabled, the original fixed turn order after the first player pass is used.');
   turnordercb.checked = preferences.turnorder;
+
+  var louAIcb = makeCheckbox(px + 350, ppy + 72, parent, 'Lou New\'s AI (<font color="red">experimental!</font>)', 'Work-in-progress new AI by Lou New. This AI may be stronger and supports the expansion factions better. It is experimental, so may still contain bugs! May be better with some factions, have bugs with some others');
+  louAIcb.checked = preferences.louAI;
 
   ppy += 160;
   makeText(px, ppy, 'Preset* factions', parent).title = 'Override faction choice. Set to "choose" to choose the faction during the game according to normal game rules. Set to "random" to assign a random faction. Set to a given faction to assign that faction to this player';
@@ -179,7 +184,7 @@ function renderPreScreen(px, py, standardButtonFun, randomButtonFun, beginnerBut
       preferences.presetbonustiles[i] = bonusBoxes[i].checked;
     }
 
-    params.allai = (playerTypeDropDown.selectedIndex == 1);
+    params.allai = playerTypeDropDown.checked;
 
     params.finalscoring = thereIsOnlyOneFinalScoring ? 0 : (finalScoringDropdown.selectedIndex - 1);
 
@@ -188,15 +193,17 @@ function renderPreScreen(px, py, standardButtonFun, randomButtonFun, beginnerBut
     params.bonustilepromo2013 = bonustilepromo2013cb.checked;
     params.fireice = fireicecb.checked;
     params.turnorder = turnordercb.checked;
+    params.louAI = louAIcb.checked;
 
     preferences.newcultistsrule = newcultistcb.checked;
     preferences.towntilepromo2013 = towntilepromo2013cb.checked;
     preferences.bonustilepromo2013 = bonustilepromo2013cb.checked;
     preferences.fireice = fireicecb.checked;
     preferences.turnorder = turnordercb.checked;
+    preferences.louAI = louAIcb.checked;
 
     preferences.gametypedropdown = gameTypeDropDown.selectedIndex;
-    preferences.playertypedropdown = playerTypeDropDown.selectedIndex;
+    preferences.playertypedropdown = (playerTypeDropDown.checked ? 1 : 0);
     preferences.worldmapdropdown = worldMapEl.selectedIndex;
     preferences.finalscoringdropdown = thereIsOnlyOneFinalScoring ? 0 : finalScoringDropdown.selectedIndex;
 
@@ -213,6 +220,8 @@ function renderPreScreen(px, py, standardButtonFun, randomButtonFun, beginnerBut
 
   makeText(px, py + 480, '<h3>Documentation:</h3>' +
     '<h4>Updates</h4>' +
+    '<p>20150525: There is now a choice between the old AI, and Lou\'s new AI. The new AI is a work in progress! It is stronger than the old AI and works with the expansion factions, but is experimental so may have a few bugs.<p/>' +
+    '<p>20150509: AI tweaks by Lou New added.<p/>' +
     '<p>20150108: Riverwalkers added (possibly still with bugs).<p/>' +
     '<p>20141021: The alternate Fire & Ice world also added.<p/>' +
     '<p>20141019: Fire & Ice expansion: 4 of the 6 new factions added, new map and new final scorings. It is still somewhat beta (may contain bugs).<p/>' +
@@ -336,7 +345,8 @@ var preferences = {
   towntilepromo2013: true,
   bonustilepromo2013: true,
   fireice: true,
-  turnorder: false
+  turnorder: false,
+  louAI: false,
 };
 
 function assignPreferenceToDropdown(dropdown, value) {
@@ -365,6 +375,7 @@ function setLocalStorage() {
   localStorage['bonustilepromo2013'] = preferences.bonustilepromo2013;
   localStorage['fireice'] = preferences.fireice;
   localStorage['turnorder'] = preferences.turnorder;
+  localStorage['louAI'] = preferences.louAI;
 }
 
 //no longer a cookie, but html5 local storage
@@ -389,6 +400,7 @@ function getLocalStorage() {
   if(localStorage['bonustilepromo2013'] != undefined) preferences.bonustilepromo2013 = localStorage['bonustilepromo2013'] == 'true';
   if(localStorage['fireice'] != undefined) preferences.fireice = localStorage['fireice'] == 'true';
   if(localStorage['turnorder'] != undefined) preferences.turnorder = localStorage['turnorder'] == 'true';
+  if(localStorage['louAI'] != undefined) preferences.louAI = localStorage['louAI'] == 'true';
 }
 
 window.onbeforeunload = setLocalStorage;

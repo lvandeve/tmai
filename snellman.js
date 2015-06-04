@@ -40,7 +40,7 @@ this.lines[this.l]
 // maps from and to snellman tile, case insensitive
 var fromSnellmanTile = {
   'fav1' : T_FAV_3F, 'fav2' : T_FAV_3W, 'fav3' : T_FAV_3E, 'fav4' : T_FAV_3A, 'fav5' : T_FAV_2F_6TW,
-  'fav6' : T_FAV_2W_CULT, 'fav7' : T_FAV_2E_1PW1W, 'fav8' : T_FAV_2A_4PW, 'fav9' : T_FAV_1F_3C, 
+  'fav6' : T_FAV_2W_CULT, 'fav7' : T_FAV_2E_1PW1W, 'fav8' : T_FAV_2A_4PW, 'fav9' : T_FAV_1F_3C,
   'fav10' : T_FAV_1W_TPVP, 'fav11' : T_FAV_1E_DVP, 'fav12' : T_FAV_1A_PASSTPVP,
   'bon1' : T_BON_SPADE_2C, 'bon2' : T_BON_CULT_4C, 'bon3' : T_BON_6C, 'bon4' : T_BON_3PW_SHIP,
   'bon5' : T_BON_3PW_1W, 'bon6' : T_BON_PASSSHSAVP_2W, 'bon7' : T_BON_PASSTPVP_1W, 'bon8' : T_BON_1P,
@@ -156,7 +156,7 @@ function findSnellmanPlayersAndFactions(text) {
     if(!result[i][1]) result[i][1] = 'Player ' + (i + 1);
   }
 
-  
+
   return result;
 }
 
@@ -185,7 +185,7 @@ function filterSnellmanMoves(text, players, snellmanunittesttext) {
     var words = getWords(lines[i]);
     var factionname = words[0];
     if(factionname[factionname.length - 1] == ':') factionname = factionname.substr(0, factionname.length - 1);
-    
+
     var index = factiontoplayermap[factionname];
     if(index == undefined) continue;
 
@@ -397,7 +397,7 @@ SnellmanActor.prototype.doAction = function(playerIndex, callback) {
       var action = new Action(type);
       action.cult = cult;
       result.push(action);
-      
+
       i += (amount == 0 ? 2 : 4);
     }
     else if(word && word[0] == '+') {
@@ -528,7 +528,7 @@ SnellmanActor.prototype.doAction = function(playerIndex, callback) {
       } else {
         throw new Error('unknown water connect format: ' + line);
       }
-        
+
       if(co != null) {
         var action = new Action(A_CONNECT_WATER_TOWN);
         action.co = co;
@@ -565,7 +565,7 @@ SnellmanActor.prototype.leechPower = function(playerIndex /*receiver*/, fromPlay
     //globalSnellmanParseDone = true;
     addLog('player in snellman game did not choose whether to leech yet, doing substitute instead');
     //callback(playerIndex, false);
-    new AI().leechPower(playerIndex, fromPlayer, amount, vpcost, roundnum, already, still, callback);
+    newAI().leechPower(playerIndex, fromPlayer, amount, vpcost, roundnum, already, still, callback);
     return;
   }
 
@@ -736,7 +736,7 @@ SnellmanActor.prototype.chooseCultistTrack = function(playerIndex, callback) {
     //globalSnellmanParseDone = true;
     addLog('player in snellman game did not choose cultists track yet, doing substitute instead');
     //callback(playerIndex, C_F);
-    new AI().chooseCultistTrack(playerIndex, callback);
+    newAI().chooseCultistTrack(playerIndex, callback);
     return;
   }
 
@@ -891,7 +891,7 @@ function deSerializeGameStateSnellmanLog_(text) {
   initBoard();
 
   var players = findSnellmanPlayersAndFactions(text);
-  
+
   players.length;
   game.players.length = players.length;
 
@@ -952,7 +952,7 @@ function deSerializeGameStateSnellmanLog_(text) {
     var human = true;
     var player = game.players[i];
     player.human = human;
-    player.actor = human ? new Human() : new AI();
+    player.actor = human ? new Human() : newAI();
   }
 
   var result = clone(game);
@@ -960,7 +960,7 @@ function deSerializeGameStateSnellmanLog_(text) {
   result.state = state;
 
   snellmanunittesttext = snellmanunittesttext.replace(/\n/g, '\\n\\\n');
-  
+
   return result;
 }
 

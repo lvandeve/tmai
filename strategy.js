@@ -24,11 +24,13 @@ freely, subject to the following restrictions:
 */
 
 //strategy.js contains helper functions for the AI, however the functions here
-//are objective and contain no intelligence. For example a function to list all
-//possible actions for a player, to get the objective cost in VP's of an action
-//or resources, etc...
+//are objective (based on game rules), and contain no scorings or intelligence.
+//For example a function to list all possible actions for a player, find the
+//correct order to dig a certain tile, etc...
 //In addition, simple functions for automatic action creation are here, e.g. to
 //automatically choose 1, 2 or 3 steps on cult track
+
+
 
 //returns reachable land tiles that aren't occupied by any player
 //reachable for that player with adjecency, shipping, bridges.
@@ -134,11 +136,6 @@ function canGetNWorkers(player, n, preferp, maxburn, actions) {
   return true;
 }
 
-//Integer division because JS does floating point division by default
-function idiv(a, b) {
-  return Math.floor(a / b);
-}
-
 //av and pr are described inside canGetResources. Other parameters match canGetResources parameters.
 //returns cost
 function useCheapestResourceForWorker(av, pr, actions) {
@@ -184,7 +181,7 @@ function useCheapestResourceForCoin(av, pr, actions) {
     }
   }
   if(best < 0) throw new Error('invalid best');
-  
+
   av[best][0]--;
   pr.c++;
   if(best == 0) {
@@ -300,7 +297,7 @@ function canGetResources(player, resources, restrictions, actions) {
 
   // Prepare for C and W
   if(pr.c >= resources[0] && pr.w >= resources[1]) return true;
-  
+
   //the 5 available resources [w, p, pw, burn, vp], each with [amount, cost]
   var av = [];
   av[0] = [pr.w - resources[1], restrictions.w_cost];
@@ -415,21 +412,21 @@ function addPossibleDigBuildAction(resources, player, restrictions, co, dist, dw
     }
     //eliminate choices where tile color or location not allowed
     //  1. check color against acceptable list
-    //  2. check location againt river shipping of 1  
+    //  2. check location againt river shipping of 1
     if (player.faction == F_RIVERWALKERS) {
       var colorTile = getWorld(co[0], co[1]);
       var colorGood = player.colors[colorTile - R];
       if (!colorGood) return;
-      var reachGood = false; 
+      var reachGood = false;
       var tiles;
-      tiles = getFreeTilesReachableByShipping(player, 0);   
+      tiles = getFreeTilesReachableByShipping(player, 0);
       for(var i = 0; i < tiles.length; i++) {
         if (tiles[i][0] == co[0] && tiles[i][1] == co[1]) reachGood = true;
       }
-      tiles = getFreeTilesReachableByShipping(player, 1);   
+      tiles = getFreeTilesReachableByShipping(player, 1);
       for(var i = 0; i < tiles.length; i++) {
         if (tiles[i][0] == co[0] && tiles[i][1] == co[1]) reachGood = true;
-      } 
+      }
       if (!reachGood) return;
     }
     else if(dist > 0) {
@@ -441,7 +438,7 @@ function addPossibleDigBuildAction(resources, player, restrictions, co, dist, dw
         actions.push(action2);
       }
 
-      //LOU Spades and roundnum not available 
+      //LOU Spades and roundnum not available
       else if(type == A_TRANSFORM_SPECIAL2 ) {
         if ((player.pw0 + player.pw1 + player.pw2) <= 5 && state.round < 6 ) return;
         // if (!dwelling) return;
@@ -457,8 +454,8 @@ function addPossibleDigBuildAction(resources, player, restrictions, co, dist, dw
           else action2.cult = C_A;
         }
         actions.push(action2);
-     
-      } else {             
+
+      } else {
         //Spades
         actions.push(new Action(type));
 
@@ -505,7 +502,7 @@ function shUpgradeWithHalflings(player, restrictions, co, dwelling, result) {
 
   var resources = player.getFaction().getBuildingCost(B_SH, false);
   if(dwelling) sumIncome(resources, player.getFaction().getBuildingCost(B_D, false));
-  
+
   var actions = [];
   if(canGetResources(player, resources, restrictions, actions)) {
     var action = new Action(A_UPGRADE_SH);
@@ -843,7 +840,7 @@ function getPossibleActions(player, restrictions) {
         var co2 = bridgeCo(tiles[t][0], tiles[t][1], dirs[d], game.btoggle);
         if(outOfBounds(co2[0], co2[1])) continue;
         if(getBuilding(co2[0], co2[1])[1] == player.woodcolor && co2[1] > tiles[t][1]) continue; //avoid adding twice the same action with just swapped tiles
-        if (canHaveBridge(tiles[t][0], tiles[t][1], co2[0], co2[1], player.woodcolor)) {         
+        if (canHaveBridge(tiles[t][0], tiles[t][1], co2[0], co2[1], player.woodcolor)) {
           result.push(new Action(A_POWER_BRIDGE));
           var action2 = new Action();
           action2.type = A_PLACE_BRIDGE;
@@ -864,10 +861,10 @@ function getPossibleActions(player, restrictions) {
 
   /*
   //LOU add resource action for ShapeShifters to change shape for 3 PW or 3 token
-  if(player.faction == F_SHAPESHIFTERS && player.b_sh == 0 && player.pw2 >= 3) 
+  if(player.faction == F_SHAPESHIFTERS && player.b_sh == 0 && player.pw2 >= 3)
     addPossibleSimpleAction(player.getActionCost(A_SHIFT), player, restrictions, A_SHIFT, result);
   }
-  if(player.faction == F_SHAPESHIFTERS && player.b_sh == 0 && player.pw0+player.pw1 >= 3)) 
+  if(player.faction == F_SHAPESHIFTERS && player.b_sh == 0 && player.pw0+player.pw1 >= 3))
     addPossibleSimpleAction(player.getActionCost(A_SHIFT2), player, restrictions, A_SHIFT2, result);
   }
 
@@ -1003,359 +1000,6 @@ function goesTowardsNewTown(x, y, player) {
   if(cluster.power < 3) return false;
   if(cluster.power + 1 >= getTownReqPower(player)) return false; //also return false if it actually does form a town, because other type of scoring is used for that
   return true;
-}
-
-
-//Scores a series of actions (but with exactly one turn action, the others are optional and can be things like converting power to coins)
-//TODO: split up in action effect/cost score, and, threatened by other player score
-//returns the action score in VP's, in an objective way. During the last round this can be quite accurate, during earlier rounds the AI needs to provide some own parameters and logic.
-/*
-values has the following type:
-{
-  vp: what pure vp's are worth to you during this round
-  c: coin VP value (typically: 0.33 in round 1, 0.33 in round 6)
-  w: worker VP value (typically: 1 in round 1, 0.33 in round 6)
-  p: priest VP value (typically: 1.66 in round 1, 0.33 in round 6)
-  pw: power use VP value (income is this / 2) (typically: 0.5 or so in round 1, 0.33 in round 6) --> power income value is half that due to the bowl system
-  shipping: value of having next shipping level in VP
-  digging: value of having next digging level in VP
-  b_d: dwelling (and owning new piece of land) VP value
-  b_tp: trading post upgrade VP value
-  b_te: temple upgrade VP value
-  b_sh: stronghold upgrade VP value
-  b_sa: santuary upgrade VP value
-  t_fav: favor tile
-  t_tw: town tile (and forming town). NOTE: scoreAction does NOT add the VP's or resources on the town tile itself to that (because it doesn't know which tile the AI will pick).
-  burn: burn VP value (typically 0 or negative)
-  bridge: bridge VP value (assuming good placement, which is the AI's responsability)
-  conbridge: bridge VP value for bridge connecting two buildings of the players color (for engineers)
-  forbridge: VP value for creating a potential bridge spot (that is, placing a building correctly over water) (for engineers)
-  dig: dig VP value (assuming dig in good location, which is the AI's responsability)  TODO: rename this spade
-  cultspade: value of future cult bonus dig
-  cult[[4][4][4]]: value of fire,water,earth,air cult tracks for the AI. This function takes power gain and cult round bonuses into account, but NOT cult track VPs. That is what the AIs should fill in here.
-  p_gone: cost of priest permanently gone to cult track (in negative VP)
-  existingtown: when doing anything that incrases an existing town's size (which is not useful, so make this number negative)
-  towardstown: making an existing cluster (that has at least 3 power) bigger to be closer to a town (TODO: never do this in a too small cluster that is locked in)
-  interacts: it's a new dwelling that interacts with another player, that is good because it is a good TP upgrade target, plus may steal a good spot from them
-  shift: value for SHAPESHIFTERS using 3pw to change color
-  shift2: value for SHAPESHIFTERS using 3tokens to change color
-  specific: object containing extra score for specific actions (by type), e.g. {A_BURN, A_POWER_7C}
-
-  TODO: score for:
-  -get closer to forming town:
-  --making cluster of amount 2, 3, 4
-  --making cluster of power 4, 5, 6
-  --making an existing town bigger (can have negative value to discourage such useless move)
-  --making a new cluster (a new dwelling in a remote location)
-  
-}
-To avoid an escalation of value magnitudes, always try to use "VP" as unit for each value. How much VP do you think that action during that round will cause at the end of the game?
-The AI should set these based on the round. E.g. in round 6, a coin is worth pretty much 0.33 VP due to
-the end game conversion, while in round 1 a coin is worth more because it can still be potentially used
-for so much. Shipping VP worth can, for example, be calculated from how many easy to dig tiles are at
-that location, and so on.
-Values should also include round and faction VP bonuses, so the AI can choose how valuable it finds those (e.g. in a round where TP gives 3VP, add 3 to b_tp in values). TODO: don't require this, auto add round and faction bonuses etc... and allow specifying their worth
-*/
-function scoreAction(player, actions, values, roundnum) {
-  //TODO: keep round and bonus tile scoring into account. They count as VP.
-
-  var res = [0,0,0,0,0];
-  var shipping = 0;
-  var digging = 0; //advance dig
-  var b_d = 0;
-  var b_tp = 0;
-  var b_te = 0;
-  var b_sh = 0;
-  var b_sa = 0;
-  var t_fav = 0;
-  var t_tw = 0;
-  var burn = 0;
-  var bridge = 0;
-  var conbridge = 0;
-  var forbridge = 0;
-  var cult = [0,0,0,0];
-  var p_gone = 0;
-  var dig = 0; //any dig
-  var spades = 0; //digs that count for dig round bonus VP
-  var workerdig = 0; //digs that cost resources (count as darklings VP)
-  var cultspades = 0; //future cult round bonus digs
-  var spec = 0;
-  var existingtown = 0;
-  var towardstown = 0;
-  var interacts = 0;
-  var shift = 0;    //SHAPESHIFTERS
-  var shift2 = 0;   //SHAPESHIFTERS
-  //TODO: bonus/favor/town tiles bonus
-  for(var i = 0; i < actions.length; i++) {
-    var action = actions[i];
-    var type = action.type;
-    if(type == A_BURN) {
-      burn++;
-    } else if(type == A_CONVERT_1PW_1C) {
-      res[3]--;
-      res[0]++;
-    } else if(type == A_CONVERT_3PW_1W) {
-      res[3] -= 3;
-      res[1]++;
-    } else if(type == A_CONVERT_5PW_1P) {
-      res[3] -= 5;
-      res[2]++;
-    } else if(type == A_CONVERT_1P_1W) {
-      res[2]--;
-      res[1]++;
-    } else if(type == A_CONVERT_1W_1C) {
-      res[1]--;
-      res[0]++;
-    } else if(type == A_CONVERT_1VP_1C) {
-      res[4]--;
-      res[0]++;
-    } else if(type == A_CONVERT_2C_1VP) {
-      res[0] -= 2;
-      res[4]++;
-    } else if(type == A_POWER_1P) {
-      res[3] -= 3;
-      res[2]++;
-    } else if(type == A_POWER_2W) {
-      res[3] -= 4;
-      res[1] += 2;
-    } else if(type == A_POWER_7C) {
-      res[3] -= 4;
-      res[0] += 7;
-    } else if(type == A_SPADE) {
-      subtractIncome(res, player.getActionCost(A_SPADE));
-      spades++;
-      workerdig++;
-    } else if(type == A_BONUS_SPADE) {
-      spades++;
-    } else if(type == A_POWER_SPADE) {
-      res[3] -= 4;
-      spades++;
-    } else if(type == A_POWER_2SPADE) {
-      res[3] -= 6;
-      spades += 2;
-    } else if(type == A_TRANSFORM_CW || type == A_TRANSFORM_CCW || type == A_TRANSFORM_SPECIAL) {
-      dig++;
-    } else if(type == A_GIANTS_TRANSFORM || type == A_TRANSFORM_SPECIAL2) {
-      dig += 2; //TODO: use color distance
-    } else if(type == A_SANDSTORM) {
-      dig++; //TODO: use color distance
-      if(touchesExistingTown(action.co[0], action.co[1], player.woodcolor)) existingtown++;
-      if(goesTowardsNewTown(action.co[0], action.co[1], player)) towardstown++;
-    } else if(type == A_BUILD || type == A_WITCHES_D) {
-      if(type == A_BUILD) subtractIncome(res, player.getFaction().getBuildingCost(B_D, false));
-      b_d++;
-      if(touchesExistingTown(action.co[0], action.co[1], player.woodcolor)) existingtown++;
-      if(goesTowardsNewTown(action.co[0], action.co[1], player)) towardstown++;
-      if(hasNeighbor(action.co[0], action.co[1], player.woodcolor)) interacts++;
-      if(values.forbridge != 0) {
-        var x = action.co[0];
-        var y = action.co[1];
-        var dirs = [D_N, D_NE, D_SE, D_S, D_SW, D_NW];
-        for(var j = 0; j < dirs.length; j++) {
-          var co = bridgeCo(x, y, dirs[j], game.btoggle);
-          if(outOfBounds(co[0], co[1])) continue;
-          if(canHaveBridge(x, y, co[0], co[1], player.color) && isOccupiedBy(co[0], co[1], player.woodcolor)) forbridge++;
-        }
-      }
-    } else if(type == A_UPGRADE_TP) {
-      subtractIncome(res, player.getFaction().getBuildingCost(B_TP, hasNeighbor(action.co[0], action.co[1], player.woodcolor)));
-      b_tp++;
-      if(touchesExistingTown(action.co[0], action.co[1], player.woodcolor)) existingtown++;
-      if(goesTowardsNewTown(action.co[0], action.co[1], player)) towardstown++;
-    } else if(type == A_SWARMLINGS_TP) {
-      b_tp++;
-      if(touchesExistingTown(action.co[0], action.co[1], player.woodcolor)) existingtown++;
-      if(goesTowardsNewTown(action.co[0], action.co[1], player)) towardstown++;
-    } else if(type == A_UPGRADE_TE) {
-      subtractIncome(res, player.getFaction().getBuildingCost(B_TE, false));
-      b_te++;
-      //no size increase so no "touchesExistingTown" test here
-    } else if(type == A_UPGRADE_SH) {
-      subtractIncome(res, player.getFaction().getBuildingCost(B_SH, false));
-      b_sh++;
-      if(touchesExistingTown(action.co[0], action.co[1], player.woodcolor)) existingtown++;
-      //if(goesTowardsNewTown(action.co[0], action.co[1], player)) towardstown++;
-    } else if(type == A_UPGRADE_SA) {
-      subtractIncome(res, player.getFaction().getBuildingCost(B_SA, false));
-      b_sa++;
-      if(touchesExistingTown(action.co[0], action.co[1], player.woodcolor)) existingtown++;
-      //if(goesTowardsNewTown(action.co[0], action.co[1], player)) towardstown++;
-    } else if(type == A_CULT_PRIEST3) {
-      // TODO: power income of those (note that it's half the pw value)
-      res[2]--;
-      p_gone++;
-      cult[action.cult] += 3;
-    } else if(type == A_CULT_PRIEST2) {
-      res[2]--;
-      p_gone++;
-      cult[action.cult] += 2;
-    } else if(type == A_CULT_PRIEST1) {
-      res[2]--;
-      cult[action.cult] += 1;
-    } else if(type == A_BONUS_CULT) {
-      cult[action.cult] += 1;
-    } else if(type == A_FAVOR_CULT) {
-      cult[action.cult] += 1;
-    } else if(type == A_AUREN_CULT) {
-      cult[action.cult] += 2;
-    } else if(type == A_ADV_SHIP) {
-      subtractIncome(res, player.getActionCost(A_ADV_SHIP));
-      res[4] += getAdvanceShipVP(player);
-      shipping++;
-    } else if(type == A_ADV_DIG) {
-      subtractIncome(res, player.getActionCost(A_ADV_DIG));
-      res[4] += getAdvanceDigVP(player);
-      digging++;
-    } else if(type == A_POWER_BRIDGE || type == A_ENGINEERS_BRIDGE) {
-      if(type == A_POWER_BRIDGE) res[3] -= 3;
-      else res[1] -= 2;
-      bridge++;
-      //connected?
-      if(isBridgeSelfConnected(action.cos[0][0], action.cos[0][1], action.cos[1][0], action.cos[1][1])) conbridge++;
-    } else if(type == A_TUNNEL) {
-      res[4] += 4;
-    } else if(type == A_CARPET) {
-      res[4] += 4;
-    } else if(type == A_SHIFT) {
-      res[3] -= 3;
-      shift++;
-    } else if(type == A_SHIFT2) {
-      // remove tokens from pw0 and pw1
-      shift2++;
-    }
-
-    t_fav += action.favtiles.length;
-    t_tw += action.twtiles.length;
-
-    if(values.specific[action.type]) spec += values.specific[action.type];
-  }
-
-  if(cult[0] || cult[1] || cult[2] || cult[3]) {
-    //cap the cults to max of cult track
-    for(var i = C_F; i <= C_A; i++) {
-      var total = cult[i];
-      var actual = willGiveCult(player, i, total);
-      if(t_tw && player.cult[i] + actual == 9 && total > actual) actual++; //new town key not known by willGiveCult
-      cult[i] = actual;
-
-      res[3] += cultPower(player.cult[i], player.cult[i] + actual);
-    }
-
-    var oldcult = player.cult;
-    var newcult = [player.cult[0] + cult[0], player.cult[1] + cult[1], player.cult[2] + cult[2], player.cult[3] + cult[3]];
-    var cultincome = getAllComingCultRoundBonuses(oldcult, newcult);
-    sumIncome(res, cultincome[0]);
-    cultspades += cultincome[1];
-  }
-
-  // TODO: I don't think all bonuses are in here yet
-  var roundtile = game.roundtiles[roundnum];
-  if(roundtile == T_ROUND_TP3VP_4W1DIG || roundtile == T_ROUND_TP3VP_4A1DIG) {
-    res[4] += b_tp * 3;
-  }
-  if(player.favortiles[T_FAV_1W_TPVP]) {
-    res[4] += b_tp * 3;
-  }
-  if(roundtile == T_ROUND_D2VP_4W1P || roundtile == T_ROUND_D2VP_4F4PW) {
-    res[4] += b_d * 2;
-  }
-  if(player.favortiles[T_FAV_1E_DVP]) {
-    res[4] += b_d * 2;
-  }
-  if(roundtile == T_ROUND_DIG2VP_1E1C) {
-    res[4] += spades * 2;
-  }
-  if(player.faction == F_HALFLINGS) {
-    res[4] += spades;
-  }
-  if(player.faction == F_DARKLINGS) {
-    res[4] += workerdig * 2;
-  }
-  if(roundtile == T_ROUND_SHSA5VP_2F1W || roundtile == T_ROUND_SHSA5VP_2A1W) {
-    res[4] += (b_sh + b_sa) * 4;
-  }
-
-  var result = 0;
-  result += res[0] * values.c;
-  result += res[1] * values.w;
-  result += res[2] * values.p;
-  result += res[3] * values.pw;
-  result += res[4] * values.vp;
-  result += shipping * values.shipping;
-  result += digging * values.digging;
-  result += b_d * values.b_d;
-  result += b_tp * values.b_tp;
-  result += b_te * values.b_te;
-  result += b_sh * values.b_sh;
-  result += b_sa * values.b_sa;
-  result += t_fav * values.t_fav;
-  result += t_tw * values.t_tw;
-  result += burn * values.burn;
-  result += bridge * values.bridge;
-  result += conbridge * values.conbridge;
-  result += forbridge * values.forbridge;
-  result += dig * values.dig;
-  result += cultspades * values.cultspade;
-  for(var i = C_F; i <= C_A; i++) {
-    var num = cult[i];
-    if(num == 1) result += values.cult[0][i];
-    else if(num == 2) result += values.cult[1][i];
-    else if(num == 3) result += values.cult[2][i];
-    else if(num > 3) result += values.cult[2][i] + (num - 3) * values.cult[0][i];
-  }
-  result += p_gone * values.p_gone;
-  result += spec;
-  result = Math.max(Math.min(1, result), result + existingtown * values.existingtown); //don't overpenalize this one
-  result += towardstown * values.towardstown;
-  result += interacts * values.interacts;
-  result += shift * values.shift;
-  result += shift2 * values.shift2;
-  return result;
-}
-
-//how close are neighbor tiles to the given color, up to distance 3.
-//occupied tiles don't count
-//center tile counts if center is true
-//equal ==> +3. 1 dig ==> +2. distance > 1 ==> -(distance - 1)
-//TODO: take giants and nomads into account here, for them these distances don't (always) matter
-function scoreTileDigEnvironment(player, tx, ty, color, center) {
-  var score = 0;
-  for(var y = ty - 3; y <= ty + 3; y++)
-  for(var x = tx - 3; x <= tx + 3; x++)
-  {
-    if(!center && x == tx && y == ty) continue;
-    if(outOfBounds(x, y)) continue;
-    var dist = hexDist(x, y, tx, ty);
-    if(dist > 3) continue;
-    var color2 = getWorld(x, y);
-    if(color2 != I) {
-      var colordist = digDist(player, color, color2);
-      var colorscore = dist == 0 ? 4 : 3 - colordist;
-      if(colordist <= 1) score += Math.max(0, colorscore - dist + 1);
-    }
-  }
-  return score;
-}
-
-//TODO: here, too, giant and nomad enemy
-function scoreTileEnemyEnvironment(tx, ty, color, center) {
-  var score = 0;
-  for(var y = ty - 3; y <= ty + 3; y++)
-  for(var x = tx - 3; x <= tx + 3; x++)
-  {
-    if(!center && x == tx && y == ty) continue;
-    if(outOfBounds(x, y)) continue;
-    var dist = hexDist(x, y, tx, ty);
-    if(dist > 3) continue;
-    if(getBuilding(x, y)[0] != B_NONE) {
-      var color2 = getBuilding(x, y)[1];
-      var colordist = colorDist(color, color2);
-      if(colordist == 1) score -= Math.max(0, 3 - dist + 1);
-      else if(colordist == 2) score -= Math.max(0, 1 - dist + 1);
-      else if(colordist == 3) score += Math.max(0, 1 - dist + 1); //these are actually nice to have as neighbors
-    }
-  }
-  return score;
 }
 
 

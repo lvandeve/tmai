@@ -90,6 +90,9 @@ var State = function() {
   this.currentOrder = 0;  //turn position in the order list
   this.passOrder = 0;     //turn position of next pass
   this.turnMatrix = [[],[]];   //current round, next round
+
+  // if true, when a new game initializes, AI's get Lou's AI instead of Lode's AI. TODO: maybe later allow selecting individual AI of every bot
+  this.louAI = false;
 };
 
 function logPlayerNameFun(player) {

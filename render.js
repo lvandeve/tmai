@@ -1817,7 +1817,7 @@ function drawDebugActions(pindex, px, py) {
   button = makeLinkButton(px + 380, py + 16, 'allai', uiElement);
   button.style.color = DEBUGBUTTONCOLOR;
   button.onclick = function() {
-    for(var i = 0; i < game.players.length; i++) game.players[i].actor = new AI();
+    for(var i = 0; i < game.players.length; i++) game.players[i].actor = newAI();
   };
 
   button = makeLinkButton(px + 410, py + 16, 'altco', uiElement);

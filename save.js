@@ -584,7 +584,7 @@ function deSerializeGameStateNewFormat(text) {
     player.name = el[0];
     player.human = (el[1] == 'human');
     if(player.human) player.actor = new Human();
-    else player.actor = new AI();
+    else player.actor = newAI();
     player.setFaction(codeNameToFaction(el[2]));
     player.color = codeNameToColor[el[3]];
     player.auxcolor = (el.length > 4 ? codeNameToColor[el[4]] : player.color);

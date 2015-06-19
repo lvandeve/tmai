@@ -26,11 +26,12 @@ freely, subject to the following restrictions:
 //strategy.js contains helper functions for the AI, however the functions here
 //are objective (based on game rules), and contain no scorings or intelligence.
 //For example a function to list all possible actions for a player, find the
-//correct order to dig a certain tile, etc...
+//correct order to dig a certain tile, etc... 
 //In addition, simple functions for automatic action creation are here, e.g. to
 //automatically choose 1, 2 or 3 steps on cult track
 
-
+newColor = 0; //for shapeshifters (improve this method of communication)
+useToken = 0; //for shapeshifters
 
 //returns reachable land tiles that aren't occupied by any player
 //reachable for that player with adjecency, shipping, bridges.
@@ -587,6 +588,21 @@ function addPossibleSimpleAction(resources, player, restrictions, type, result) 
   return a;
 }
 
+//color action - only consumes resources and changes the aux color
+//returns the one action object that has the given type, or empty object if none
+function addPossibleColorAction(resources, player, restrictions, type, color, result) {
+  var actions = [];
+  var a = {};
+  if(canGetResources(player, resources, restrictions, actions)) {
+    a = new Action(type);
+    a.color = color;
+    actions.push(a);
+    result.push(actions);
+  }
+  return a;
+}
+
+
 //function called when an extra dig is needed, e.g. when building halflings stronghold. The output must be pushed to digco and buildco.
 //this default implementation is terribly bad, just digs in the first tile encountered
 //numbuild must be 0 or 1 and <= numdig
@@ -845,8 +861,10 @@ function getPossibleActions(player, restrictions) {
       for (var d = 0; d < dirs.length; d++) {
         var co2 = bridgeCo(tiles[t][0], tiles[t][1], dirs[d], game.btoggle);
         if(outOfBounds(co2[0], co2[1])) continue;
-        if(getBuilding(co2[0], co2[1])[1] == player.woodcolor && co2[1] > tiles[t][1]) continue; //avoid adding twice the same action with just swapped tiles
-        if (canHaveBridge(tiles[t][0], tiles[t][1], co2[0], co2[1], player.woodcolor)) {
+        if(getBuilding(co2[0], co2[1])[1] == player.woodcolor && co2[1] > tiles[t][1]) continue; 
+        //avoid adding twice the same action with just swapped tiles
+
+        if (canHaveBridge(tiles[t][0], tiles[t][1], co2[0], co2[1], player.woodcolor)) {         
           result.push(new Action(A_POWER_BRIDGE));
           var action2 = new Action();
           action2.type = A_PLACE_BRIDGE;
@@ -865,16 +883,17 @@ function getPossibleActions(player, restrictions) {
   if(!game.octogons[A_POWER_2W]) addPossibleSimpleAction(player.getActionCost(A_POWER_2W), player, restrictions, A_POWER_2W, result);
   if(!game.octogons[A_POWER_7C]) addPossibleSimpleAction(player.getActionCost(A_POWER_7C), player, restrictions, A_POWER_7C, result);
 
-  /*
-  //LOU add resource action for ShapeShifters to change shape for 3 PW or 3 token
-  if(player.faction == F_SHAPESHIFTERS && player.b_sh == 0 && player.pw2 >= 3)
-    addPossibleSimpleAction(player.getActionCost(A_SHIFT), player, restrictions, A_SHIFT, result);
+  //LOU add resource action to change shape for 3 PW or 3 token (remove tokens later)
+  if(player.faction == F_SHAPESHIFTERS && player.b_sh == 0 ) {
+    var color = newColor;
+    var token = useToken;
+    if(color > 0) { 
+      addPossibleColorAction([0,0,0,3,0], player, restrictions, A_SHIFT, color, result);
+    }
+    if(color > 0 && token > 0) { 
+      addPossibleColorAction([0,0,0,0,0], player, restrictions, A_SHIFT2, color, result);
+    }
   }
-  if(player.faction == F_SHAPESHIFTERS && player.b_sh == 0 && player.pw0+player.pw1 >= 3))
-    addPossibleSimpleAction(player.getActionCost(A_SHIFT2), player, restrictions, A_SHIFT2, result);
-  }
-
-  */
 
   //advance actions
   if(canAdvanceShip(player)) addPossibleSimpleAction(player.getActionCost(A_ADV_SHIP), player, restrictions, A_ADV_SHIP, result);

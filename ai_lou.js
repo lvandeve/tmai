@@ -1,4 +1,4 @@
-/*  ai6.js
+/*  ailou3.js
 TM AI
 
 Copyright (C) 2013 by Lode Vandevenne
@@ -37,6 +37,7 @@ inherit(AILou, Actor);
 AILou.xfaction = 0;
 AILou.ybonus = 0;
 AILou.yfavor = 0;
+AILou.info = false;  //information please, print extra processing data in output file
 
 //LOU function to convert power (usually to coins) to avoid power overflow
 //LOU Check for power income and compare against bowls
@@ -276,8 +277,9 @@ AILou.prototype.updateScoreActionValues_ = function(player, roundnum) {
     existingtown: -2,
     towardstown: 5,
     interacts: 1,
-    shift: 0,    //SHAPESHIFTERS
-    shift2: 0,   //SHAPESHIFTERS
+    networkcon: state.fireice ? 4 : 2,  //network connectivity value in VP per build
+    shift: 0,    //SHAPESHIFTERS power3
+    shift2: 0,   //SHAPESHIFTERS token3
     specific: {},
     };
 
@@ -345,10 +347,10 @@ AILou.prototype.updateScoreActionValues_ = function(player, roundnum) {
       if(built_tp(player) == 0) s.b_tp += 50;
       s.b_sh += 50;
       // But it should still do these first
-      if(pow_7c > 0) s.specific[A_POWER_7C] = 50 + pow_7c;
-      if(pow_2w > 0) s.specific[A_POWER_2W] = 50 + pow_2w;
-      if(pow_dig1 > 0) s.specific[A_POWER_SPADE] = 50 + pow_dig1;
-      if(pow_dig2 > 0) s.specific[A_POWER_2SPADE] = 50 + pow_dig2;
+      if(pow_7c > 0) s.specific[A_POWER_7C] = 20 + pow_7c;
+      if(pow_2w > 0) s.specific[A_POWER_2W] = 20 + pow_2w;
+      if(pow_dig1 > 0) s.specific[A_POWER_SPADE] = 20 + pow_dig1;
+      if(pow_dig2 > 0) s.specific[A_POWER_2SPADE] = 20 + pow_dig2;
     }
   };
 
@@ -358,7 +360,7 @@ AILou.prototype.updateScoreActionValues_ = function(player, roundnum) {
       if(built_tp(player) == 0) s.b_tp += 10;
       s.b_te += 10;
       // But it should still do these first
-      if(pow_7c > 0) s.specific[A_POWER_7C] = 20 + pow_7c;
+      if(pow_7c > 0) s.specific[A_POWER_7C] = player.c > 10 ? 4 : 12 + pow_7c;
       if(pow_2w > 0) s.specific[A_POWER_2W] = 20 + pow_2w;
       if(pow_dig1 > 0) s.specific[A_POWER_SPADE] = 20 + pow_dig1;
       if(pow_dig2 > 0) s.specific[A_POWER_2SPADE] = 20 + pow_dig2;
@@ -370,10 +372,10 @@ AILou.prototype.updateScoreActionValues_ = function(player, roundnum) {
     if(player.shipping == num_ship-1) {
       s.shipping += 10;
       // But it should still do these first
-      if(pow_7c > 0) s.specific[A_POWER_7C] = 20 + pow_7c;
-      if(pow_2w > 0) s.specific[A_POWER_2W] = 20 + pow_2w;
-      if(pow_dig1 > 0) s.specific[A_POWER_SPADE] = 20 + pow_dig1;
-      if(pow_dig2 > 0) s.specific[A_POWER_2SPADE] = 20 + pow_dig2;
+      if(pow_7c > 0) s.specific[A_POWER_7C] = player.c > 10 ? 4 : 12 + pow_7c;
+      if(pow_2w > 0) s.specific[A_POWER_2W] = 12 + pow_2w;
+      if(pow_dig1 > 0) s.specific[A_POWER_SPADE] = 14 + pow_dig1;
+      if(pow_dig2 > 0) s.specific[A_POWER_2SPADE] = 14 + pow_dig2;
     }
   };
 
@@ -424,9 +426,8 @@ AILou.prototype.updateScoreActionValues_ = function(player, roundnum) {
     }
     if(roundnum > 4) makeShipping(1,10,0,0,0)
     if(player.pw2 >= 4) s.specific[A_POWER_7C] = player.c < 9 ? 12 : 6;
-    if(player.p == 0 && roundnum == 6) s.specific[A_POWER_1P] = 20;
-    if(player.c <= 8 && roundnum == 6) s.specific[A_POWER_7C] = 30;
-  }
+    if(player.p == 0 && roundnum == 6) s.specific[A_POWER_1P] = 8;
+   }
 
   //look for spade>>2 in round 4
   if(player.faction == F_HALFLINGS) {
@@ -449,9 +450,10 @@ AILou.prototype.updateScoreActionValues_ = function(player, roundnum) {
   }
 
   if(player.faction == F_ALCHEMISTS) {
-    makeSHEssential(10, 10, 0, player.w > 6 ? 15 : 0);
+    makeSHEssential(5, 10, 0, player.w > 6 ? 15 : 0);
     if(roundnum < 6) s.b_d += 2; //because alchemists will be low on workers
     if(roundnum > 4) makeShipping(1,0,0,0,0);
+    s.specific[A_POWER_7C] = 0; //alchemists can get coin from VP
   }
 
   if(player.faction == F_DARKLINGS) {
@@ -498,6 +500,7 @@ AILou.prototype.updateScoreActionValues_ = function(player, roundnum) {
   // most SH start (72%) with 3D, but TE does better
   if(player.faction == F_AUREN) {
     if(roundnum > 4) makeShipping(1,0,0,0,0);
+    s.specific[A_POWER_7C] -= 3;
   }
 
   //build SH (50%) soon
@@ -544,6 +547,7 @@ AILou.prototype.updateScoreActionValues_ = function(player, roundnum) {
     if(built_te(player) >= 2 ) s.b_sh += 9;
     if(roundnum > 2) makeTemple(1,0,0,0,0);
     if(roundnum > 4) makeShipping(1,0,0,0,0);
+    s.specific[A_POWER_7C] -= 3;
   }
 
   //TE first (55%), or SH(23%); has higher value for PW, better with SH
@@ -575,11 +579,28 @@ AILou.prototype.updateScoreActionValues_ = function(player, roundnum) {
   }
 
   if(player.faction == F_SHAPESHIFTERS) {
-    //TODO allow AI action when SH is built to spend 3 tokens or 3 power to change color for build
-    //makeSHEssential(0, 0, 0, 0);
+    if(player.bonustile == T_BON_3PW_SHIP || player.bonustile == T_BON_PASSDVP_2C) {
+    } else {
+    //TODO allow AI action when SH is built to spend 3 tokens or 3 power to change free color
+    makeSHEssential(0, 0, 0, 0);
     if(roundnum > 3) makeTemple(1,0,0,0,0);
     if(roundnum > 4) makeShipping(1,0,0,0,0);
+    }
     if(roundnum < 6) s.b_sa = 1;
+    s.specific[A_POWER_7C] -= 2;
+    s.specific[A_POWER_2W] -= 1;
+    if(player.b_sh == 0) {
+      var oldColor = player.auxcolor;
+      newColor = oldColor;   //from strategy.js       
+      useToken = 0;          //from strategy.js
+      var result = AILou.getNewAuxColor(player, oldColor); //get shift color and value
+      if(result >= 2 && player.pw2 >= 3) s.shift = result + 8;
+      else if(result >= 2 && player.pw2 == 2) s.shift = result + 4; 
+      if(roundnum == 6 && player.pw0+player.pw1 >= 3) {
+        s.shift2 = 6; // will get 2VP at end even if not used
+        useToken = 3;
+      }
+    } 
   }
 
   if(player.faction == F_RIVERWALKERS) {
@@ -600,7 +621,7 @@ AILou.prototype.updateScoreActionValues_ = function(player, roundnum) {
     s.b_d += 4;
     if(roundnum > 5) s.b_d += 2;
 
-    //must use power if full or less than replacement
+    //must use power if full or less than replacement (SPADE not allowed)
     if(roundnum > 4 && (player.pw0 + player.pw1) <= 1) {
       if(player.c > 2*player.w) {
         s.specific[A_POWER_2W] += 10;
@@ -664,26 +685,28 @@ Rating	Name	        Games
   var adjustCoin = 0;
 
   //get more coin if needed
-  var restrictions = clone(defaultRestrictions);
-  var actions = getPossibleActions(player, restrictions);
-  if((player.c < 10) && (player.getFaction().canTakeAction(player, A_POWER_7C, game))) {
-    s.specific[A_POWER_7C] = 50;
+  //extra. var restrictions = clone(defaultRestrictions);
+  //extra. var actions = getPossibleActions(player, restrictions);
+  if((player.c < 4) && (player.getFaction().canTakeAction(player, A_POWER_7C, game))) {
+    s.specific[A_POWER_7C] += 10;
   } else {
-  if(player.c == 3 && player.p > 0 && player.pw2 > 0) adjustCoin = 1;
-  if(player.c == 7 && player.p > 1 && player.pw2 > 0) adjustCoin = 1;
+  if(player.c == 3 && player.p > 0 && (player.pw2 > 0 || player.w > 0)) adjustCoin = 1;
+  if(player.c == 2 && player.p > 0 && (player.pw2 > 1 || player.w > 1)) adjustCoin = 2;
+  if(player.c == 1 && player.p > 0 && (player.pw2 > 2 || player.w > 2)) adjustCoin = 3;
+  if(player.c == 7 && player.p > 1 && (player.pw2 > 0 || player.w > 0)) adjustCoin = 1;
 
   //determine value of more shipping
   if(player.p > 0 && player.c > (3-adjustCoin) && player.shipping < 3) {
-    //addLog('INFO: AI endship for: ' + logPlayerNameFun(player) );
-     scoreProjection = projectEndGameScores();
+    if(AILou.info) addLog('INFO: AI endship for: ' + logPlayerNameFun(player) );
+    scoreProjection = projectEndGameScores();
     scoreNow = scoreProjection[player.index];
-    //addLog('INFO: AI computing scoreNow: ' + scoreNow);
+    if(AILou.info) addLog('INFO: AI computing scoreNow: ' + scoreNow);
     player.p--;
     player.c -= 4;
     player.shipping++;
     scoreProjection = projectEndGameScores();
     scoreShip1 = scoreProjection[player.index];
-    //addLog('INFO: AI computing scoreShip '+ player.shipping +': ' + scoreShip1);
+    if(AILou.info) addLog('INFO: AI computing scoreShip '+ player.shipping +': ' + scoreShip1);
     if (scoreShip1[0] > (scoreNow[0] + 6)) {
       reserveOneShip = scoreShip1[0] - scoreNow[0];
     }
@@ -693,7 +716,7 @@ Rating	Name	        Games
       player.shipping++;
       scoreProjection = projectEndGameScores();
       scoreShip2 = scoreProjection[player.index];
-      //addLog('INFO: AI computing scoreShip '+ player.shipping +': ' + scoreShip2);
+      if(AILou.info) addLog('INFO: AI computing scoreShip '+ player.shipping +': ' + scoreShip2);
       if (scoreShip2[0] > (scoreShip1[0] + 8)
         && scoreShip2[0] > (scoreNow[0] + 10) ) {
         reserveTwoShip = scoreShip2[0] - scoreShip1[0];
@@ -705,7 +728,7 @@ Rating	Name	        Games
       player.shipping++;
       scoreProjection = projectEndGameScores();
       scoreShip3 = scoreProjection[player.index];
-      //addLog('INFO: AI computing scoreShip 3: '+ scoreShip3);
+      if(AILou.info) addLog('INFO: AI computing scoreShip 3: '+ scoreShip3);
       if (scoreShip3[0] > (scoreShip2[0] + 10)
         && scoreShip3[0] > (scoreShip1[0] + 12)
         && scoreShip3[0] > (scoreNow[0] + 14)  ) {
@@ -840,20 +863,20 @@ AILou.prototype.scoreBonusTile_ = function(player, tile, roundnum) {
   //Add starting preference score for the faction and the bonus tile
   var BONUS_PREF = [
     [0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0],
-    [0,4,1,3,2,3,3,0,0,3,2,0,2,3,3,0,0,1,1,0,-9], // T_BON_SPADE_2C     (BON1)
+    [0,4,1,3,2,3,3,0,0,3,2,0,2,3,3,0,0,1,1,2,-9], // T_BON_SPADE_2C     (BON1)
     [0,1,2,1,1,1,4,0,1,2,1,0,3,3,3,2,1,2,3,2,3],  // T_BON_CULT_4C      (BON2)
     [0,3,2,2,1,1,1,0,1,1,1,0,1,1,1,1,1,2,4,1,4],  // T_BON_6C           (BON3)
-    [0,1,3,0,0,1,1,1,1,5,1,5,3,1,0,2,3,1,2,3,-9], // T_BON_3PW_SHIP     (BON4)
+    [0,1,3,0,0,1,1,1,1,5,1,5,3,1,0,2,3,1,2,5,-9], // T_BON_3PW_SHIP     (BON4)
     [0,1,2,1,2,2,2,4,3,1,1,0,3,3,3,3,4,1,1,3,0],  // T_BON_3PW_1W       (BON5)
     [0,1,2,1,3,2,1,1,1,1,2,0,1,1,1,1,1,2,3,2,2],  // T_BON_PASSDVP_2C   (BON6)
     [0,1,1,1,2,1,1,1,1,1,1,0,1,1,1,2,1,1,1,1,0],  // T_BON_PASSTPVP_1W  (BON7)
-    [0,3,4,1,5,1,0,2,2,1,1,0,1,1,1,1,1,1,4,1,0],  // T_BON_PASSSHSAVP_2W(BON8)
+    [0,3,4,1,5,1,0,2,2,1,1,0,1,1,1,1,1,1,4,6,0],  // T_BON_PASSSHSAVP_2W(BON8)
     [0,1,1,3,1,0,2,3,5,1,2,0,1,1,1,1,1,2,1,1,6],  // T_BON_1P           (BON9)
-    [0,1,1,0,0,1,1,1,1,4,1,0,1,0,0,4,1,1,1,4,-9]  // T_BON_PASSSHIPVP_3PW(BON10)
+    [0,1,1,0,0,1,1,1,1,4,1,0,1,0,0,4,1,1,1,3,-9]  // T_BON_PASSSHIPVP_3PW(BON10)
     ];
   // originally for roundnum 1,2,3 TODO: different table for roundnum 4,5,6
   if (roundnum <= 3) score += BONUS_PREF[Math.floor(AILou.ybonus)][Math.floor(AILou.xfaction)];
-  //addLog('INFO: bonus tile: ' + AILou.xfaction + '  ' + AILou.ybonus + '  ' + score);
+  if(AILou.info) addLog('INFO: bonus tile: ' + AILou.xfaction + '  ' + AILou.ybonus + '  ' + score);
 
   //Add end preference score for the faction and the bonus tile
   var BONUS_PREF2 = [
@@ -861,11 +884,11 @@ AILou.prototype.scoreBonusTile_ = function(player, tile, roundnum) {
     [0,0,0,1,0,0,0,0,0,0,2,0,1,0,1,0,0,0,0,0,-9], // T_BON_SPADE_2C     (BON1)
     [0,0,0,0,0,0,2,0,0,0,0,0,0,0,1,0,0,0,0,0,2],  // T_BON_CULT_4C      (BON2)
     [0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,2],  // T_BON_6C           (BON3)
-    [0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,3,0,0,0,-9], // T_BON_3PW_SHIP     (BON4)
-    [0,0,0,0,0,1,0,0,0,0,0,0,0,0,1,0,3,0,0,0,1],  // T_BON_3PW_1W       (BON5)
+    [0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,3,0,0,4,-9], // T_BON_3PW_SHIP     (BON4)
+    [0,0,0,0,0,1,0,0,0,0,0,0,0,0,1,0,3,0,0,3,1],  // T_BON_3PW_1W       (BON5)
     [0,1,2,1,4,3,1,1,5,2,2,0,2,1,1,1,1,2,3,2,4],  // T_BON_PASSDVP_2C   (BON6)
     [0,1,2,1,2,1,1,1,3,0,4,0,1,1,1,2,1,1,1,1,0],  // T_BON_PASSTPVP_1W  (BON7)
-    [0,1,2,0,5,0,1,2,2,0,2,0,1,1,1,1,1,1,4,1,0],  // T_BON_PASSSHSAVP_2W(BON8)
+    [0,1,2,0,5,0,1,2,2,0,2,0,1,1,1,1,1,1,4,5,0],  // T_BON_PASSSHSAVP_2W(BON8)
     [0,1,0,1,1,0,1,3,2,0,1,0,1,1,1,1,1,2,1,1,1],  // T_BON_1P           (BON9)
     [0,1,1,0,1,0,1,1,1,5,1,0,1,0,0,4,3,1,1,4,-9]  // T_BON_PASSSHIPVP_3PW(BON10)
     ];
@@ -967,13 +990,13 @@ AILou.prototype.scoreFavorTile_ = function(player, tile, roundnum) {
     [0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0],  // T_FAV_3W       (FAV2)
     [0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0],  // T_FAV_3E       (FAV3)
     [0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0],  // T_FAV_3A       (FAV4)
-    [0,0,0,0,3,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,2],  // T_FAV_2F_6TW   (FAV5)
+    [0,0,0,0,3,0,0,0,0,0,0,0,0,0,0,0,0,0,0,3,2],  // T_FAV_2F_6TW   (FAV5)
     [0,0,0,0,0,0,2,0,0,2,2,4,0,0,0,0,1,0,0,0,0],  // T_FAV_2W_CULT  (FAV6)
     [0,0,0,0,0,3,2,0,0,0,0,0,0,2,3,0,2,0,0,0,0],  // T_FAV_2E_1PW1W (FAV7)
-    [0,0,0,2,0,0,0,0,0,0,0,0,2,3,2,0,4,0,0,0,0],  // T_FAV_2A_4PW   (FAV8)
+    [0,0,0,2,0,0,0,0,0,0,0,0,2,3,2,0,4,0,0,2,0],  // T_FAV_2A_4PW   (FAV8)
     [0,0,0,2,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0],  // T_FAV_1F_3C    (FAV9)
     [0,0,0,0,3,0,0,0,0,0,4,0,0,0,0,0,0,0,0,0,3],  // T_FAV_1W_TPVP  (FAV10)
-    [0,0,0,2,6,4,0,0,0,4,0,0,4,0,2,0,0,0,0,0,6],  // T_FAV_1E_DVP   (FAV11)
+    [0,0,0,2,6,4,0,0,0,4,0,0,4,0,2,0,0,0,2,4,6],  // T_FAV_1E_DVP   (FAV11)
     [0,0,0,0,0,0,0,0,0,0,3,0,0,0,0,0,0,0,0,0,0]   // T_FAV_1A_PASSTPVP (FAV12)
   ]
 
@@ -1075,11 +1098,12 @@ AILou.prototype.chooseInitialFavorTile = function(playerIndex, callback) {
   }
 };
 
-//callback result (second parameter) should be the chosen color emum value
+//callback result (second parameter) should be the chosen color enum value
 AILou.prototype.chooseAuxColor = function(playerIndex, callback) {
   var player = game.players[playerIndex];
   var ispriestcolor = false;
   var used = true;
+  var iscore = 0;  //used to track best score
 
   if(player.color == Z && mayGetPriestAsColor(player) == 2 && state.round == 6) {
     ispriestcolor = true;
@@ -1100,23 +1124,29 @@ AILou.prototype.chooseAuxColor = function(playerIndex, callback) {
     if(ispriestcolor && !player.colors[i - R]) colors.push(i);
   }
 
-  //select a new faction or priest color
+  //select a new shape color or faction color or priest color
   var chosen;
   var scores = [];
+  var score = 0;
+  var tiles = [];
+  var colorTile;
+  var color;  
+  //select available start color for fireice facions
   if(player.color != Z) {
     for(var i = 0; i < colors.length; i++) {
-      var color = colors[i];
-      var score = 0;
+      score = 0;
+      color = colors[i];
       if(auxColorToPlayerMap[wrap(color - 1, R, S + 1)] == undefined) score++;
       if(auxColorToPlayerMap[wrap(color + 1, R, S + 1)] == undefined) score++;
+      //LOU TODO add in score from START_LOCATIONS
       scores[i] = score;
     }
   }
+  //select starting color for riverwalkers
   else if (player.color == Z && !ispriestcolor) {
-    var scores = [];
     for(var i = 0; i < colors.length; i++) {
-      var color = colors[i];
-      var score = 0;
+      score = 0;
+      color = colors[i];
       if(auxColorToPlayerMap[wrap(color - 1, R, S + 1)] == undefined) score++;
       if(auxColorToPlayerMap[wrap(color + 1, R, S + 1)] == undefined) score++;
       if (color == R) score += 3;
@@ -1131,10 +1161,7 @@ AILou.prototype.chooseAuxColor = function(playerIndex, callback) {
   // check available colors, score both var adjacentCount = AILou.getColorTilesAdjacent and one away tiles for next color choice 
   // color order-R is 0,1,2,3,4,5,6 for R, Y, U, K, B, G, S
   else if (player.color == Z && ispriestcolor) {
-    var scores = [];
-    var tiles;
-    var colorTile;
-    var colorScores = [0,0,1,1,1,1,0,1,1,0,0,0];
+    colorScores = [0,0,1,1,0,1,0,1,1,0,0,0];
     tiles = getFreeTilesReachableByShipping(player, 0);
     for(var t = 0; t < tiles.length; t++) {
       colorTile = getWorld(tiles[t][0], tiles[t][1]);
@@ -1148,25 +1175,76 @@ AILou.prototype.chooseAuxColor = function(playerIndex, callback) {
       if (adjacentCount[0] == 1 && adjacentCount[1] == 6) colorScores[colorTile] += 1;
     }
     for(var i = 0; i < colors.length; i++) {
-      var color = colors[i];
-      var score = 0;
+      color = colors[i];
       scores[i] = 0;
       for(var j = CIRCLE_BEGIN; j <= CIRCLE_END; j++) {
          if (color == j) scores[i] = colorScores[j];
       }
     }
   //colors.length is the number of colors still available
-  //addLog('INFO: AI finding RW priest: '+ colors + ' ---- ' + colorScores);
+  if(AILou.info) addLog('INFO: AI finding RW priest: '+ colors + ' ---- ' + colorScores);
   }
     //LOU if !(player.color == Z && ispriestcolor && used)  
-    var i = AILou.pickWithBestScore(colors, scores, false);
-    chosen = colors[i];
+    iscore = AILou.pickWithBestScore(colors, scores, false);
+    chosen = colors[iscore];
   }
+ //round is 6, do not pick new color where scores less than threshold
+ if(player.color == Z && mayGetPriestAsColor(player) == 2 && state.round == 6) {
+   if(scores[iscore] < 5) {
+     ispriestcolor = false;  
+     chosen = Z;
+   }
+ } 
   var error = callback(playerIndex, chosen);
   if(error != '') {
     addLog('ERROR: AI tried invalid faction auxcolor. Error: ' + error);
     throw new Error('AI tried invalid faction auxcolor. Error: ' + error);
+  } 
+};
+
+//new shape, colors is available list
+AILou.getNewAuxColor = function(player, oldColor) {
+  var scores = []; 
+  var iscore = 0;
+  var tiles = [];
+  var colorTile;
+  var color;  
+  var colors = [];
+  var colorValue = 0;
+  var already = getNoShiftColors(getCurrentPlayer());
+  for(var i = CIRCLE_BEGIN; i <= CIRCLE_END; i++) {
+    //if(auxColorToPlayerMap[i] == undefined && colorToPlayerMap[i] == undefined) colors.push(i);
+     if(already[i]) continue;
+    colors.push(i);
   }
+          
+  if (player.color == X && state.round > 0) {
+    var colorScores = [0,0,1,1,1,1,1,1,1,0,0,0];
+    tiles = getReachableTransformableTiles(player, false, true);
+    for(var t = 0; t < tiles.length; t++) {
+      colorTile = getWorld(tiles[t][0], tiles[t][1]);
+      colorScores[colorTile] += 2;
+    }
+    if (player.shipping > 0) {
+      tiles = getFreeTilesReachableByShipping(player, 1);
+      for(var t = 0; t < tiles.length; t++) {
+        colorTile = getWorld(tiles[t][0], tiles[t][1]);
+        colorScores[colorTile] -= 0;
+      }
+    }
+    for(var i = 0; i < colors.length; i++) {
+      color = colors[i];
+      scores[i] = 0;
+      for(var j = CIRCLE_BEGIN; j <= CIRCLE_END; j++) {
+         if (color == j) scores[i] = colorScores[j];
+      }
+    }
+    iscore = AILou.pickWithBestScore(colors, scores, false);
+    newColor = colors[iscore];
+    colorValue = colorScores[newColor] - colorScores[oldColor];  //can be negative
+    if(colorValue >= 2 && AILou.info) addLog('INFO: AI finding SS color: '+ colors + '--' + colorScores +' old:' + oldColor + ' new:' + newColor);
+  }
+  return colorValue;
 };
 
 //gets number of color tiles adjacent to the given tile
@@ -1252,7 +1330,7 @@ AILou.prototype.chooseInitialDwelling = function(playerIndex, callback) {
     [3, 2,4,[ 9, 7],[12, 8],[ 0, 0], 0, 0,0,0],   // Fireice GIANTS 
     [3, 3,4,[ 8, 3],[ 2, 2],[ 0, 0], 0, 0,0,0],   // Fireice FAKIRS 
     [3, 4,6,[ 8, 3],[10, 2],[ 5, 1], 0, 0,0,0],   // Fireice NOMADS 
-    [3, 4,3,[ 4, 4],[ 2, 2],[ 3, 7], 0, 0,0,0],   // Fireice NOMADS 
+    [3, 4,1,[ 4, 4],[ 2, 2],[ 3, 7], 0, 0,0,0],   // Fireice NOMADS 
     [3, 5,4,[11, 5],[11, 2],[ 0, 0], 0, 0,0,0],   // Fireice HALFLINGS 
     [3, 6,4,[ 5, 8],[ 3, 5],[ 0, 0], 0, 0,0,0],   // Fireice CULTISTS 
     [3, 7,4,[10, 8],[12, 7],[ 0, 0], 0, 0,0,0],   // Fireice ALCHEMISTS 
@@ -1273,9 +1351,11 @@ AILou.prototype.chooseInitialDwelling = function(playerIndex, callback) {
     [3,17,4,[ 6, 3],[ 3, 5],[ 0, 0], 0, 0,0,0],   // Fireice ACOLYTES      brown
     [3,18,4,[ 6, 3],[ 3, 5],[ 0, 0], 0, 0,0,0],   // Fireice DRAGONLORDS   brown 
     [3,19,4,[ 9, 7],[ 6, 7],[ 0, 0], 0, 0,0,0],   // Fireice SHAPESHIFTERS red 
+    [3,19,3,[11, 2],[ 9, 4],[11, 5], 0, 0,0,0],   // Fireice SHAPESHIFTERS brown
+    [3,19,3,[ 8, 5],[11, 4],[ 5, 6], 0, 0,0,0],   // Fireice SHAPESHIFTERS green
+    [3,19,3,[ 7, 5],[10, 8],[12, 7], 0, 0,0,0],   // Fireice SHAPESHIFTERS black
     [3,20,2,[ 3, 5],[ 6, 3],[ 0, 0], 0, 0,0,0],   // Fireice RIVERWALKERS  brown
-    [3,20,3,[ 8, 3],[ 5, 1],[ 0, 0], 0, 0,0,0],   // Fireice RIVERWALKERS  yellow
-    [3,20,2,[ 4, 4],[ 3, 7],[ 0, 0], 0, 0,0,0],   // Fireice RIVERWALKERS  yellow
+    [3,20,4,[ 4, 4],[ 3, 7],[ 0, 0], 0, 0,0,0],   // Fireice RIVERWALKERS  yellow
     [3,20,5,[ 6, 5],[ 6, 2],[ 0, 0], 0, 0,0,0]    // Fireice RIVERWALKERS  red
     ];
 
@@ -1400,7 +1480,7 @@ AILou.prototype.chooseInitialDwelling = function(playerIndex, callback) {
 
   var i = AILou.pickWithBestScore(positions, scores, false);
   var chosen = positions[i];
-  //addLog('INFO: map '+windex+' faction '+(player.faction+1)+'  '+chosen+' scores: '+ scores);
+  if(AILou.info) addLog('INFO: map '+windex+' faction '+(player.faction+1)+'  '+chosen+' scores: '+ scores);
 
   var error = callback(playerIndex, chosen);
   if(error != '') {
@@ -1481,7 +1561,7 @@ AILou.prototype.leechPower = function(playerIndex, fromPlayer, amount, vpcost, r
   var player = game.players[playerIndex];
   //LOU Decline at all times to accept power from Cultists (previously in Rounds 5,6)
   //LOU or Shapeshifters to reduce their power. Normal if human already accepts power.
-  //LOU changed back to only rounds 5 and 6 in AI5
+  //LOU changed Cultists back to only rounds 5 and 6 in AI5 due to user protest
   if(game.players[fromPlayer].faction == F_CULTISTS && !already && roundnum >= 5) {
     callback(playerIndex, false);
     return;
@@ -1634,11 +1714,7 @@ AILou.prototype.scoreCultTrackVP_ = function(player, cult, num, cap) {
   return result;
 };
 
-
-
 ////////////////////////////////////////////////////////////////////////////////
-
-
 
 
 //Scores a series of actions (but with exactly one turn action, the others are optional and can be things like converting power to coins)
@@ -1672,6 +1748,7 @@ values has the following type:
   existingtown: when doing anything that incrases an existing town's size (which is not useful, so make this number negative)
   towardstown: making an existing cluster (that has at least 3 power) bigger to be closer to a town (TODO: never do this in a too small cluster that is locked in)
   interacts: it's a new dwelling that interacts with another player, that is good because it is a good TP upgrade target, plus may steal a good spot from them
+  networkcon: value for each extra location in network
   shift: value for SHAPESHIFTERS using 3pw to change color
   shift2: value for SHAPESHIFTERS using 3tokens to change color
   specific: object containing extra score for specific actions (by type), e.g. {A_BURN, A_POWER_7C}
@@ -1718,6 +1795,7 @@ AILou.scoreAction = function(player, actions, values, roundnum) {
   var existingtown = 0;
   var towardstown = 0;
   var interacts = 0;
+  var networkcon = 0;
   var shift = 0;    //SHAPESHIFTERS
   var shift2 = 0;   //SHAPESHIFTERS
   //TODO: bonus/favor/town tiles bonus
@@ -1782,6 +1860,39 @@ AILou.scoreAction = function(player, actions, values, roundnum) {
       if(touchesExistingTown(action.co[0], action.co[1], player.woodcolor)) existingtown++;
       if(goesTowardsNewTown(action.co[0], action.co[1], player)) towardstown++;
       if(hasNeighbor(action.co[0], action.co[1], player.woodcolor)) interacts++;
+
+      //give value for expanding network connectivity (move into new function)
+      // 1. examine network size, default shipping from 0 to 1 
+      // 2. place tempoorary dwelling on location, 
+      // 3. recompute network size
+      // 4. assign value to larger network
+      // 5. erase dwelling, return shipping
+      var xshipping = player.shipping;
+      if (xshipping == 0) {
+        if(!(player.faction == F_FAKIRS || player.faction == F_DWARVES || player.faction == F_RIVERWALKERS))    
+        {              
+          player.shipping++;
+        }
+      }
+      calculateNetworkClusters();
+      //get biggest network of this player. Precondition: calculateNetworkClusters() must have been called
+      var numNetwork = getBiggestNetwork(player);
+      var x = action.co[0];
+      var y = action.co[1];
+      //place temporary dwelling
+      setBuilding(x, y, B_D, player.woodcolor);
+      calculateNetworkClusters();
+      var numNetworkPlus = getBiggestNetwork(player);
+      var deltaNet = numNetworkPlus - numNetwork -1;
+      var letters = ['A','B','C','D','E','F','G','H','I'];
+      if(deltaNet > 0 && AILou.info) {
+        addLog('INFO: AI Network Faction: '+(player.faction+1)+' location: '+letters[y]+(x+1)+' netUp: '+deltaNet);
+        networkcon = deltaNet;
+      }
+      //remove dwelling and extra shipping
+      setBuilding(x, y, B_NONE, player.woodcolor);
+      player.shipping = xshipping;
+
       if(values.forbridge != 0) {
         var x = action.co[0];
         var y = action.co[1];
@@ -1851,12 +1962,18 @@ AILou.scoreAction = function(player, actions, values, roundnum) {
       res[4] += 4;
     } else if(type == A_CARPET) {
       res[4] += 4;
-    } else if(type == A_SHIFT) {
-      res[3] -= 3;
-      shift++;
-    } else if(type == A_SHIFT2) {
-      // remove tokens from pw0 and pw1
-      shift2++;
+    } else if(type == A_SHIFT || type == A_SHIFT2) {
+      res[4] += 2;
+      if(type == A_SHIFT) {
+        res[3] -= 3;
+        shift++;
+      } else if(type == A_SHIFT2) {
+        //remove tokens from pw0 and pw1 (cost?) Move tokens first from pw2 to pw0 for coin.
+        if (player.pw0+player.pw1 >= 3) {
+          burn += 3;
+          shift2++;  //must be temporary
+        } 
+      }
     }
 
     t_fav += action.favtiles.length;
@@ -1943,6 +2060,7 @@ AILou.scoreAction = function(player, actions, values, roundnum) {
   result = Math.max(Math.min(1, result), result + existingtown * values.existingtown); //don't overpenalize this one
   result += towardstown * values.towardstown;
   result += interacts * values.interacts;
+  result += networkcon * values.networkcon;
   result += shift * values.shift;
   result += shift2 * values.shift2;
   return result;
@@ -1953,6 +2071,7 @@ AILou.scoreAction = function(player, actions, values, roundnum) {
 //center tile counts if center is true
 //equal ==> +3. 1 dig ==> +2. distance > 1 ==> -(distance - 1)
 //TODO: take giants and nomads into account here, for them these distances don't (always) matter
+//LOU: also riverwalkers do not depend upon build distance
 AILou.scoreTileDigEnvironment = function(player, tx, ty, color, center) {
   var score = 0;
   for(var y = ty - 3; y <= ty + 3; y++)
@@ -1992,4 +2111,6 @@ AILou.scoreTileEnemyEnvironment = function(tx, ty, color, center) {
   }
   return score;
 };
+
+
 

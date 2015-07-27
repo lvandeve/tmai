@@ -224,7 +224,7 @@ function prepareAction(action) {
       letClickMapForBridge(actionincome[R_BRIDGE]);
     }
     else if((action.type == A_POWER_1P || action.type == A_CONVERT_5PW_1P) && action.color == N && mayGetPriestAsColor(player)) {
-      queueHumanState(HS_PRIEST_COLOR, 'choose priest or color to unlock', function(color) {
+      queueHumanState(HS_PRIEST_COLOR, Texts.priestUnlockText, function(color) {
         action.color = color;
         clearHumanState();
         tryPrepareAction(action);
@@ -405,15 +405,16 @@ Human.chooseColorDialog = function(playerIndex, callback) {
 
   bg = makeSizedDiv(300, 100, 200, 300, popupElement);
   bg.style.backgroundColor = '#FFFFFF';
-  bg.innerHTML = 'choose color';
+  bg.innerHTML = ispriestcolor ? Texts.priestUnlockText : 'choose color';
   bg.style.border = '1px solid black';
 
+  var yshift = ispriestcolor ? 32 : 16;
   for(var i = 0; i < colors.length; i++) {
-    var el = makeLinkButton(5, (i + 1) * 16, getColorName(colors[i]), bg);
+    var el = makeLinkButton(5, i * 16 + yshift, getColorName(colors[i]), bg);
     el.onclick = bind(buttonClickFun, colors[i]);
   }
   if(ispriestcolor) {
-    var el = makeLinkButton(5, (colors.length + 1) * 16, 'as priest', bg);
+    var el = makeLinkButton(5, colors.length * 16 + yshift, 'as priest', bg);
     el.onclick = bind(buttonClickFun, Z);
   }
 };

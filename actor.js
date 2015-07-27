@@ -55,7 +55,7 @@ Actor.prototype.chooseInitialFavorTile = function(playerIndex, callback) {
 };
 
 //callback result (second parameter) should be the chosen color emum value
-//this function gets called during faction selection for factions where needed, but also later in game when unlocking new colors. In that case, return Z for getting the priest instead.
+//this function gets called during faction selection for factions where needed, but also later in game when unlocking new colors (for riverwalkers). In that case, return Z for getting the priest instead.
 Actor.prototype.chooseAuxColor = function(playerIndex, callback) {
 };
 

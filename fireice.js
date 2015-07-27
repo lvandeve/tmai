@@ -140,6 +140,7 @@ registerFaction(new Yetis());
 
 ////////////////////////////////////////////////////////////////////////////////
 
+// Returns whether no other player currently has that color. Not related to lava per se, but lava factions are the ones that need this, their actions are more expensive to other-player-color-terrain.
 var colorIsCheapForLava = function(fromColor) {
   if(colorToPlayerMap[X] && colorToPlayerMap[X].auxcolor == fromColor) return false; //shapeshifters have that color currently
   return colorToPlayerMap[fromColor] == undefined; //false if any faction (except ice factions, or riverwalkers) has this color.

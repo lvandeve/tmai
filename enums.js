@@ -411,7 +411,7 @@ function tileToStringLong(tile, prefix) {
     if(tile > T_TW_BEGIN && tile < T_TW_END) result += 'TW ';
     if(tile > T_ROUND_BEGIN && tile < T_ROUND_END) result += 'RND ';
   }
-  
+
   if(tile == T_NONE) result += 'none';
   else if(tile == T_DUMMY) result += 'dummy';
   else if(tile == T_BON_SPADE_2C) result += 'dig 2c';
@@ -464,7 +464,7 @@ function tileToHelpString(tile, prefix) {
     if(tile > T_TW_BEGIN && tile < T_TW_END) prefix += 'town tile: ';
     if(tile > T_ROUND_BEGIN && tile < T_ROUND_END) prefix += 'round tile: ';
   }
-  
+
   if(tile == T_NONE) result += 'none';
   else if(tile == T_DUMMY) result += 'dummy tile';
   else if(tile == T_BON_SPADE_2C) result += 'free spade action + 2c income';
@@ -544,7 +544,7 @@ S_ACTION = S_index++; //Taking actions, for 6 rounds long.
 S_LEECH = S_index++; //Player making leeching decision
 S_CULTISTS = S_index++; //Cultists player choosing cult track after leeching
 S_CULT = S_index++; //Choosing cult track
-S_PRIEST_COLOR = S_index++; //Choosing color with priest
+S_PRIEST_COLOR = S_index++; //Choosing color with priest (for riverwalkers)
 //States between rounds. Next state is again itself, or S_ACTION
 S_ROUND_END_DIG = S_index++; //Player digging due to round end cult bonus
 //Final state after all actions and rounds are done.

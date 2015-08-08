@@ -424,7 +424,7 @@ function startRandomGameButtonFun(params) {
 function randomShuffle(list) {
   // Fisher-Yates shuffle
   for(var i = list.length - 1; i > 0; i--) {
-    var j = randomInt(i);
+    var j = randomInt(i + 1);
     var temp = list[i];
     list[i] = list[j];
     list[j] = temp;

@@ -327,6 +327,7 @@ var T_ROUND_D2VP_4F4PW = T_index++;
 var T_ROUND_TP3VP_4W1DIG = T_index++;
 var T_ROUND_SHSA5VP_2A1W = T_index++;
 var T_ROUND_TP3VP_4A1DIG = T_index++;
+var T_ROUND_TE4VP_P2C = T_index++; //round tile promo 2015
 var T_ROUND_END = T_index++;
 var T_TILE_ENUM_END = T_index++;
 
@@ -374,6 +375,7 @@ function getTileCodeName(tile) {
   if(tile == T_ROUND_TP3VP_4W1DIG) return 'RNDtpWspade';
   if(tile == T_ROUND_SHSA5VP_2A1W) return 'RNDsAw';
   if(tile == T_ROUND_TP3VP_4A1DIG) return 'RNDtpAspade';
+  if(tile == T_ROUND_TE4VP_P2C) return 'RNDtePc';
   return 'unk';
 }
 
@@ -393,6 +395,7 @@ function getTileVPDetail(tile) {
   if(tile == T_ROUND_TP3VP_4W1DIG) return 'round tp';
   if(tile == T_ROUND_SHSA5VP_2A1W) return 'round sh/sa';
   if(tile == T_ROUND_TP3VP_4A1DIG) return 'round tp';
+  if(tile == T_ROUND_TE4VP_P2C) return 'round te';
   return '???';
 }
 
@@ -452,6 +455,7 @@ function tileToStringLong(tile, prefix) {
   else if(tile == T_ROUND_TP3VP_4W1DIG) result += 'tp3vp 4W=spd';
   else if(tile == T_ROUND_SHSA5VP_2A1W) result += 's5vp 2A=w';
   else if(tile == T_ROUND_TP3VP_4A1DIG) result += 'tp3vp 4A=spd';
+  else if(tile == T_ROUND_TE4VP_P2C) result += 'te4vp P=2c';
   else result += 'unk';
   return result;
 }
@@ -505,13 +509,13 @@ function tileToHelpString(tile, prefix) {
   else if(tile == T_ROUND_TP3VP_4W1DIG) result += '3vp when upgrading to tp. End income: 1 spade per 4 water levels';
   else if(tile == T_ROUND_SHSA5VP_2A1W) result += '2vp when upgrading to sa/sh. End income: 1 worker per 2 air levels';
   else if(tile == T_ROUND_TP3VP_4A1DIG) result += '3vp when upgrading to tp. End income: 1 spade per 4 air levels';
+  else if(tile == T_ROUND_TE4VP_P2C) result += '4vp when upgrading to te. End income: 2 coins per priest on cult track';
   else result += 'unknown tile';
   return result;
 }
 
 
 //cults
-//TODO: Name these according to the element instead of color: C_F, C_W, C_E and C_A
 var C_NONE = -1;
 var C_F = 0; //fire, red
 var C_W = 1; //water, blue

@@ -1009,13 +1009,13 @@ function isBridgeSelfConnected(x0, y0, x1, y1) {
 //gives all extra coming cult round bonuses when having "to" instead of "from" cult.
 //from and to are array of the values on each cult
 //returned as an array [[c, w, p, pw, vp], spades]
-function getAllComingCultRoundBonuses(from, to) {
+function getAllComingCultRoundBonuses(from_cult, to_cult, from_p, to_p) {
   var res = [0,0,0,0,0];
   var spades = 0;
   for(var i = state.round; i < 6; i++) {
-    spades += (getRoundBonusDigsForCults(to, i) - getRoundBonusDigsForCults(from, i));
-    sumIncome(res, getRoundBonusResourcesForCults(to, i));
-    subtractIncome(res, getRoundBonusResourcesForCults(from, i));
+    spades += (getRoundBonusDigsForCults(to_cult, i) - getRoundBonusDigsForCults(from_cult, i));
+    sumIncome(res, getRoundBonusResourcesForCults(to_cult, to_p, i));
+    subtractIncome(res, getRoundBonusResourcesForCults(from_cult, from_p, i));
   }
   return [res, spades];
 }

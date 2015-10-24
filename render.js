@@ -583,6 +583,7 @@ function drawRoundTile(px, py, tile, index) {
   else if(tile == T_ROUND_TP3VP_4W1DIG) { text1 = 'TP: 3vp'; text2 = 'dig'; num = 4; cult = C_W; }
   else if(tile == T_ROUND_SHSA5VP_2A1W) { text1 = 'SH/SA:5vp'; text2 = '1W'; num = 2; cult = C_A; }
   else if(tile == T_ROUND_TP3VP_4A1DIG) { text1 = 'TP: 3vp'; text2 = 'dig'; num = 4; cult = C_A; }
+  else if(tile == T_ROUND_TE4VP_P2C) { text1 = 'TE: 4vp'; text2 = '2c'; num = 1; cult = 'P'; }
   else return [0, 0];
   return renderRoundTile(px, py, tile, cult, num, text1, text2, index);
 }

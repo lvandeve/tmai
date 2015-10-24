@@ -1823,8 +1823,10 @@ AILou.prototype.scoreCultTrackResources_ = function(player, cult, num, cap) {
 
   var oldcult = player.cult;
   var newcult = [player.cult[0], player.cult[1], player.cult[2], player.cult[3]];
+  var oldpriests = getCultPriests(player);
+  var newpriests = oldpriests + (num > 1 ? 1 : 0); // TODO: this is not a correct way to determine if a priest is added, some non priest actions add two cult
   newcult[cult] += num;
-  cultincome = getAllComingCultRoundBonuses(oldcult, newcult);
+  cultincome = getAllComingCultRoundBonuses(oldcult, newcult,  oldpriests, newpriests);
   sumIncome(res, cultincome[0]);
   var spades = cultincome[1];
 
@@ -2279,7 +2281,9 @@ AILou.scoreAction = function(player, actions, values, roundnum) {
 
     var oldcult = player.cult;
     var newcult = [player.cult[0] + cult[0], player.cult[1] + cult[1], player.cult[2] + cult[2], player.cult[3] + cult[3]];
-    var cultincome = getAllComingCultRoundBonuses(oldcult, newcult);
+    var oldpriests = getCultPriests(player);
+    var newpriests = oldpriests - res[2];
+    var cultincome = getAllComingCultRoundBonuses(oldcult, newcult, oldpriests, newpriests);
     sumIncome(res, cultincome[0]);
     cultspades += cultincome[1];
   }
@@ -2312,6 +2316,17 @@ AILou.scoreAction = function(player, actions, values, roundnum) {
   }
   if(player.favortiles[T_FAV_1W_TPVP]) {
     res[4] += b_tp * 3;
+  }
+
+  //TE round and favor tiles
+  if(getRoundTile() == T_ROUND_TE4VP_P2C) {
+    res[4] += b_te * 4;
+  }
+  else if(getRoundTileP1() == T_ROUND_TE4VP_P2C) {
+    res[4] += b_te * 4 * defer1;
+  }
+  else if(getRoundTileP2() == T_ROUND_TE4VP_P2C) {
+    res[4] += b_te * 4 * defer2;
   }
 
   //BONUS TILES

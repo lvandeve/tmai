@@ -254,6 +254,11 @@ function unlockColorPriest(player, color) {
     if(color == Z) {
       if(player.p < player.pp) player.p++;
     } else {
+      if(state.fireiceerrata) {
+        var cheap = colorIsCheapForLava(color);
+        var error = tryConsume(player, [cheap ? 1 : 2,0,0,0,0]);
+        if(error) return 'cannot afford the gold for color unlock';
+      }
       player.colors[color - R] = true;
       player.pp++; //priest goes to priest pool
     }
@@ -261,7 +266,6 @@ function unlockColorPriest(player, color) {
   }
   return error;
 }
-
 
 //aka "giveResources"
 //not to be confused with "sumIncome"
@@ -1049,7 +1053,7 @@ function tryActionCore_(player, action /*Action object*/) {
     player.bridges++;
   }
   else if(action.type == A_PLACE_BRIDGE) {
-    //LOU CHEAT if get here after A_POWER_BRIDGE fails     
+    //LOU CHEAT if get here after A_POWER_BRIDGE fails
     if (player.bridges <= 0) {
       game.octogons[A_POWER_BRIDGE] = 1;
       player.bridgepool--;
@@ -1058,7 +1062,7 @@ function tryActionCore_(player, action /*Action object*/) {
       player.pw2 -= 3;
       player.pw0 += 3;
     }
-    
+
     if(player.bridges <= 0) return 'not enough rule bridges';
     var x0 = action.cos[0][0];
     var y0 = action.cos[0][1];
@@ -1179,10 +1183,11 @@ function tryActionCore_(player, action /*Action object*/) {
     }
   }
   else if(action.type == A_SHIFT || action.type == A_SHIFT2) {
+    var shiftcost = state.fireiceerrata ? 5 : 3;
     if(action.type == A_SHIFT) {
-      error = tryConsume(player, [0,0,0,3,0], action.type);
+      error = tryConsume(player, [0,0,0,shiftcost,0], action.type);
     } else {
-      error = tryConsume(player, [0,0,0,0,0, 0,0,0,3], action.type);
+      error = tryConsume(player, [0,0,0,0,0, 0,0,0,shiftcost], action.type);
     }
     if(error != '') return error;
     if(getNoShiftColors(player)[action.color]) return 'color already present';

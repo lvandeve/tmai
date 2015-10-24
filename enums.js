@@ -252,8 +252,8 @@ function getActionCodeName(type) {
     case A_AUREN_CULT: return 'aurencult2';
     case A_ADV_SHIP: return 'advshipping';
     case A_ADV_DIG: return 'advdigging';
-    case A_SHIFT: return 'shift_pw'; //shift with 3 regular power cost
-    case A_SHIFT2: return 'shift_pt'; //shift with 3 power tokens cost
+    case A_SHIFT: return 'shift_pw'; //shift with 3 or 5 regular power cost
+    case A_SHIFT2: return 'shift_pt'; //shift with 3 or 5 power tokens cost
     case A_POWER_BRIDGE: return 'powbridge';
     case A_ENGINEERS_BRIDGE: return 'engbridge';
     case A_PLACE_BRIDGE: return 'placebridge';

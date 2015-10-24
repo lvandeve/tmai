@@ -126,8 +126,8 @@ function clearHelp() {
 // TODO: more of the game texts here
 function Texts() {
 };
-Texts.shift1title = 'Shapeshift to new color (3pw cost)';
-Texts.shift2title = 'Shapeshift to new color (3 power tokens cost)';
+Texts.shift1title = function() { var shiftcost = state.fireiceerrata ? 5 : 3; return 'Shapeshift to new color (' + shiftcost + 'pw cost)'; };
+Texts.shift2title = function() { var shiftcost = state.fireiceerrata ? 5 : 3; return 'Shapeshift to new color (' + shiftcost + ' power tokens cost)'; };
 Texts.priestUnlockText = 'choose priest or color to unlock';
 
 function drawTileMapElement(px, py, tilex, tiley, parent) {
@@ -1414,7 +1414,7 @@ function drawPlayerActions(px, py, playerIndex, parent /*parent DOM element*/) {
   }
   if(player.getFaction().canTakeAction(player, A_SHIFT, game)) {
     button = makeLinkButton(px2, py + 112, getActionName(A_SHIFT), parent);
-    button.title = Texts.shift1title;
+    button.title = Texts.shift1title();
     button.onclick = function() {
       chooseActionColor(new Action(A_SHIFT));
     };
@@ -1422,7 +1422,7 @@ function drawPlayerActions(px, py, playerIndex, parent /*parent DOM element*/) {
   }
   if(player.getFaction().canTakeAction(player, A_SHIFT2, game)) {
     button = makeLinkButton(px2, py + 112, getActionName(A_SHIFT2), parent);
-    button.title = Texts.shift2title;
+    button.title = Texts.shift2title();
     button.onclick = function() {
       chooseActionColor(new Action(A_SHIFT2));
     };

@@ -584,6 +584,35 @@ Human.prototype.doRoundBonusSpade = function(playerIndex, callback) {
   };
 };
 
+Human.prototype.chooseShapeshiftersConversion = function(playerIndex, callback) {
+  var fun = function(yes) {
+    var error = callback(playerIndex, yes);
+    clearHumanState();
+  };
+  Human.chooseShapeshiftersConversionDialog(playerIndex, callback);
+  queueHumanState(HS_OTHER, 'convert 1vp to power token?', fun);
+};
+
+Human.chooseShapeshiftersConversionDialog = function(playerIndex, callback) {
+  var player = game.players[playerIndex];
+
+  var bg;
+
+  var buttonClickFun = function(yes) {
+    popupElement.removeChild(bg);
+    clearHumanState();
+    callback(playerIndex, yes);
+  };
+
+  bg = makeSizedDiv(300, 100, 200, 300, popupElement);
+  bg.style.backgroundColor = '#FFFFFF';
+  bg.innerHTML = 'convert 1vp to power token?';
+  bg.style.border = '1px solid black';
+
+  makeLinkButton(5, 1 * 16, 'yes', bg).onclick = bind(buttonClickFun, true);
+  makeLinkButton(5, 2 * 16, 'no', bg).onclick = bind(buttonClickFun, false);
+};
+
 Human.prototype.chooseCultistTrack = function(playerIndex, callback) {
   var fun = function(cult) {
     var error = callback(playerIndex, cult);

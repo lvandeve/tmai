@@ -26,7 +26,7 @@ freely, subject to the following restrictions:
 //strategy.js contains helper functions for the AI, however the functions here
 //are objective (based on game rules), and contain no scorings or intelligence.
 //For example a function to list all possible actions for a player, find the
-//correct order to dig a certain tile, etc... 
+//correct order to dig a certain tile, etc...
 //In addition, simple functions for automatic action creation are here, e.g. to
 //automatically choose 1, 2 or 3 steps on cult track
 
@@ -769,7 +769,7 @@ function getPossibleActions(player, restrictions) {
   var result = [];
   var tiles;
 
-  var orange = (player.getFaction().getActionIncome(player, A_POWER_SPADE)[R_SPADE] == 0); 
+  var orange = (player.getFaction().getActionIncome(player, A_POWER_SPADE)[R_SPADE] == 0);
   //orange factions (fire) don't get or use spades. Detect it in this more generic way rather than "player.woodcolor == O".
 
   //dig&build
@@ -861,10 +861,10 @@ function getPossibleActions(player, restrictions) {
       for (var d = 0; d < dirs.length; d++) {
         var co2 = bridgeCo(tiles[t][0], tiles[t][1], dirs[d], game.btoggle);
         if(outOfBounds(co2[0], co2[1])) continue;
-        if(getBuilding(co2[0], co2[1])[1] == player.woodcolor && co2[1] > tiles[t][1]) continue; 
+        if(getBuilding(co2[0], co2[1])[1] == player.woodcolor && co2[1] > tiles[t][1]) continue;
         //avoid adding twice the same action with just swapped tiles
 
-        if (canHaveBridge(tiles[t][0], tiles[t][1], co2[0], co2[1], player.woodcolor)) {         
+        if (canHaveBridge(tiles[t][0], tiles[t][1], co2[0], co2[1], player.woodcolor)) {
           result.push(new Action(A_POWER_BRIDGE));
           var action2 = new Action();
           action2.type = A_PLACE_BRIDGE;
@@ -883,14 +883,15 @@ function getPossibleActions(player, restrictions) {
   if(!game.octogons[A_POWER_2W]) addPossibleSimpleAction(player.getActionCost(A_POWER_2W), player, restrictions, A_POWER_2W, result);
   if(!game.octogons[A_POWER_7C]) addPossibleSimpleAction(player.getActionCost(A_POWER_7C), player, restrictions, A_POWER_7C, result);
 
-  //LOU add resource action to change shape for 3 PW or 3 token (remove tokens later)
+  //LOU add resource action to change shape for 3 or 5 PW or 3 or 5 token (remove tokens later)
   if(player.faction == F_SHAPESHIFTERS && player.b_sh == 0 ) {
+    var shiftcost = state.fireiceerrata ? 5 : 3;
     var color = newColor;
     var token = useToken;
-    if(color > 0) { 
-      addPossibleColorAction([0,0,0,3,0], player, restrictions, A_SHIFT, color, result);
+    if(color > 0) {
+      addPossibleColorAction([0,0,0,5,0], player, restrictions, A_SHIFT, color, result);
     }
-    if(color > 0 && token > 0) { 
+    if(color > 0 && token > 0) {
       addPossibleColorAction([0,0,0,0,0], player, restrictions, A_SHIFT2, color, result);
     }
   }

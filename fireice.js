@@ -29,8 +29,8 @@ freely, subject to the following restrictions:
 The new actions:
 A_TRANSFORM_SPECIAL: transform for ice factions
 A_TRANSFORM_SPECIAL2: transform for fire factions
-A_SHIFT: shapeshift with 3pw cost
-A_SHIFT2: shapeshift with burn 3 any tokens cost
+A_SHIFT: shapeshift with 3 or 5 pw cost
+A_SHIFT2: shapeshift with burn 3 or 5 any tokens cost
 */
 
 
@@ -333,7 +333,9 @@ Shapeshifters.prototype.canTakeFactionAction = function(player, action, opt_reas
 
 // resource order: c,w,p,pw,vp,pp, keys,spades,pt,cult,freecult, pt0,pt1,pt2, darklingconverts,spadevp, fire,water,earth,air, d,tp,te,sh,sa, bridge
 Shapeshifters.prototype.getActionIncome = function(player, actiontype) {
-  if(actiontype == A_SHIFT || actiontype == A_SHIFT2) return [0,0,0,0,2,0, 0,0,0,0, 0,0,0]; //2VP for shifting
+  if(!state.fireiceerrata) {
+    if(actiontype == A_SHIFT || actiontype == A_SHIFT2) return [0,0,0,0,2,0, 0,0,0,0, 0,0,0]; //2VP for shifting
+  }
   return Faction.prototype.getActionIncome(player, actiontype);
 };
 

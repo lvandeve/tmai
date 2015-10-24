@@ -39,6 +39,7 @@ each button fun receives the following object containing the dropdown states:
   fireice
   turnorder: variable turn order
   louAI: Lou New's AI
+  fireiceerrata: shapeshifters and river walkers made less powerful
 }
 */
 function renderPreScreen(px, py, standardButtonFun, randomButtonFun, beginnerButtonFun, quickButtonFun) {
@@ -92,6 +93,9 @@ function renderPreScreen(px, py, standardButtonFun, randomButtonFun, beginnerBut
 
   var louAIcb = makeCheckbox(px + 350, ppy + 72, parent, 'Lou New\'s AI (<font color="red">experimental!</font>)', 'Work-in-progress new AI by Lou New. This AI may be stronger and supports the expansion factions better. It is experimental, so may still contain bugs! May be better with some factions, have bugs with some others');
   louAIcb.checked = preferences.louAI;
+
+  var fireiceerratacb = makeCheckbox(px, ppy + 89, parent, 'Fire&Ice Errata', 'The official rule change of 2015, making shapeshifters and riverwalkers less powerful.');
+  fireiceerratacb.checked = preferences.fireiceerrata;
 
   ppy += 160;
   makeText(px, ppy, 'Preset* factions', parent).title = 'Override faction choice. Set to "choose" to choose the faction during the game according to normal game rules. Set to "random" to assign a random faction. Set to a given faction to assign that faction to this player';
@@ -194,6 +198,7 @@ function renderPreScreen(px, py, standardButtonFun, randomButtonFun, beginnerBut
     params.fireice = fireicecb.checked;
     params.turnorder = turnordercb.checked;
     params.louAI = louAIcb.checked;
+    params.fireiceerrata = fireiceerratacb.checked;
 
     preferences.newcultistsrule = newcultistcb.checked;
     preferences.towntilepromo2013 = towntilepromo2013cb.checked;
@@ -210,7 +215,7 @@ function renderPreScreen(px, py, standardButtonFun, randomButtonFun, beginnerBut
     fun(params);
   }
 
-  ppy = py + 170;
+  ppy = py + 170 + 17;
   makeButton(px, ppy, 'Start', parent, bind(buttonFun, function(params) {
     if(gameTypeDropDown.selectedIndex == 0) standardButtonFun(params);
     if(gameTypeDropDown.selectedIndex == 1) randomButtonFun(params);
@@ -218,8 +223,9 @@ function renderPreScreen(px, py, standardButtonFun, randomButtonFun, beginnerBut
     if(gameTypeDropDown.selectedIndex == 3) quickButtonFun(params);
   }), 'Start new game');
 
-  makeText(px, py + 480, '<h3>Documentation:</h3>' +
+  makeText(px, py + 480 + 17, '<h3>Documentation:</h3>' +
     '<h4>Updates</h4>' +
+    '<p>20151024: Added the new official fire&ice rule change as an option.<p/>' +
     '<p>20150525: There is now a choice between the old AI, and Lou\'s new AI. The new AI is a work in progress! It is stronger than the old AI and works with the expansion factions, but is experimental so may have a few bugs.<p/>' +
     '<p>20150509: AI tweaks by Lou New added.<p/>' +
     '<p>20150108: Riverwalkers added (possibly still with bugs).<p/>' +
@@ -347,6 +353,7 @@ var preferences = {
   fireice: true,
   turnorder: false,
   louAI: false,
+  fireiceerrata: true
 };
 
 function assignPreferenceToDropdown(dropdown, value) {
@@ -376,6 +383,7 @@ function setLocalStorage() {
   localStorage['fireice'] = preferences.fireice;
   localStorage['turnorder'] = preferences.turnorder;
   localStorage['louAI'] = preferences.louAI;
+  localStorage['fireiceerrata'] = preferences.fireiceerrata;
 }
 
 //no longer a cookie, but html5 local storage
@@ -401,6 +409,7 @@ function getLocalStorage() {
   if(localStorage['fireice'] != undefined) preferences.fireice = localStorage['fireice'] == 'true';
   if(localStorage['turnorder'] != undefined) preferences.turnorder = localStorage['turnorder'] == 'true';
   if(localStorage['louAI'] != undefined) preferences.louAI = localStorage['louAI'] == 'true';
+  if(localStorage['fireiceerrata'] != undefined) preferences.fireiceerrata = localStorage['fireiceerrata'] == 'true';
 }
 
 window.onbeforeunload = setLocalStorage;

@@ -85,3 +85,7 @@ Actor.prototype.chooseCultistTrack = function(playerIndex, callback) {
 Actor.prototype.doRoundBonusSpade = function(playerIndex, callback) {
 };
 
+// Only used if fireiceerrata is enabled, to choose whether to get a power token when someone leeched from the shapeshifters
+Actor.prototype.chooseShapeshiftersConversion = function(playerIndex, callback) {
+};
+

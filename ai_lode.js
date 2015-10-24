@@ -826,6 +826,10 @@ AILode.prototype.doRoundBonusSpade = function(playerIndex, callback) {
   }
 };
 
+AILode.prototype.chooseShapeshiftersConversion = function(playerIndex, callback) {
+  callback(playerIndex, state.round < 5);
+};
+
 AILode.prototype.chooseCultistTrack = function(playerIndex, callback) {
   var player = game.players[playerIndex];
   this.updateScoreActionValues_(player, state.round);

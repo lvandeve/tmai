@@ -84,6 +84,7 @@ var State = function() {
   this.towntilepromo2013 = true; // new town tiles
   this.bonustilepromo2013 = true; // new bonus tile
   this.fireice = true; // Fire & Ice expansion
+  this.fireiceerrata = true; // Official change of rules for shapeshifters and riverwalkers. https://www.boardgamegeek.com/thread/1456706/official-change-rules
 
   // Variable turnorder by Lou
   this.turnorder = false;
@@ -466,10 +467,14 @@ State.prototype.transitionStateCore_ = function(next_state) {
       // leeching done. Reset state and handle cultists.
       var player = game.players[this.currentPlayer];
       var cultists = player && player.faction == F_CULTISTS;
+      var shapeshifters = player.getFaction().codename == 'shapeshifters';
       var taken = this.leechtaken > 0;
 
       if(cultists && taken) {
         setHelp('player ' + player.name + ' choose cultists track');
+        next_state = S_CULTISTS;
+      } else if(state.fireiceerrata && shapeshifters && taken) {
+        setHelp('player ' + player.name + ' convert 1vp to 1 power token?');
         next_state = S_CULTISTS;
       } else {
         // check if players actually declined. If they were full on power, it does not count as decline
@@ -676,8 +681,15 @@ State.prototype.executeActor = function(callback, transitionIfNoActorCallback) {
     }
   }
   else if(this.type == S_CULTISTS) {
-    callbackState = CS_ACTOR;
-    game.players[this.currentPlayer].actor.chooseCultistTrack(this.currentPlayer, callback);
+    if(state.fireiceerrata && game.players[this.currentPlayer] && game.players[this.currentPlayer].getFaction().codename == 'shapeshifters') {
+      state.showResourcesPlayer = state.currentPlayer;
+      state.next_type = S_NONE;
+      callbackState = CS_ACTOR;
+      game.players[this.currentPlayer].actor.chooseShapeshiftersConversion(this.currentPlayer, callback);
+    } else {
+      callbackState = CS_ACTOR;
+      game.players[this.currentPlayer].actor.chooseCultistTrack(this.currentPlayer, callback);
+    }
   }
   else if(this.type == S_CULT) {
     callbackState = CS_ACTOR;
@@ -857,9 +869,18 @@ State.prototype.executeResult = function(playerIndex, result) {
     }
   }
   else if(this.type == S_CULTISTS) {
-    var cult = result;
-    giveCult(player, cult, 1);
-    addLog(logPlayerNameFun(player) + ' used cultists ability on ' + getCultName(cult) + getGreyedResourcesLogString(player));
+    if(state.fireiceerrata && player.getFaction().codename == 'shapeshifters') {
+      callbackState = CS_CALLBACK;
+      if(result) {
+        player.vp--;
+        player.pw2++;
+      }
+      addLog(logPlayerNameFun(player) + (result ? 'converted 1vp to a power token' : 'declined to convert 1vp to a power token') + getGreyedResourcesLogString(player));
+    } else {
+      var cult = result;
+      giveCult(player, cult, 1);
+      addLog(logPlayerNameFun(player) + ' used cultists ability on ' + getCultName(cult) + getGreyedResourcesLogString(player));
+    }
   }
   else if(this.type == S_CULT) {
     var cult = result;

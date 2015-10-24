@@ -116,6 +116,7 @@ function initParams(params) {
   state.fireice = params.fireice;
   state.turnorder = params.turnorder;
   state.louAI = params.louAI;
+  state.fireiceerrata = params.fireiceerrata;
 
   var finalscoring = params.finalscoring;
   if(finalscoring == -1) {
@@ -164,6 +165,7 @@ function initialGameLogMessage() {
   if(state.fireice) addLog('fire & ice expansion enabled');
   if(state.turnorder) addLog('variable turn order enabled');
   if(state.louAI) addLog('Lou New\'s AI enabled');
+  if(state.fireiceerrata) addLog('fire & ice errata enabled');
 
   addLog('round 1 tile: ' + tileToStringLong(game.roundtiles[1], true));
   addLog('round 2 tile: ' + tileToStringLong(game.roundtiles[2], true));

@@ -193,6 +193,7 @@ function serializeGameState(fromgame) {
   if(state.towntilepromo2013) { if(comma) result += ','; result += 'towntilepromo2013'; comma = true; }
   if(state.bonustilepromo2013) { if(comma) result += ','; result += 'bonustilepromo2013'; comma = true; }
   if(state.fireice) { if(comma) result += ','; result += 'fireice'; comma = true; }
+  if(state.fireiceerrata) { if(comma) result += ','; result += 'fireiceerrata'; comma = true; }
   result += '\n';
 
   result += '\nrules:\n';
@@ -547,6 +548,7 @@ function deSerializeGameStateNewFormat(text) {
     result.state.towntilepromo2013 = stringContains(s, 'towntilepromo2013');
     result.state.bonustilepromo2013 = stringContains(s, 'bonustilepromo2013');
     result.state.fireice = stringContains(s, 'fireice');
+    result.state.fireiceerrata = stringContains(s, 'fireiceerrata');
   }
 
   s = parseLabelPart(text, 'rules:');

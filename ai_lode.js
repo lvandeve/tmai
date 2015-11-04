@@ -826,6 +826,10 @@ AILode.prototype.doRoundBonusSpade = function(playerIndex, callback) {
   }
 };
 
+AILode.prototype.chooseShapeshiftersConversion = function(playerIndex, callback) {
+  callback(playerIndex, state.round < 5);
+};
+
 AILode.prototype.chooseCultistTrack = function(playerIndex, callback) {
   var player = game.players[playerIndex];
   this.updateScoreActionValues_(player, state.round);
@@ -865,8 +869,10 @@ AILode.prototype.scoreCultTrackResources_ = function(player, cult, num, cap) {
 
   var oldcult = player.cult;
   var newcult = [player.cult[0], player.cult[1], player.cult[2], player.cult[3]];
+  var oldpriests = getCultPriests(player);
+  var newpriests = oldpriests + (num > 1 ? 1 : 0); // TODO: this is not a correct way to determine if a priest is added, some non priest actions add two cult
   newcult[cult] += num;
-  cultincome = getAllComingCultRoundBonuses(oldcult, newcult);
+  cultincome = getAllComingCultRoundBonuses(oldcult, newcult, oldpriests, newpriests);
   sumIncome(res, cultincome[0]);
   var spades = cultincome[1];
 
@@ -1147,7 +1153,9 @@ AILode.scoreAction = function(player, actions, values, roundnum) {
 
     var oldcult = player.cult;
     var newcult = [player.cult[0] + cult[0], player.cult[1] + cult[1], player.cult[2] + cult[2], player.cult[3] + cult[3]];
-    var cultincome = getAllComingCultRoundBonuses(oldcult, newcult);
+    var oldpriests = getCultPriests(player);
+    var newpriests = oldpriests - res[2];
+    var cultincome = getAllComingCultRoundBonuses(oldcult, newcult, oldpriests, newpriests);
     sumIncome(res, cultincome[0]);
     cultspades += cultincome[1];
   }
@@ -1176,7 +1184,10 @@ AILode.scoreAction = function(player, actions, values, roundnum) {
     res[4] += workerdig * 2;
   }
   if(roundtile == T_ROUND_SHSA5VP_2F1W || roundtile == T_ROUND_SHSA5VP_2A1W) {
-    res[4] += (b_sh + b_sa) * 4;
+    res[4] += (b_sh + b_sa) * 4; // TODO: must be 5? Or was the 4 there to make AI not overreact...
+  }
+  if(roundtile == T_ROUND_TE4VP_P2C) {
+    res[4] += (b_te) * 4;
   }
 
   var result = 0;

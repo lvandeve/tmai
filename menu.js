@@ -39,6 +39,8 @@ each button fun receives the following object containing the dropdown states:
   fireice
   turnorder: variable turn order
   louAI: Lou New's AI
+  fireiceerrata: shapeshifters and river walkers made less powerful
+  roundtilepromo2015
 }
 */
 function renderPreScreen(px, py, standardButtonFun, randomButtonFun, beginnerButtonFun, quickButtonFun) {
@@ -48,7 +50,7 @@ function renderPreScreen(px, py, standardButtonFun, randomButtonFun, beginnerBut
       + 'Programmed by Lode Vandevenne.<br/>'
       + 'AI tweaks by Lou New.<br/>'
       + 'Drawings by Giordano Segatta.<br/>'
-      + 'version: v.20150509<br/>'
+      + 'version: v.20151024<br/>'
       + 'Links:<br/>'
       + 'TM on BGG: <a href="http://boardgamegeek.com/boardgame/120677/terra-mystica">http://boardgamegeek.com/boardgame/120677/terra-mystica</a><br/>'
       + 'Snellman: <a href="http://terra.snellman.net/">http://terra.snellman.net/</a><br/>'
@@ -93,6 +95,12 @@ function renderPreScreen(px, py, standardButtonFun, randomButtonFun, beginnerBut
   var louAIcb = makeCheckbox(px + 350, ppy + 72, parent, 'Lou New\'s AI (<font color="red">experimental!</font>)', 'Work-in-progress new AI by Lou New. This AI may be stronger and supports the expansion factions better. It is experimental, so may still contain bugs! May be better with some factions, have bugs with some others');
   louAIcb.checked = preferences.louAI;
 
+  var fireiceerratacb = makeCheckbox(px, ppy + 89, parent, 'Fire&Ice Errata', 'The official rule change of 2015, making shapeshifters and riverwalkers less powerful.');
+  fireiceerratacb.checked = preferences.fireiceerrata;
+
+  var roundtilepromo2015cb = makeCheckbox(px + 160, ppy + 89, parent, 'Round tile promo 2015', 'Enable the new round tile (4VP for temple, 2C per cult priest) from the official 2015 mini expansion');
+  roundtilepromo2015cb.checked = preferences.roundtilepromo2015;
+
   ppy += 160;
   makeText(px, ppy, 'Preset* factions', parent).title = 'Override faction choice. Set to "choose" to choose the faction during the game according to normal game rules. Set to "random" to assign a random faction. Set to a given faction to assign that faction to this player';
   var factionDropDowns = [];
@@ -107,7 +115,7 @@ function renderPreScreen(px, py, standardButtonFun, randomButtonFun, beginnerBut
     if(preferences.factiondropdown) assignPreferenceToDropdown(dropdown, preferences.factiondropdown[i]);
   }
 
-  var ppx = px + 180;
+  var ppx = px + 190;
   makeText(ppx, ppy, 'Preset* round tiles', parent);
   var roundDropDowns = [];
   for(var i = 0; i < 6; i++) {
@@ -119,7 +127,7 @@ function renderPreScreen(px, py, standardButtonFun, randomButtonFun, beginnerBut
     if(preferences.presetroundtiles) assignPreferenceToDropdown(roundDropDowns[i], preferences.presetroundtiles[i]);
   }
 
-  ppx = px + 390;
+  ppx = px + 400;
   var bonusBoxesTitle = makeText(ppx, ppy, 'Preset* bonus tiles', parent);
   bonusBoxesTitle.title = 'check the preferred bonus tiles, those are given precedence during random selection. Check a small enough amount of tiles, and those are ensured to be in the game. Or check all except a few, and those few are ensured to be excluded. Selecting all or selecting none does exactly the same: fully randomize them according to the normal game rules.';
   var bonusBoxes = [];
@@ -137,7 +145,7 @@ function renderPreScreen(px, py, standardButtonFun, randomButtonFun, beginnerBut
 
   var thereIsOnlyOneFinalScoring = (finalScoringDisplayNames.length <= 1);
 
-  ppx = px + 520;
+  ppx = px + 530;
   var finalScoringDropdown;
   if(!thereIsOnlyOneFinalScoring) {
     var finalScoringChoices = ['random'];
@@ -194,6 +202,8 @@ function renderPreScreen(px, py, standardButtonFun, randomButtonFun, beginnerBut
     params.fireice = fireicecb.checked;
     params.turnorder = turnordercb.checked;
     params.louAI = louAIcb.checked;
+    params.fireiceerrata = fireiceerratacb.checked;
+    params.roundtilepromo2015 = roundtilepromo2015cb.checked;
 
     preferences.newcultistsrule = newcultistcb.checked;
     preferences.towntilepromo2013 = towntilepromo2013cb.checked;
@@ -201,6 +211,8 @@ function renderPreScreen(px, py, standardButtonFun, randomButtonFun, beginnerBut
     preferences.fireice = fireicecb.checked;
     preferences.turnorder = turnordercb.checked;
     preferences.louAI = louAIcb.checked;
+    preferences.fireiceerrata = fireiceerratacb.checked;
+    preferences.roundtilepromo2015 = roundtilepromo2015cb.checked;
 
     preferences.gametypedropdown = gameTypeDropDown.selectedIndex;
     preferences.playertypedropdown = (playerTypeDropDown.checked ? 1 : 0);
@@ -210,7 +222,7 @@ function renderPreScreen(px, py, standardButtonFun, randomButtonFun, beginnerBut
     fun(params);
   }
 
-  ppy = py + 170;
+  ppy = py + 170 + 17;
   makeButton(px, ppy, 'Start', parent, bind(buttonFun, function(params) {
     if(gameTypeDropDown.selectedIndex == 0) standardButtonFun(params);
     if(gameTypeDropDown.selectedIndex == 1) randomButtonFun(params);
@@ -218,8 +230,9 @@ function renderPreScreen(px, py, standardButtonFun, randomButtonFun, beginnerBut
     if(gameTypeDropDown.selectedIndex == 3) quickButtonFun(params);
   }), 'Start new game');
 
-  makeText(px, py + 480, '<h3>Documentation:</h3>' +
+  makeText(px, py + 480 + 17, '<h3>Documentation:</h3>' +
     '<h4>Updates</h4>' +
+    '<p>20151024: Added the new official fire&ice rule change as an option. Also added the new 2015 mini expansion: 4VP for temple round bonus tile.<p/>' +
     '<p>20150525: There is now a choice between the old AI, and Lou\'s new AI. The new AI is a work in progress! It is stronger than the old AI and works with the expansion factions, but is experimental so may have a few bugs.<p/>' +
     '<p>20150509: AI tweaks by Lou New added.<p/>' +
     '<p>20150108: Riverwalkers added (possibly still with bugs).<p/>' +
@@ -347,6 +360,8 @@ var preferences = {
   fireice: true,
   turnorder: false,
   louAI: false,
+  fireiceerrata: true,
+  roundtilepromo2015: true,
 };
 
 function assignPreferenceToDropdown(dropdown, value) {
@@ -376,6 +391,8 @@ function setLocalStorage() {
   localStorage['fireice'] = preferences.fireice;
   localStorage['turnorder'] = preferences.turnorder;
   localStorage['louAI'] = preferences.louAI;
+  localStorage['fireiceerrata'] = preferences.fireiceerrata;
+  localStorage['roundtilepromo2015'] = preferences.roundtilepromo2015;
 }
 
 //no longer a cookie, but html5 local storage
@@ -401,6 +418,8 @@ function getLocalStorage() {
   if(localStorage['fireice'] != undefined) preferences.fireice = localStorage['fireice'] == 'true';
   if(localStorage['turnorder'] != undefined) preferences.turnorder = localStorage['turnorder'] == 'true';
   if(localStorage['louAI'] != undefined) preferences.louAI = localStorage['louAI'] == 'true';
+  if(localStorage['fireiceerrata'] != undefined) preferences.fireiceerrata = localStorage['fireiceerrata'] == 'true';
+  if(localStorage['roundtilepromo2015'] != undefined) preferences.roundtilepromo2015 = localStorage['roundtilepromo2015'] == 'true';
 }
 
 window.onbeforeunload = setLocalStorage;

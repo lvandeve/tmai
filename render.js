@@ -123,6 +123,13 @@ function clearHelp() {
   helpEl.innerHTML = '';
 }
 
+// TODO: more of the game texts here
+function Texts() {
+};
+Texts.shift1title = function() { var shiftcost = state.fireiceerrata ? 5 : 3; return 'Shapeshift to new color (' + shiftcost + 'pw cost)'; };
+Texts.shift2title = function() { var shiftcost = state.fireiceerrata ? 5 : 3; return 'Shapeshift to new color (' + shiftcost + ' power tokens cost)'; };
+Texts.priestUnlockText = 'choose priest or color to unlock';
+
 function drawTileMapElement(px, py, tilex, tiley, parent) {
   var tilesize = 64;
   var el =  makeDiv(px - tilesize/2, py - tilesize/3, parent);
@@ -576,6 +583,7 @@ function drawRoundTile(px, py, tile, index) {
   else if(tile == T_ROUND_TP3VP_4W1DIG) { text1 = 'TP: 3vp'; text2 = 'dig'; num = 4; cult = C_W; }
   else if(tile == T_ROUND_SHSA5VP_2A1W) { text1 = 'SH/SA:5vp'; text2 = '1W'; num = 2; cult = C_A; }
   else if(tile == T_ROUND_TP3VP_4A1DIG) { text1 = 'TP: 3vp'; text2 = 'dig'; num = 4; cult = C_A; }
+  else if(tile == T_ROUND_TE4VP_P2C) { text1 = 'TE: 4vp'; text2 = '2c'; num = 1; cult = 'P'; }
   else return [0, 0];
   return renderRoundTile(px, py, tile, cult, num, text1, text2, index);
 }
@@ -1407,7 +1415,7 @@ function drawPlayerActions(px, py, playerIndex, parent /*parent DOM element*/) {
   }
   if(player.getFaction().canTakeAction(player, A_SHIFT, game)) {
     button = makeLinkButton(px2, py + 112, getActionName(A_SHIFT), parent);
-    button.title = 'Shapeshift to new color (3pw cost)';
+    button.title = Texts.shift1title();
     button.onclick = function() {
       chooseActionColor(new Action(A_SHIFT));
     };
@@ -1415,7 +1423,7 @@ function drawPlayerActions(px, py, playerIndex, parent /*parent DOM element*/) {
   }
   if(player.getFaction().canTakeAction(player, A_SHIFT2, game)) {
     button = makeLinkButton(px2, py + 112, getActionName(A_SHIFT2), parent);
-    button.title = 'Shapeshift to new color (3 power tokens cost)';
+    button.title = Texts.shift2title();
     button.onclick = function() {
       chooseActionColor(new Action(A_SHIFT2));
     };

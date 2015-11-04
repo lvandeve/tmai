@@ -116,6 +116,8 @@ function initParams(params) {
   state.fireice = params.fireice;
   state.turnorder = params.turnorder;
   state.louAI = params.louAI;
+  state.fireiceerrata = params.fireiceerrata;
+  state.roundtilepromo2015 = params.roundtilepromo2015;
 
   var finalscoring = params.finalscoring;
   if(finalscoring == -1) {
@@ -164,6 +166,8 @@ function initialGameLogMessage() {
   if(state.fireice) addLog('fire & ice expansion enabled');
   if(state.turnorder) addLog('variable turn order enabled');
   if(state.louAI) addLog('Lou New\'s AI enabled');
+  if(state.fireiceerrata) addLog('fire & ice errata enabled');
+  if(state.roundtilepromo2015) addLog('round tile promo 2015 enabled');
 
   addLog('round 1 tile: ' + tileToStringLong(game.roundtiles[1], true));
   addLog('round 2 tile: ' + tileToStringLong(game.roundtiles[2], true));
@@ -424,7 +428,7 @@ function startRandomGameButtonFun(params) {
 function randomShuffle(list) {
   // Fisher-Yates shuffle
   for(var i = list.length - 1; i > 0; i--) {
-    var j = randomInt(i);
+    var j = randomInt(i + 1);
     var temp = list[i];
     list[i] = list[j];
     list[j] = temp;
@@ -496,6 +500,7 @@ function chooseRoundTiles(params) {
     while(true) {
       var index = T_ROUND_BEGIN + 1 + randomInt(T_ROUND_END - T_ROUND_BEGIN - 1);
       if(i >= 5 && index == T_ROUND_DIG2VP_1E1C) continue; //no digging VP's in the last two rounds due to halflings abuse
+      if(!params.roundtilepromo2015 && isRoundTilePromo2015Tile(index)) continue;
       if(taken[index]) continue; //no duplicate round tiles
       taken[index] = true;
       game.roundtiles[i] = index;

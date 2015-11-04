@@ -55,7 +55,7 @@ Actor.prototype.chooseInitialFavorTile = function(playerIndex, callback) {
 };
 
 //callback result (second parameter) should be the chosen color emum value
-//this function gets called during faction selection for factions where needed, but also later in game when unlocking new colors. In that case, return Z for getting the priest instead.
+//this function gets called during faction selection for factions where needed, but also later in game when unlocking new colors (for riverwalkers). In that case, return Z for getting the priest instead.
 Actor.prototype.chooseAuxColor = function(playerIndex, callback) {
 };
 
@@ -83,5 +83,9 @@ Actor.prototype.chooseCultistTrack = function(playerIndex, callback) {
 //the array is allowed to have less than num values, e.g. if there is no reachable spot that can be digged
 //NOTE: this does not get called for giants if num would be 1, but when called, num will be 2 (and 2 dig coordinate pairs must be given, both at the same location)
 Actor.prototype.doRoundBonusSpade = function(playerIndex, callback) {
+};
+
+// Only used if fireiceerrata is enabled, to choose whether to get a power token when someone leeched from the shapeshifters
+Actor.prototype.chooseShapeshiftersConversion = function(playerIndex, callback) {
 };
 

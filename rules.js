@@ -44,6 +44,10 @@ function isBonusTilePromo2013Tile(tile) {
   return tile == T_BON_PASSSHIPVP_3PW;
 }
 
+function isRoundTilePromo2015Tile(tile) {
+  return tile == T_ROUND_TE4VP_P2C;
+}
+
 function isFireIceFaction(faction) {
   return faction.color == O || faction.color == W || faction.color == X || faction.color == Z;
 }
@@ -254,6 +258,11 @@ function unlockColorPriest(player, color) {
     if(color == Z) {
       if(player.p < player.pp) player.p++;
     } else {
+      if(state.fireiceerrata) {
+        var cheap = colorIsCheapForLava(color);
+        var error = tryConsume(player, [cheap ? 1 : 2,0,0,0,0]);
+        if(error) return 'cannot afford the gold for color unlock';
+      }
       player.colors[color - R] = true;
       player.pp++; //priest goes to priest pool
     }
@@ -261,7 +270,6 @@ function unlockColorPriest(player, color) {
   }
   return error;
 }
-
 
 //aka "giveResources"
 //not to be confused with "sumIncome"
@@ -725,6 +733,12 @@ function addExtrasForAction(player, action) {
     }
   }
 
+  if(action.type == A_UPGRADE_TE) {
+    if(getRoundTile() == T_ROUND_TE4VP_P2C) {
+      player.addVP(4, 'round', getTileVPDetail(getRoundTile()));
+    }
+  }
+
   if(action.type == A_BUILD || action.type == A_WITCHES_D) {
     if(player.favortiles[T_FAV_1E_DVP]) {
       player.addVP(2, 'favor', getTileVPDetail(T_FAV_1E_DVP));
@@ -807,7 +821,8 @@ function getRoundBonusDigs(player, round) {
 }
 
 //amount of resources from the round end based on cult track
-function getRoundBonusResourcesForCults(cult, round) {
+//priests is amount of priests the player has in total on all cult tracks
+function getRoundBonusResourcesForCults(cult, priests, round) {
   if(round == 0) return [0,0,0,0,0];
   var t = game.roundtiles[round];
   if(!t) return [0,0,0,0,0];
@@ -826,12 +841,27 @@ function getRoundBonusResourcesForCults(cult, round) {
   else if(t == T_ROUND_SHSA5VP_2A1W) {
     return [0,Math.floor(cult[C_A] / 2),0,0,0];
   }
+  else if(t == T_ROUND_TE4VP_P2C) {
+    return [priests*2,0,0,0,0];
+  }
   return [0,0,0,0,0];
 }
 
 //amount of resources from the round end based on cult track
 function getRoundBonusResources(player, round) {
-  return getRoundBonusResourcesForCults(player.cult, round);
+  return getRoundBonusResourcesForCults(player.cult, getCultPriests(player), round);
+}
+
+function getCultPriests(player) {
+  // a simpler way would normally be "7 - player.pp", but that would not be correct for riverwalkers, where pp is initially 1 instead of 7
+
+  var result = 0;
+  for(var i = C_F; i <= C_A; i++) {
+    for(var j = 0; j < 4; j++) {
+      if(game.cultp[i][j] == player.woodcolor) result++;
+    }
+  }
+  return result;
 }
 
 //this one does NOT fail and does not consume income. If you already have max shipping, it does nothing.
@@ -1049,7 +1079,7 @@ function tryActionCore_(player, action /*Action object*/) {
     player.bridges++;
   }
   else if(action.type == A_PLACE_BRIDGE) {
-    //LOU CHEAT if get here after A_POWER_BRIDGE fails     
+    //LOU CHEAT if get here after A_POWER_BRIDGE fails
     if (player.bridges <= 0) {
       game.octogons[A_POWER_BRIDGE] = 1;
       player.bridgepool--;
@@ -1058,7 +1088,7 @@ function tryActionCore_(player, action /*Action object*/) {
       player.pw2 -= 3;
       player.pw0 += 3;
     }
-    
+
     if(player.bridges <= 0) return 'not enough rule bridges';
     var x0 = action.cos[0][0];
     var y0 = action.cos[0][1];
@@ -1179,10 +1209,11 @@ function tryActionCore_(player, action /*Action object*/) {
     }
   }
   else if(action.type == A_SHIFT || action.type == A_SHIFT2) {
+    var shiftcost = state.fireiceerrata ? 5 : 3;
     if(action.type == A_SHIFT) {
-      error = tryConsume(player, [0,0,0,3,0], action.type);
+      error = tryConsume(player, [0,0,0,shiftcost,0], action.type);
     } else {
-      error = tryConsume(player, [0,0,0,0,0, 0,0,0,3], action.type);
+      error = tryConsume(player, [0,0,0,0,0, 0,0,0,shiftcost], action.type);
     }
     if(error != '') return error;
     if(getNoShiftColors(player)[action.color]) return 'color already present';

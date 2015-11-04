@@ -252,8 +252,8 @@ function getActionCodeName(type) {
     case A_AUREN_CULT: return 'aurencult2';
     case A_ADV_SHIP: return 'advshipping';
     case A_ADV_DIG: return 'advdigging';
-    case A_SHIFT: return 'shift_pw'; //shift with 3 regular power cost
-    case A_SHIFT2: return 'shift_pt'; //shift with 3 power tokens cost
+    case A_SHIFT: return 'shift_pw'; //shift with 3 or 5 regular power cost
+    case A_SHIFT2: return 'shift_pt'; //shift with 3 or 5 power tokens cost
     case A_POWER_BRIDGE: return 'powbridge';
     case A_ENGINEERS_BRIDGE: return 'engbridge';
     case A_PLACE_BRIDGE: return 'placebridge';
@@ -327,6 +327,7 @@ var T_ROUND_D2VP_4F4PW = T_index++;
 var T_ROUND_TP3VP_4W1DIG = T_index++;
 var T_ROUND_SHSA5VP_2A1W = T_index++;
 var T_ROUND_TP3VP_4A1DIG = T_index++;
+var T_ROUND_TE4VP_P2C = T_index++; //round tile promo 2015
 var T_ROUND_END = T_index++;
 var T_TILE_ENUM_END = T_index++;
 
@@ -374,6 +375,7 @@ function getTileCodeName(tile) {
   if(tile == T_ROUND_TP3VP_4W1DIG) return 'RNDtpWspade';
   if(tile == T_ROUND_SHSA5VP_2A1W) return 'RNDsAw';
   if(tile == T_ROUND_TP3VP_4A1DIG) return 'RNDtpAspade';
+  if(tile == T_ROUND_TE4VP_P2C) return 'RNDtePc';
   return 'unk';
 }
 
@@ -393,6 +395,7 @@ function getTileVPDetail(tile) {
   if(tile == T_ROUND_TP3VP_4W1DIG) return 'round tp';
   if(tile == T_ROUND_SHSA5VP_2A1W) return 'round sh/sa';
   if(tile == T_ROUND_TP3VP_4A1DIG) return 'round tp';
+  if(tile == T_ROUND_TE4VP_P2C) return 'round te';
   return '???';
 }
 
@@ -411,7 +414,7 @@ function tileToStringLong(tile, prefix) {
     if(tile > T_TW_BEGIN && tile < T_TW_END) result += 'TW ';
     if(tile > T_ROUND_BEGIN && tile < T_ROUND_END) result += 'RND ';
   }
-  
+
   if(tile == T_NONE) result += 'none';
   else if(tile == T_DUMMY) result += 'dummy';
   else if(tile == T_BON_SPADE_2C) result += 'dig 2c';
@@ -452,6 +455,7 @@ function tileToStringLong(tile, prefix) {
   else if(tile == T_ROUND_TP3VP_4W1DIG) result += 'tp3vp 4W=spd';
   else if(tile == T_ROUND_SHSA5VP_2A1W) result += 's5vp 2A=w';
   else if(tile == T_ROUND_TP3VP_4A1DIG) result += 'tp3vp 4A=spd';
+  else if(tile == T_ROUND_TE4VP_P2C) result += 'te4vp P=2c';
   else result += 'unk';
   return result;
 }
@@ -464,7 +468,7 @@ function tileToHelpString(tile, prefix) {
     if(tile > T_TW_BEGIN && tile < T_TW_END) prefix += 'town tile: ';
     if(tile > T_ROUND_BEGIN && tile < T_ROUND_END) prefix += 'round tile: ';
   }
-  
+
   if(tile == T_NONE) result += 'none';
   else if(tile == T_DUMMY) result += 'dummy tile';
   else if(tile == T_BON_SPADE_2C) result += 'free spade action + 2c income';
@@ -505,13 +509,13 @@ function tileToHelpString(tile, prefix) {
   else if(tile == T_ROUND_TP3VP_4W1DIG) result += '3vp when upgrading to tp. End income: 1 spade per 4 water levels';
   else if(tile == T_ROUND_SHSA5VP_2A1W) result += '2vp when upgrading to sa/sh. End income: 1 worker per 2 air levels';
   else if(tile == T_ROUND_TP3VP_4A1DIG) result += '3vp when upgrading to tp. End income: 1 spade per 4 air levels';
+  else if(tile == T_ROUND_TE4VP_P2C) result += '4vp when upgrading to te. End income: 2 coins per priest on cult track';
   else result += 'unknown tile';
   return result;
 }
 
 
 //cults
-//TODO: Name these according to the element instead of color: C_F, C_W, C_E and C_A
 var C_NONE = -1;
 var C_F = 0; //fire, red
 var C_W = 1; //water, blue
@@ -544,7 +548,7 @@ S_ACTION = S_index++; //Taking actions, for 6 rounds long.
 S_LEECH = S_index++; //Player making leeching decision
 S_CULTISTS = S_index++; //Cultists player choosing cult track after leeching
 S_CULT = S_index++; //Choosing cult track
-S_PRIEST_COLOR = S_index++; //Choosing color with priest
+S_PRIEST_COLOR = S_index++; //Choosing color with priest (for riverwalkers)
 //States between rounds. Next state is again itself, or S_ACTION
 S_ROUND_END_DIG = S_index++; //Player digging due to round end cult bonus
 //Final state after all actions and rounds are done.

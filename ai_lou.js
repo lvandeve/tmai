@@ -1,4 +1,4 @@
-/*  ailou6.js
+/*  ailou6A.js
 TM AI
 
 Copyright (C) 2013 by Lode Vandevenne
@@ -58,31 +58,29 @@ function getRoundTileP2() {
   else return 0;
 }
 
-//LOU function to convert power (usually to coins) to avoid power overflow
-//LOU Check for power income and compare against bowls
-//LOU returns true if power use, false if unchanged
 AILou.powerToCoin = function(actions,coin)  {
-  if (coin == 0 ) return false;
+  var action1C = new Action(A_CONVERT_1PW_1C);
   for(var i = 0; i < coin; i++) {
-    var action2 = new Action(A_CONVERT_1PW_1C);
-    actions.push(action2);
+    actions.push(action1C);
   }
-  return true;
+
 };
 
-AILou.convertPower = function(playerIndex) {
+//LOU function to convert power (usually to coins) to avoid power overflow
+//LOU Check for power income and compare against bowls
+AILou.convertPower = function(playerIndex, coin, actions, bonPower) {
+  //var restrictions = clone(defaultRestrictions);
+  //var restrictions = {w_cost: 0.33, p_cost: 1, pw_cost: 0.16, burn_cost: 1, max_burn: 6 };
+  //var actions = getPossibleActions(player, restrictions);
   var player = game.players[playerIndex];
-  var restrictions = {w_cost: 0.33, p_cost: 1, pw_cost: 0.16, burn_cost: 1, max_burn: 6 };
-  var actions = getPossibleActions(player, restrictions);
   var bowl2 = player.pw2;
   var powerUse = bowl2;
-  var takePower = 0;
-  var coin = 0;
+  var takePower = 0;  
 
   // Check for no ability to get power
   if (player.pw0 + player.pw1 == 0)  {
     switch(bowl2) {
-      case 0: return 0;
+      case 0: break;
       case 1: AILou.powerToCoin(actions, powerUse);
               coin += powerUse;
               break;
@@ -93,7 +91,6 @@ AILou.convertPower = function(playerIndex) {
               var action2 = new Action(A_POWER_1P);
               takePower++;
               actions.push(action2);
-              coin += powerUse;
               break;
               } else {
               AILou.powerToCoin(actions, powerUse);
@@ -104,13 +101,11 @@ AILou.convertPower = function(playerIndex) {
               var action2 = new Action(A_POWER_7C);
               takePower++;
               actions.push(action2);
-              coin += powerUse;
-              break;                              // look for Pow7c or Pow2w;
-              } else if (player.getFaction().canTakeAction(player, A_POWER_7C, game)) {
+              break;
+              } else if (player.getFaction().canTakeAction(player, A_POWER_2W, game)) {
               var action2 = new Action(A_POWER_2W);
               takePower++;
               actions.push(action2);
-              coin += powerUse;
               break;
               } else {
               AILou.powerToCoin(actions, powerUse);
@@ -127,25 +122,24 @@ AILou.convertPower = function(playerIndex) {
     }
   }
 
-  // Check powerIncome greater than can be used
-  // INCOME = { c: player.c, w: player.w, p: player.p, pw: [player.pw1, player.pw2], vp: player.vp };
+  //Check powerIncome greater than can be used
+  //INCOME = { c: player.c, w: player.w, p: player.p, pw: [player.pw(0,1,2)], vp: player.vp 
   //LOU use all power action up even if one left over
   if (state.round < 6)  {
-    var income = getIncome(player, true, state.round);   // from Game
-    var powerIncome = income[3];
-    var powerSurplus = powerIncome - (coin*2 + player.pw0*2 + player.pw1);
-    var powerLeft = powerUse - coin;
+    var income = getIncome(player, false, state.round);   //from rules.js, false = no bonus tile
+    income[3] += bonPower;   //include power from new bonus tile
+    var powerSurplus = income[3] - (coin*2 + player.pw0*2 + player.pw1);
+    var powerLeft = bowl2 - coin;
     if (powerSurplus > 0 && powerLeft > 0) {
-      var powerOver = Math.min(Math.ceil(powerSurplus/2, powerLeft));
+      var powerOver = Math.min(Math.ceil(powerSurplus/2), powerLeft);
       AILou.powerToCoin(actions, powerOver);
       coin += powerOver;
     }
+    if(AILou.info) addLog('CONVERT: convertPower for EXECUTE/PASS action = '
+      + income + ' power in bowl2 ' + powerLeft + ' extraPower ' + powerSurplus);     
   }
-
-  if (coin > 0) {
-    // execute all those actions, can pass afterwards unless takePower
-  }
-  return takePower;
+  var result = [takePower, coin, actions];
+  return result;
 };
 
 
@@ -232,19 +226,42 @@ AILou.prototype.doAction = function(playerIndex, callback) {
     chosen = actions[besti];
   }
 
+  var notChosen = 0;;
+  var cantPass = 0;
   if(!chosen) {
     //LOU this is where pass option selected, convert power before pass
-    var cantPass = AILou.convertPower(playerIndex);
-    if (cantPass > 0) return
-    var action = new Action(A_PASS);
-    if(state.round != 6) action.bontile = this.getPreferredBonusTile_(player);
-    chosen = [action];
+    notChosen = 1;
+    var actionPass = new Action(A_PASS);
+    if(state.round != 6) actionPass.bontile = this.getPreferredBonusTile_(player);
+    var actionCoin = [];
+    var coin = 0;
+    var bonPower = 0;
+    if(actionPass.bontile == T_BON_3PW_SHIP ||
+       actionPass.bontile == T_BON_3PW_1W  ||
+       actionPass.bontile == T_BON_PASSSHIPVP_3PW) bonPower = 3;
+    var result = AILou.convertPower(playerIndex, coin, actionCoin, bonPower);
+    cantPass = result[0];
+    coin = result[1];
+    actionCoin = result[2];
+    if (cantPass > 0) {
+      chosen = actionCoin;
+    }
+    else if (coin == 0) {
+      chosen = [actionPass];
+    }
+    else if (coin > 0) {
+      actionCoin.push(actionPass);
+      chosen = actionCoin;     
+    }
   }
 
+ if (notChosen == 0) {
+  var favtown6 = -1;
   for(var i = 0; i < chosen.length; i++) {
     for(var j = 0; j < chosen[i].favtiles.length; j++) {
       var tiles = getPossibleFavorTiles(player, chosen[i].favtiles);
       chosen[i].favtiles[j] = this.getPreferredFavorTile_(player, tiles);
+      if (chosen[i].favtiles[j] == T_FAV_2F_6TW) favtown6 = i;
     }
     for(var j = 0; j < chosen[i].twtiles.length; j++) {
       var tiles = getPossibleTownTiles(player, chosen[i].twtiles);
@@ -252,12 +269,25 @@ AILou.prototype.doAction = function(playerIndex, callback) {
       updateWToPConversionAfterDarklingsSHTownTile(player, chosen[i]);
     }
   }
+  // check for fav6tw and then add town tile
+  if (favtown6 >= 0) {
+    //from rules.js   var numtw = actionCreatesTown(player, chosen, null);
+    calculateTownClusters();
+    var town6 = getPlayerTownSize(player.woodcolor, townclusters, 6);
+    if(AILou.info) addLog('NEWTOWN: add town(s) of size 6. '
+      + town6.length + ' favtown6 number ' + favtown6);     
+    for(var j = 0; j < town6.length; j++) {
+      var tiles = getPossibleTownTiles(player, chosen[favtown6].twtiles);
+      chosen[favtown6].twtiles[j] = this.getPreferredTownTile_(player, tiles);
+    }
+  }
+ }
 
-  //LOU this is where the chosen action placebridge previously fails.
+  //LOU this is where the chosen action 'place bridge' and 'get favor6tw' previously fails.
   //LOU this is where favor5 fails when making a town. Error: too few town tiles chosen
   var error = callback(playerIndex, chosen);
   if(error != '') {
-    addLog('ERROR: AI tried invalid action. Error: ' + error);
+    addLog('ERROR: AI tried invalid EXECUTE/PASS action. Error: ' + error);
 
     //instead, pass.
     var action = new Action(A_PASS);
@@ -303,8 +333,8 @@ AILou.prototype.updateScoreActionValues_ = function(player, roundnum) {
     distancon: 3,
     settlecon: 4,
 
-    shift: 0,    //SHAPESHIFTERS power3
-    shift2: 0,   //SHAPESHIFTERS token3
+    shift: 0,    //SHAPESHIFTERS power3 or 5
+    shift2: 0,   //SHAPESHIFTERS token3 or 5
     specific: {},
     };
 
@@ -386,7 +416,12 @@ AILou.prototype.updateScoreActionValues_ = function(player, roundnum) {
 
   //reduce coin value so not too many (avoid for NOMADS, DARK and BLUE)
   if(roundnum > 3 && player.c > 8 && (player.c > (2.5 * player.w))) s.c /= 2;
-  if(roundnum > 3 && player.c > 12 && (player.c > (3 * player.w))) {s.c /= 4; s.specific[A_POWER_7C] = 0;}
+  if(roundnum > 3 && player.c > 12 && (player.c > (3 * player.w))) {
+    s.c /= 4; 
+    s.specific[A_POWER_7C] = -5;
+    s.specific[A_POWER_2W] += 2;
+    s.specific[A_POWER_1P] += 1;
+  }
 
   var sanctuarytwiddle = 2;
   //The AIs are not building sanctuaries.... let's add some score
@@ -484,7 +519,7 @@ AILou.prototype.updateScoreActionValues_ = function(player, roundnum) {
       makeTemple(1,10,player.w > 6 ? 0:5,player.w > 6 ? 5:0, player.w > 6 ? 5:0);
       if(roundnum > 2) makeSHEssential(10, player.w > 6 ? 0:5, player.w > 7 ? 5:0, player.w > 7 ? 5:0);
     }
-    if(roundnum > 4) makeShipping(1,10,0,0,0)
+    if(roundnum > 4) makeShipping(1,0,0,0,0)
     if(player.pw2 >= 4) s.specific[A_POWER_7C] = player.c < 9 ? 12 : 6;
     if(player.p == 0 && roundnum == 6) s.specific[A_POWER_1P] = 8;
    }
@@ -495,9 +530,9 @@ AILou.prototype.updateScoreActionValues_ = function(player, roundnum) {
     s.b_sh = built_te(player) > 0 ? 6 : 0;
     if(roundnum < 6) s.b_d += 2;
     // Do get some dwellings first
-    if(built_d(player) > 2) makeTemple (1,10,0,0,0);
+    if(built_d(player) > 2) makeTemple (1,0,0,0,0);
     if(roundnum < 3 && player.p == 0) s.specific[A_POWER_1P] += 10;
-    if(roundnum > 4) makeShipping(1,10,0,0,0);
+    if(roundnum > 4) makeShipping(1,0,0,0,0);
   }
 
   //build TE (72%)
@@ -522,7 +557,7 @@ AILou.prototype.updateScoreActionValues_ = function(player, roundnum) {
     s.b_sh = (player.w >= 7 && player.c >= 6) ? 10 : -5;
     //only build SH if can convert 3w to 3p and must not burn too much manna (coin from 4 to 6)
     if(roundnum < 6) s.b_te += 5;  //get more priests for digging
-    if(roundnum > 4) makeShipping(1,10,0,0,0);
+    if(roundnum > 4) makeShipping(1,0,0,0,0);
   }
 
   //build TE (63%); defer town?
@@ -534,7 +569,7 @@ AILou.prototype.updateScoreActionValues_ = function(player, roundnum) {
     s.bridge = -50;  // rarely build bridges
     //increase shipping for shipVP bonus
     if (game.bonustiles[T_BON_PASSSHIPVP_3PW] != 0) {
-       if(player.shipping < 3) s.shipping += 5;
+      if(player.shipping < 3) s.shipping += 5;
       if(player.shipping == 1 && roundnum > 3) s.shipping += 5;
       if(player.shipping == 2 && roundnum > 4) s.shipping += 5;
       if(player.shipping >= 3 && roundnum > 5) s.shipping += 5;
@@ -554,7 +589,7 @@ AILou.prototype.updateScoreActionValues_ = function(player, roundnum) {
       s.b_sa++;
     }
     if(roundnum > 2) makeTemple(1,0,0,0,0);
-    if(roundnum > 4) makeShipping(1,10,0,0,0);
+    if(roundnum > 4) makeShipping(1,0,0,0,0);
   }
 
   // most SH start (72%) with 3D, but TE does better
@@ -656,24 +691,25 @@ AILou.prototype.updateScoreActionValues_ = function(player, roundnum) {
     } else if(player.bonustile == T_BON_PASSSHSAVP_2W) {
       makeSHEssential(0, 0, 0, 0);
     } else {    
-      if(roundnum > 1) makeSHEssential(0, 0, 0, 0);
+      if(roundnum > 1  && !state.fireiceerrata) makeSHEssential(0, 0, 0, 0);
       if(roundnum > 2) makeTemple(1,0,0,0,0);
     }
     if(roundnum > 4) makeShipping(1,0,0,0,0);
     if(roundnum < 6) s.b_sa = 1;
     s.specific[A_POWER_7C] -= 2;
     s.specific[A_POWER_2W] -= 1;
-    //allow AI action when SH is built to spend 3 tokens or 3 power to change free color
+    //allow AI action when SH is built to spend 3/5 tokens or 3/5 power to change free color
     if(player.b_sh == 0) {
       var oldColor = player.auxcolor;
       newColor = oldColor;   //from strategy.js       
       useToken = 0;          //from strategy.js
       var result = AILou.getNewAuxColor(player, oldColor); //get shift color and value
-      if(result >= 2 && player.pw2 >= 3) s.shift = result + 8;
-      else if(result >= 2 && player.pw2 == 2) s.shift = result + 4; 
-      if(roundnum == 6 && player.pw0+player.pw1 >= 3) {
+      var shiftcost = state.fireiceerrata ? 5 : 3;
+      if(result >= 2 && player.pw2 >= shiftcost) s.shift = result + 8;
+      else if(result >= 2 && player.pw2 == shiftcost-1) s.shift = result + 4; 
+      if(roundnum == 6 && player.pw0+player.pw1 >= shiftcost) {
         s.shift2 = 6; // will get 2VP at end even if not used
-        useToken = 3;
+        useToken = shiftcost;
       }
     } 
   }
@@ -721,17 +757,17 @@ Rating	Name	        Games
 1031	mermaids		4335	build 3D+TP, TE soon, tile 1E, ship ship track/nonus
 1029	cultists		2859	build TE, tile 1E
 1027	witches		4506	build 4D/ SH, bonus 2W, SH start
-1021	swarmlings		4290	build 3D+TE/ SH+TE, tile 1E, 1A
+1021	swarmlings	4290	build 3D+TE/ SH+TE, tile 1E, 1A
 995	giants		2342	build SH, 2W bonus, SH start
 991	halflings		4754	build 4D or TE, tile 1E, P bonus, up build track
 966	dragonlords	643	build 4D, SH second turn
-961	icemaidens		578	build TE
+961	icemaidens	578	build TE
 959	engineers		3192	build 4D/2TE(common), tile 2E
 955	fakirs		1528	avoid in standard game
 953	dwarves		3187	build TE or SA, tile 1E
-948	yetis			718	build TE
-943	auren			2170	4D is good, otherwise build SH
-930	alchemists		3027	build SH, use 10 VP for $
+948	yetis		718	build TE
+943	auren		2170	4D is good, otherwise build SH
+930	alchemists	3027	build SH, use 10 VP for $
 894	acolytes		427	avoid in expansion
 */
 
@@ -763,10 +799,8 @@ Rating	Name	        Games
   var shipVP = 0;
 
   //get more coin if needed
-  //extra. var restrictions = clone(defaultRestrictions);
-  //extra. var actions = getPossibleActions(player, restrictions);
   if((player.c < 4) && (player.getFaction().canTakeAction(player, A_POWER_7C, game))) {
-    s.specific[A_POWER_7C] += 10;
+    s.specific[A_POWER_7C] += 20;
   } else {
   if(player.c == 7 && player.p > 1 && (player.pw2 > 0 || player.w > 0)) adjustCoin = 1;
   if(player.c == 3 && player.p > 0 && (player.pw2 > 0 || player.w > 0)) adjustCoin = 1;
@@ -1071,7 +1105,7 @@ AILou.prototype.scoreFavorTile_ = function(player, tile, roundnum) {
       score += 4;
       if (getRoundTile() == T_ROUND_TW5VP_4E1DIG) score += 2;
     }
-    if (score >= 3) addLog('FAVOR: AI FAVOR5 for: '+logPlayerNameFun(player)
+    if (score >= 3 && AILou.info) addLog('FAVOR: AI FAVOR5 for: '+logPlayerNameFun(player)
       +' town5 num:'+town5.length+' town6 num:'+town6.length+' fav5 score:'+score); 
   }
   else if(tile == T_FAV_2W_CULT) {
@@ -1086,20 +1120,21 @@ AILou.prototype.scoreFavorTile_ = function(player, tile, roundnum) {
     if(roundnum <= 3) score += 3;
     else if(roundnum == 4) score += 2;
     else if(roundnum == 5) score += 1;
-
+    else if(roundnum == 6) score -= 4;
   }
   else if(tile == T_FAV_2A_4PW) {
     AILou.yfavor = 8;
     if(roundnum <= 3) score += 3;
     else if(roundnum == 4) score += 2;
     else if(roundnum == 5) score += 1;
-
+    else if(roundnum == 6) score -= 4;
   }
   else if(tile == T_FAV_1F_3C) {
     AILou.yfavor = 9;
     if(roundnum <= 3) score += 2;
     else if(roundnum == 4) score += 1;
     else if(roundnum == 5) score += 0.5;
+    else if(roundnum == 6) score -= 4;
   }
   else if(tile == T_FAV_1W_TPVP) {
     AILou.yfavor = 10;
@@ -1279,10 +1314,9 @@ AILou.prototype.chooseInitialFavorTile = function(playerIndex, callback) {
     [1,12,5,[ 6, 6],[ 9, 3],[ 0, 0], 0, 0,0,G],  // WITCHES  
     [1,13,3,[11, 3],[10, 8],[ 0, 0], 0, 0,0,S],  // ENGINEERS  
     [1,14,4,[ 7, 5],[11, 6],[ 0, 0], 0, 0,0,S],  // DWARVES  
-    [3, 1,7,[ 6, 5],[ 0, 0],[ 0, 0], 0, 0,0,R],   // Fireice CHAOS 
-    [3, 2,4,[ 8, 4],[ 6, 7],[ 0, 0], 0, 0,0,R],   // Fireice GIANTS 
-    [3, 2,4,[ 9, 7],[12, 8],[ 0, 0], 0, 0,0,R],   // Fireice GIANTS 
-    [3, 3,4,[ 8, 3],[ 2, 2],[ 0, 0], 0, 0,0,Y],   // Fireice FAKIRS 
+    [3, 1,7,[ 6, 7],[ 9, 7],[ 6, 5], 0, 0,0,R],   // Fireice CHAOS 
+    [3, 2,4,[ 9, 7],[ 6, 7],[ 8, 4], 0, 0,0,R],   // Fireice GIANTS 
+    [3, 3,4,[ 8, 3],[10, 2],[ 0, 0], 0, 0,0,Y],   // Fireice FAKIRS 
     [3, 4,5,[ 8, 3],[10, 2],[ 5, 1], 0, 0,0,Y],   // Fireice NOMADS 
     [3, 4,2,[ 3, 7],[ 2, 2],[ 4, 4], 0, 0,0,Y],   // Fireice NOMADS 
     [3, 5,4,[11, 5],[11, 2],[ 0, 0], 0, 0,0,U],   // Fireice HALFLINGS 
@@ -1940,8 +1974,8 @@ values has the following type:
   towardstown: making an existing cluster (that has at least 3 power) bigger to be closer to a town (TODO: never do this in a too small cluster that is locked in)
   interacts: it's a new dwelling that interacts with another player, that is good because it is a good TP upgrade target, plus may steal a good spot from them
   networkcon: value for each extra location in network
-  shift: value for SHAPESHIFTERS using 3pw to change color
-  shift2: value for SHAPESHIFTERS using 3tokens to change color
+  shift: value for SHAPESHIFTERS using 3pw/5pw to change color
+  shift2: value for SHAPESHIFTERS using 3/5 tokens to change color
   specific: object containing extra score for specific actions (by type), e.g. {A_BURN, A_POWER_7C}
 
   TODO: score for:
@@ -2284,21 +2318,14 @@ AILou.scoreAction = function(player, actions, values, roundnum) {
     } else if(type == A_SHIFT || type == A_SHIFT2) {
       res[4] += 2;
       var shiftcost = state.fireiceerrata ? 5 : 3;
-
       if(type == A_SHIFT) {
-
         res[3] -= shiftcost;
-
         shift++;
-
       } else if(type == A_SHIFT2) {
-
         //remove tokens from pw0 and pw1 (cost?) 
         //TODO correction needed here for cost of tokens
         //TODO move tokens first from pw2 to pw0 for coin.
-
         if (player.pw0+player.pw1 >= shiftcost) {
-
           burn += shiftcost;
           shift2++;  //must be temporary
         } 
@@ -2367,26 +2394,16 @@ AILou.scoreAction = function(player, actions, values, roundnum) {
     res[4] += b_tp * 3;
   }
 
-  //TE round and favor tiles
-
+  //TE round tile (fire-ice update)
   if(getRoundTile() == T_ROUND_TE4VP_P2C) {
-
     res[4] += b_te * 4;
-
   }
-
   else if(getRoundTileP1() == T_ROUND_TE4VP_P2C) {
-
     res[4] += b_te * 4 * defer1;
-
   }
-
   else if(getRoundTileP2() == T_ROUND_TE4VP_P2C) {
-
     res[4] += b_te * 4 * defer2;
-
   }
-
   
   //BONUS TILES
   if(player.bonustile == T_BON_PASSDVP_2C) {
@@ -2405,7 +2422,6 @@ AILou.scoreAction = function(player, actions, values, roundnum) {
   if(getRoundTile() == T_ROUND_SHSA5VP_2F1W || getRoundTile() == T_ROUND_SHSA5VP_2A1W) {
     res[4] += b_sh * (game.finalscoring == 2 ? 6:4);  //resources away from network
     res[4] += b_sa * (game.finalscoring == 2 ? 6:4);  //resources away from network
-
   }
   else if(getRoundTileP1() == T_ROUND_SHSA5VP_2F1W || getRoundTileP1() == T_ROUND_SHSA5VP_2A1W) {
     res[4] += (b_sh + b_sa) * 5 * defer1;
@@ -2545,4 +2561,6 @@ AILou.scoreTileEnemyEnvironment = function(tx, ty, color, center) {
   }
   return score;
 };
+
+
 

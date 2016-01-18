@@ -455,7 +455,7 @@ function deSerializeGameStateNewFormat(text) {
   for(var i = 0; i < el.length; i++) {
     var t = getSpaces(el[i]);
     result.bonustiles[codeNameToTile(t[0])] = 1;
-    result.bonustilecoins = parseInt(t[1]);
+    result.bonustilecoins[codeNameToTile(t[0])] = parseInt(t[1]);
   }
 
   d = decomposeEqualsLine(lines[1]);

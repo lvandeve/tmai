@@ -24,6 +24,16 @@ freely, subject to the following restrictions:
 */
 // The game-related global variables
 
+/*
+General TODO's:
+
+-fix loading of snellman games
+-fix rule of double dig action: do not allow to use extra spade in some circumstances
+-refactor bridges? reported to be hard to use for programming AI's
+-riverwalker AI sometimes makes error due to wrong color?
+-some AI's like giants make error with bonus digs sometimes??
+*/
+
 // The main function
 function beginGame() {
   game.bw = 13;

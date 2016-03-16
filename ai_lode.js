@@ -1122,9 +1122,11 @@ AILode.scoreAction = function(player, actions, values, roundnum) {
       subtractIncome(res, player.getActionCost(A_ADV_DIG));
       res[4] += getAdvanceDigVP(player);
       digging++;
-    } else if(type == A_POWER_BRIDGE || type == A_ENGINEERS_BRIDGE) {
-      if(type == A_POWER_BRIDGE) res[3] -= 3;
-      else res[1] -= 2;
+    } else if(type == A_POWER_BRIDGE) {
+      res[3] -= 3;
+    } else if(type == A_ENGINEERS_BRIDGE) {
+      res[1] -= 2;
+    } else if(type == A_PLACE_BRIDGE) {
       bridge++;
       //connected?
       if(isBridgeSelfConnected(action.cos[0][0], action.cos[0][1], action.cos[1][0], action.cos[1][1])) conbridge++;

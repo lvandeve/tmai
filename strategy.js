@@ -865,12 +865,12 @@ function getPossibleActions(player, restrictions) {
         //avoid adding twice the same action with just swapped tiles
 
         if (canHaveBridge(tiles[t][0], tiles[t][1], co2[0], co2[1], player.woodcolor)) {
-          result.push(new Action(A_POWER_BRIDGE));
+          var actions = clone(bactions);
+          actions.push(new Action(A_POWER_BRIDGE));
           var action2 = new Action();
           action2.type = A_PLACE_BRIDGE;
           action2.cos.push(tiles[t]);
           action2.cos.push(co2);
-          var actions = clone(bactions);
           actions.push(action2);
           result.push(actions);
         }

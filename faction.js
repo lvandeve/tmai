@@ -742,6 +742,11 @@ Engineers.prototype.canTakeFactionAction = function(player, action, opt_reason) 
   return Faction.prototype.canTakeFactionAction(player, action, opt_reason);
 };
 
+Engineers.prototype.getActionCost = function(player, action) {
+  if(action == A_ENGINEERS_BRIDGE) return [0,2,0,0,0];
+  return Faction.prototype.getActionCost(player, action);
+};
+
 ////////////////////////////////////////////////////////////////////////////////
 
 

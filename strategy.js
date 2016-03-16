@@ -851,28 +851,37 @@ function getPossibleActions(player, restrictions) {
     }
   }
 
-  //bridge
-  //TODO: the engineers version A_ENGINEERS_BRIDGE
-  var bactions = [];
-  if(!game.octogons[A_POWER_BRIDGE] && player.bridgepool > 0 && canGetResources(player, player.getActionCost(A_POWER_BRIDGE), restrictions, bactions)) {
-    tiles = getOccupiedTiles(player);
-    var dirs = [D_N, D_NE, D_SE, D_S, D_SW, D_NW];
-    for(var t = 0; t < tiles.length; t++) {
-      for (var d = 0; d < dirs.length; d++) {
-        var co2 = bridgeCo(tiles[t][0], tiles[t][1], dirs[d], game.btoggle);
-        if(outOfBounds(co2[0], co2[1])) continue;
-        if(getBuilding(co2[0], co2[1])[1] == player.woodcolor && co2[1] > tiles[t][1]) continue;
-        //avoid adding twice the same action with just swapped tiles
+  //bridges
+  for(var i = 0; i < 2; i++) {
+    var bactions = [];
+    var ok = false;
+    if(i == 0) {
+      ok = !game.octogons[A_POWER_BRIDGE] && player.bridgepool > 0 && canGetResources(player, player.getActionCost(A_POWER_BRIDGE), restrictions, bactions);
+    } else {
+      ok = player.faction == F_ENGINEERS && !player.octogons[A_ENGINEERS_BRIDGE] &&
+           player.bridgepool > 0 && canGetResources(player, player.getActionCost(A_ENGINEERS_BRIDGE), restrictions, bactions)
+    }
 
-        if (canHaveBridge(tiles[t][0], tiles[t][1], co2[0], co2[1], player.woodcolor)) {
-          var actions = clone(bactions);
-          actions.push(new Action(A_POWER_BRIDGE));
-          var action2 = new Action();
-          action2.type = A_PLACE_BRIDGE;
-          action2.cos.push(tiles[t]);
-          action2.cos.push(co2);
-          actions.push(action2);
-          result.push(actions);
+    if(ok) {
+      bactions.push(new Action(i == 0 ? A_POWER_BRIDGE : A_ENGINEERS_BRIDGE));
+      tiles = getOccupiedTiles(player);
+      var dirs = [D_N, D_NE, D_SE, D_S, D_SW, D_NW];
+      for(var t = 0; t < tiles.length; t++) {
+        for (var d = 0; d < dirs.length; d++) {
+          var co2 = bridgeCo(tiles[t][0], tiles[t][1], dirs[d], game.btoggle);
+          if(outOfBounds(co2[0], co2[1])) continue;
+          if(getBuilding(co2[0], co2[1])[1] == player.woodcolor && co2[1] > tiles[t][1]) continue;
+          //avoid adding twice the same action with just swapped tiles
+
+          if (canHaveBridge(tiles[t][0], tiles[t][1], co2[0], co2[1], player.woodcolor)) {
+            var actions = clone(bactions);
+            var action2 = new Action();
+            action2.type = A_PLACE_BRIDGE;
+            action2.cos.push(tiles[t]);
+            action2.cos.push(co2);
+            actions.push(action2);
+            result.push(actions);
+          }
         }
       }
     }

@@ -1037,6 +1037,7 @@ function tryActionCore_(player, action /*Action object*/) {
     player.transformco = [x, y];
     player.transformcoset[arCo(x, y)] = true;
     var newcolor = getColorAfterTransformAction(tile, player, action.type);
+    if(newcolor == player.getMainDigColor()) player.mayaddmorespades = false; // if you reached the destination color, then you may not add more spade actions, only overflow
     if(newcolor == tile) return 'unknown transform action';
     setWorld(x, y, newcolor);
   }

@@ -1,7 +1,7 @@
 /*
 TM AI
 
-Copyright (C) 2013-2014 by Lode Vandevenne
+Copyright (C) 2013-2016 by Lode Vandevenne
 
 This software is provided 'as-is', without any express or implied
 warranty. In no event will the authors be held liable for any damages

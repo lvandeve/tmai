@@ -548,45 +548,35 @@ function shUpgradeWithRiverwalkers(player, actions) {
   //Tiles that are already part of a town are excluded from consideration.
   var numbridges = 0;
   var locbridge1 = [0,0,0,0];
-
-  for(var i = 0; i < 2; i++) {
-    //addLog(' BRIDGES RIVERWALKERS: ' + player.bridgepool );
-    if (player.bridgepool <= 0) continue;
-    player.numactions = 0;
-    //Settlements may be worth more than the connection for second bridge
-    if(game.finalscoring == 4  && i == 1) continue;
-    
-    tiles = getOccupiedTiles(player);
-    var dirs = [D_N, D_NE, D_SE, D_S, D_SW, D_NW];
-    for(var t = 0; t < tiles.length; t++) {
-      //remove tiles that are part of a town
-      if(touchesExistingTown(tiles[t][0], tiles[t][1], player.woodcolor)) continue;
-      for (var d = 0; d < dirs.length; d++) {
-        if(numbridges >= 2 || player.bridgepool <= 0) continue;
-        var co2 = bridgeCo(tiles[t][0], tiles[t][1], dirs[d], game.btoggle);
-        if(outOfBounds(co2[0], co2[1])) continue;
-        //addLog(' TOWNTILE LOCATION: ' + co2[0] +',' + co2[1] );
-        if(touchesExistingTown(co2[0], co2[1], player.woodcolor)) continue;
-        if(getBuilding(co2[0], co2[1])[1] == player.woodcolor && co2[1] > tiles[t][1]) continue;
-        //avoid adding twice the same action with just swapped tiles
-        if(canHaveBridge(tiles[t][0], tiles[t][1], co2[0], co2[1], player.woodcolor)) {
-          var building1 = getBuilding(tiles[t][0], tiles[t][1]);
-          var building2 = getBuilding(co2[0], co2[1]);
-          if(building1[0] == B_NONE || building2[0] == B_NONE) continue;
-          if(building1[1] != player.woodcolor || building2[1] != player.woodcolor) continue;
-          //addBridge(tiles[t][0], tiles[t][1], co2[0], co2[1], player.woodcolor);
-          addLog(' BRIDGE LOCATION:'+tiles[t][0]+','+tiles[t][1]+','+ co2[0]+','+ co2[1]);  
-            var locbridge = [tiles[t][0], tiles[t][1], co2[0], co2[1]];
-            if (locbridge == locbridge1) continue;
-            action2 = new Action();
-            action2.type = A_PLACE_BRIDGE;
-            action2.cos.push(tiles[t]);
-            action2.cos.push(co2);
-            actions.push(action2);
-            numbridges++;
-            locbridge1 = locbridge;
-        }
-      }
+  player.numactions = 0;
+  tiles = getOccupiedTiles(player);
+  var dirs = [D_N, D_NE, D_SE, D_S, D_SW, D_NW];
+  for(var t = 0; t < tiles.length; t++) {
+    if(game.finalscoring == 4  && numbridges == 1) continue;
+    //remove tiles that are part of a town
+    if(touchesExistingTown(tiles[t][0], tiles[t][1], player.woodcolor)) continue;
+    for (var d = 0; d < dirs.length; d++) {
+      if(game.finalscoring == 4  && numbridges == 1) continue;
+      if(numbridges >= 2 || player.bridgepool <= 0) continue;
+      var co2 = bridgeCo(tiles[t][0], tiles[t][1], dirs[d], game.btoggle);
+      if(outOfBounds(co2[0], co2[1])) continue;
+      if(touchesExistingTown(co2[0], co2[1], player.woodcolor)) continue;
+      if(getBuilding(co2[0], co2[1])[1] == player.woodcolor && co2[1] > tiles[t][1]) continue;
+      //avoid adding twice the same action with just swapped tiles
+      if(!canHaveBridge(tiles[t][0], tiles[t][1], co2[0], co2[1], player.woodcolor)) continue;
+      var building1 = getBuilding(tiles[t][0], tiles[t][1]);
+      var building2 = getBuilding(co2[0], co2[1]);
+      if(building1[0] == B_NONE || building2[0] == B_NONE) continue;
+      if(building1[1] != player.woodcolor || building2[1] != player.woodcolor) continue;
+      var locbridge = [tiles[t][0], tiles[t][1], co2[0], co2[1]];
+      if(locbridge == locbridge1) continue;
+      action2 = new Action();
+      action2.type = A_PLACE_BRIDGE;
+      action2.cos.push(tiles[t]);
+      action2.cos.push(co2);
+      actions.push(action2);
+      numbridges++;
+      locbridge1 = locbridge;
     }
   }
 }

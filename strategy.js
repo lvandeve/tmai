@@ -1,4 +1,4 @@
-/* strategy3
+/* strategy6B
 TM AI
 
 Copyright (C) 2013 by Lode Vandevenne
@@ -34,10 +34,11 @@ newColor = 0; //for shapeshifters (improve this method of communication)
 useToken = 0; //for shapeshifters
 
 //returns reachable land tiles that aren't occupied by any player
-//reachable for that player with adjecency, shipping, bridges.
+//reachable for that player with adjacency, shipping, bridges.
 //either transformable by the player, or already their color
 //alsobuildable: if false, only tiles that can be *transformed* (through spades, sandstorm, fire factions, ...). If true, also tiles of the players color on which they can *build*.
 //costly determines whether to also include tunneling and carpet destinatins (they cost extra resources)
+//LOU changes added for Engineer bridge by LODE and Riverwalker bridge 
 function getReachableTransformableTiles(player, costly, alsobuildable) {
   var result = [];
   for(var y = 0; y < game.bh; y++)
@@ -536,7 +537,62 @@ function shUpgradeWithHalflings(player, restrictions, co, dwelling, result) {
   }
 }
 
-//tests convert action sequence with resources stored in player. Returns result as resource array. Only handles convert actions, no others. Intention: determining how many workers can be turned into priests after darklings build SH.
+//LOU add the Riverwalkers two bridge bonus for the SH after Round 4
+function shUpgradeWithRiverwalkers(player, actions) {
+  if(state.round <= 4) return;
+
+  //LOU for Riverwalkers SH there are two additional bridges if bridges available.
+  //Instead of computing all possible combinations of two bridges each time,
+  //select the two bridges that allow for the highest score where there is at
+  //least one town, and also the largest number of tiles toward another town. 
+  //Tiles that are already part of a town are excluded from consideration.
+  var numbridges = 0;
+  var locbridge1 = [0,0,0,0];
+
+  for(var i = 0; i < 2; i++) {
+    //addLog(' BRIDGES RIVERWALKERS: ' + player.bridgepool );
+    if (player.bridgepool <= 0) continue;
+    player.numactions = 0;
+    //Settlements may be worth more than the connection for second bridge
+    if(game.finalscoring == 4  && i == 1) continue;
+    
+    tiles = getOccupiedTiles(player);
+    var dirs = [D_N, D_NE, D_SE, D_S, D_SW, D_NW];
+    for(var t = 0; t < tiles.length; t++) {
+      //remove tiles that are part of a town
+      if(touchesExistingTown(tiles[t][0], tiles[t][1], player.woodcolor)) continue;
+      for (var d = 0; d < dirs.length; d++) {
+        if(numbridges >= 2 || player.bridgepool <= 0) continue;
+        var co2 = bridgeCo(tiles[t][0], tiles[t][1], dirs[d], game.btoggle);
+        if(outOfBounds(co2[0], co2[1])) continue;
+        //addLog(' TOWNTILE LOCATION: ' + co2[0] +',' + co2[1] );
+        if(touchesExistingTown(co2[0], co2[1], player.woodcolor)) continue;
+        if(getBuilding(co2[0], co2[1])[1] == player.woodcolor && co2[1] > tiles[t][1]) continue;
+        //avoid adding twice the same action with just swapped tiles
+        if(canHaveBridge(tiles[t][0], tiles[t][1], co2[0], co2[1], player.woodcolor)) {
+          var building1 = getBuilding(tiles[t][0], tiles[t][1]);
+          var building2 = getBuilding(co2[0], co2[1]);
+          if(building1[0] == B_NONE || building2[0] == B_NONE) continue;
+          if(building1[1] != player.woodcolor || building2[1] != player.woodcolor) continue;
+          //addBridge(tiles[t][0], tiles[t][1], co2[0], co2[1], player.woodcolor);
+          addLog(' BRIDGE LOCATION:'+tiles[t][0]+','+tiles[t][1]+','+ co2[0]+','+ co2[1]);  
+            var locbridge = [tiles[t][0], tiles[t][1], co2[0], co2[1]];
+            if (locbridge == locbridge1) continue;
+            action2 = new Action();
+            action2.type = A_PLACE_BRIDGE;
+            action2.cos.push(tiles[t]);
+            action2.cos.push(co2);
+            actions.push(action2);
+            numbridges++;
+            locbridge1 = locbridge;
+        }
+      }
+    }
+  }
+}
+
+
+//tests convert action sequence with resources stored in player_. Returns result as resource array. Only handles convert actions, no others. Intention: determining how many workers can be turned into priests after darklings build SH.
 function testConvertSequence(player, actions) {
   var testres = { c: player.c, w: player.w, p: player.p, pw: [player.pw1, player.pw2], vp: player.vp };
   for(var i = 0; i < actions.length; i++) {
@@ -570,6 +626,10 @@ function addPossibleUpgradeAction(resources, player, restrictions, co, type, res
         num = Math.min(num, player.pp - testres[2]);
         for(var i = 0; i < num; i++) actions.push(new Action(A_CONVERT_1W_1P));
       }
+      if(type == A_UPGRADE_SH && player.faction == F_RIVERWALKERS) {
+        shUpgradeWithRiverwalkers(player, actions);
+      }
+
       result.push(actions);
     }
   }
@@ -851,28 +911,37 @@ function getPossibleActions(player, restrictions) {
     }
   }
 
-  //bridge
-  //TODO: the engineers version A_ENGINEERS_BRIDGE
-  var bactions = [];
-  if(!game.octogons[A_POWER_BRIDGE] && player.bridgepool > 0 && canGetResources(player, player.getActionCost(A_POWER_BRIDGE), restrictions, bactions)) {
-    tiles = getOccupiedTiles(player);
-    var dirs = [D_N, D_NE, D_SE, D_S, D_SW, D_NW];
-    for(var t = 0; t < tiles.length; t++) {
-      for (var d = 0; d < dirs.length; d++) {
-        var co2 = bridgeCo(tiles[t][0], tiles[t][1], dirs[d], game.btoggle);
-        if(outOfBounds(co2[0], co2[1])) continue;
-        if(getBuilding(co2[0], co2[1])[1] == player.woodcolor && co2[1] > tiles[t][1]) continue;
-        //avoid adding twice the same action with just swapped tiles
+  //bridges
+  for(var i = 0; i < 2; i++) {
+    var bactions = [];
+    var ok = false;
+    if(i == 0) {
+      ok = !game.octogons[A_POWER_BRIDGE] && player.bridgepool > 0 && canGetResources(player, player.getActionCost(A_POWER_BRIDGE), restrictions, bactions);
+    } else {
+      ok = player.faction == F_ENGINEERS && !player.octogons[A_ENGINEERS_BRIDGE] &&
+           player.bridgepool > 0 && canGetResources(player, player.getActionCost(A_ENGINEERS_BRIDGE), restrictions, bactions)
+    }
 
-        if (canHaveBridge(tiles[t][0], tiles[t][1], co2[0], co2[1], player.woodcolor)) {
-          result.push(new Action(A_POWER_BRIDGE));
-          var action2 = new Action();
-          action2.type = A_PLACE_BRIDGE;
-          action2.cos.push(tiles[t]);
-          action2.cos.push(co2);
-          var actions = clone(bactions);
-          actions.push(action2);
-          result.push(actions);
+    if(ok) {
+      bactions.push(new Action(i == 0 ? A_POWER_BRIDGE : A_ENGINEERS_BRIDGE));
+      tiles = getOccupiedTiles(player);
+      var dirs = [D_N, D_NE, D_SE, D_S, D_SW, D_NW];
+      for(var t = 0; t < tiles.length; t++) {
+        for (var d = 0; d < dirs.length; d++) {
+          var co2 = bridgeCo(tiles[t][0], tiles[t][1], dirs[d], game.btoggle);
+          if(outOfBounds(co2[0], co2[1])) continue;
+          if(getBuilding(co2[0], co2[1])[1] == player.woodcolor && co2[1] > tiles[t][1]) continue;
+          //avoid adding twice the same action with just swapped tiles
+
+          if (canHaveBridge(tiles[t][0], tiles[t][1], co2[0], co2[1], player.woodcolor)) {
+            var actions = clone(bactions);
+            var action2 = new Action();
+            action2.type = A_PLACE_BRIDGE;
+            action2.cos.push(tiles[t]);
+            action2.cos.push(co2);
+            actions.push(action2);
+            result.push(actions);
+          }
         }
       }
     }

@@ -770,7 +770,8 @@ function addExtrasForAction(player, action) {
     }
     if(action.type == A_UPGRADE_SH) {
       player.getFaction().getOneTimeStrongholdIncome(player);
-      addIncome(player, player.getFaction().getActionIncome(player, action.type)); //TODO: ensure this is not done more globally elsewhere already. This is currently only used by shapeshifters SH for the two bridges.
+      addIncome(player, player.getFaction().getActionIncome(player, action.type)); 
+      //TODO: ensure this is not done more globally elsewhere already. This is currently only used by riverwalkers SH for the two bridges.
     }
   }
 
@@ -1066,7 +1067,6 @@ function tryActionCore_(player, action /*Action object*/) {
     if(action.type == A_POWER_BRIDGE) {
       game.octogons[action.type] = 1;
       error = tryConsumeForAction(player, action.type);
-      addLog('INFO: ' + logPlayerNameFun(player) +' rule problem: '+ error );
       if(error != '') return error;
     }
     if(action.type == A_ENGINEERS_BRIDGE) {
@@ -1080,21 +1080,18 @@ function tryActionCore_(player, action /*Action object*/) {
     player.bridges++;
   }
   else if(action.type == A_PLACE_BRIDGE) {
-    //LOU CHEAT if get here after A_POWER_BRIDGE fails
+    //LOU if get here when no bridge from POW_BRIDGE or ENG_BRIDGE, must be RIVERWALKERS SH   
     if (player.bridges <= 0) {
-      game.octogons[A_POWER_BRIDGE] = 1;
+      if(player.bridgepool <= 0) return 'not enough bridges in pool';
       player.bridgepool--;
       player.bridges++;
       player.numactions = 0;
-      player.pw2 -= 3;
-      player.pw0 += 3;
-    }
-
-    if(player.bridges <= 0) return 'not enough rule bridges';
+    }    
     var x0 = action.cos[0][0];
     var y0 = action.cos[0][1];
     var x1 = action.cos[1][0];
     var y1 = action.cos[1][1];
+    //LOU only need one side with building to have a bridge
     if(!canHaveBridge(x0, y0, x1, y1, player.woodcolor)) return 'invalid bridge location';
 
     addBridge(x0, y0, x1, y1, player.woodcolor);

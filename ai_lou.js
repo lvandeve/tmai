@@ -1,4 +1,4 @@
-/*  ailou6B.js
+/*  ailou6C.js
 TM AI
 
 Copyright (C) 2013-2016 by Lode Vandevenne
@@ -263,28 +263,48 @@ AILou.prototype.doAction = function(playerIndex, callback) {
       chosen[i].favtiles[j] = this.getPreferredFavorTile_(player, tiles);
       if (chosen[i].favtiles[j] == T_FAV_2F_6TW) favtown6 = i;
     }
+    //LOU modify this section to prevent selecting the same town tile type twice
+    var townTileUsed = [];
     for(var j = 0; j < chosen[i].twtiles.length; j++) {
       var tiles = getPossibleTownTiles(player, chosen[i].twtiles);
+      //LOU remove already used town tile from candidate list
+      if(townTileUsed.length > 0) {
+        for(var tu = 0; tu < townTileUsed.length; tu++) {
+          for(var tv = 0; tv < tiles.length; tv++) {
+            if(townTileUsed[tu] == tiles[tv]) tiles.splice(tv, 1);  //remove tile from list 
+          }
+        }
+      }  
       chosen[i].twtiles[j] = this.getPreferredTownTile_(player, tiles);
+      townTileUsed.push(chosen[i].twtiles[j]); 
       updateWToPConversionAfterDarklingsSHTownTile(player, chosen[i]);
     }
   }
   // check for fav6tw and then add town tile
   if (favtown6 >= 0) {
-    //from rules.js   var numtw = actionCreatesTown(player, chosen, null);
+    //from rules.js --  var numtw = actionCreatesTown(player, chosen, null);
     calculateTownClusters();
     var town6 = getPlayerTownSize(player.woodcolor, townclusters, 6);
     if(AILou.info) addLog('NEWTOWN: add town(s) of size 6. '
       + town6.length + ' favtown6 number ' + favtown6);
+    var townTileUsed = [];
     for(var j = 0; j < town6.length; j++) {
       var tiles = getPossibleTownTiles(player, chosen[favtown6].twtiles);
-      chosen[favtown6].twtiles[j] = this.getPreferredTownTile_(player, tiles);
+      if(townTileUsed.length > 0) {
+        for(var tu = 0; tu < townTileUsed.length; tu++) {
+          for(var tv = 0; tv < tiles.length; tv++) {
+            if(townTileUsed[tu] == tiles[tv]) tiles.splice(tv, 1);  //remove tile from list 
+          }
+        }
+      }  
+    chosen[favtown6].twtiles[j] = this.getPreferredTownTile_(player, tiles);
+    townTileUsed.push(chosen[favtown6].twtiles[j]); 
     }
   }
  }
 
   //LOU this is where the chosen action 'place bridge' and 'get favor6tw' previously fails.
-  //LOU this is where favor5 fails when making a town. Error: too few town tiles chosen
+  //LOU this is where favor6tw fails when making a town. Error: too few town tiles chosen
   var error = callback(playerIndex, chosen);
   if(error != '') {
     addLog('ERROR: AI tried invalid EXECUTE/PASS action. Error: ' + error);
@@ -406,7 +426,7 @@ AILou.prototype.updateScoreActionValues_ = function(player, roundnum) {
     s.w = FINALRESVAL;
     s.p = FINALRESVAL;
     s.pw = 0.166;
-    s.b_d = 0;
+    s.b_d = 2;
     s.b_tp = 0;
     s.b_te = 0;
     s.b_sh = 0;
@@ -416,7 +436,7 @@ AILou.prototype.updateScoreActionValues_ = function(player, roundnum) {
 
   //reduce coin value so not too many (avoid for NOMADS, DARK and BLUE)
   if(roundnum > 3 && player.c > 8 && (player.c > (2.5 * player.w))) s.c /= 2;
-  if(roundnum > 3 && player.c > 12 && (player.c > (3 * player.w))) {
+  if(roundnum > 2 && player.c > 12 && (player.c > (3 * player.w))) {
     s.c /= 4;
     s.specific[A_POWER_7C] = -5;
     s.specific[A_POWER_2W] += 2;
@@ -657,6 +677,10 @@ AILou.prototype.updateScoreActionValues_ = function(player, roundnum) {
   //Dwarves - should TE be earlier?
   if(player.faction == F_DWARVES) {
     s.digging = 0; //they should go to non-dig places instead
+    s.b_tp -= 1;
+    if(built_d(player) > 7) s.b_tp += 2;
+    s.c -= 0.05;  //coin surplus in most games
+    s.specific[A_POWER_7C] -= 4; 
   }
 
   //add tuning for fireice factions:
@@ -739,8 +763,8 @@ AILou.prototype.updateScoreActionValues_ = function(player, roundnum) {
   if(player.faction == F_RIVERWALKERS) {
     s.shipping = 0;
     // generally need more coin and priest, not workers
-    s.specific[A_POWER_1P] = roundnum < 3 ? 3 : 2;
-    s.specific[A_POWER_2W] -= 2;
+    s.specific[A_POWER_1P] = roundnum < 3 ? 4 : 3;
+    s.specific[A_POWER_2W] -= 3;
     s.specific[A_POWER_SPADE] = -50;
     s.specific[A_POWER_2SPADE] = -50;
     //build temple early for priest
@@ -761,15 +785,15 @@ AILou.prototype.updateScoreActionValues_ = function(player, roundnum) {
 
     //must use power if full or less than replacement (SPADE not allowed)
     if(roundnum > 4 && (player.pw0 + player.pw1) <= 1) {
+      s.specific[A_POWER_1P] += 4;
       if(player.c > 2*player.w) {
-        s.specific[A_POWER_2W] += 10;
+        s.specific[A_POWER_2W] += 4;
       } else {
         if (player.w < 7) s.specific[A_POWER_2W] += 4;
         s.specific[A_POWER_7C] += 8;
       }
     }
     s.existingtown = -4;
-    //in strategy.js- when build stronghold, add two bridges
   }
 
 /* general strength from terra.snellman.net + BGG suggestions
@@ -1014,12 +1038,12 @@ AILou.prototype.scoreBonusTile_ = function(player, tile, roundnum) {
   var BONUS_PREF = [
     [0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0],
     [0,3,1,3,2,3,3,0,0,3,2,1,2,3,3,0,0,1,1,2,-9], // T_BON_SPADE_2C     (BON1)
-    [0,0,2,1,1,1,4,0,1,2,1,0,3,3,3,2,1,2,3,2,3],  // T_BON_CULT_4C      (BON2)
-    [0,0,2,2,1,1,1,0,1,1,1,0,1,1,1,2,1,2,4,1,4],  // T_BON_6C           (BON3)
+    [0,0,2,1,1,1,4,0,1,2,1,0,3,3,0,2,1,2,3,2,3],  // T_BON_CULT_4C      (BON2)
+    [0,0,2,2,1,1,1,0,1,1,1,0,1,1,0,2,1,2,4,1,4],  // T_BON_6C           (BON3)
     [0,2,3,0,0,1,1,1,1,5,1,5,4,1,0,3,3,1,2,5,-9], // T_BON_3PW_SHIP     (BON4)
     [0,3,2,1,2,2,2,4,3,1,1,0,3,3,3,5,4,1,1,3,0],  // T_BON_3PW_1W       (BON5)
     [0,0,2,1,3,2,1,1,1,1,2,0,1,1,1,1,1,2,3,3,2],  // T_BON_PASSDVP_2C   (BON6)
-    [0,2,1,1,2,1,1,1,1,1,1,0,1,1,1,2,1,1,1,1,0],  // T_BON_PASSTPVP_1W  (BON7)
+    [0,2,1,1,2,1,1,1,1,1,1,0,1,1,2,2,1,1,1,1,0],  // T_BON_PASSTPVP_1W  (BON7)
     [0,4,5,1,5,1,0,4,2,1,1,0,1,1,1,1,1,1,4,6,0],  // T_BON_PASSSHSAVP_2W(BON8)
     [0,2,1,3,1,0,2,3,5,1,2,0,1,1,1,1,1,2,1,1,6],  // T_BON_1P           (BON9)
     [0,0,1,0,0,1,1,1,1,4,1,0,1,0,0,2,1,1,1,3,-9]  // T_BON_PASSSHIPVP_3PW(BON10)
@@ -1030,13 +1054,13 @@ AILou.prototype.scoreBonusTile_ = function(player, tile, roundnum) {
   var BONUS_PREF2 = [
     [0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0],
     [0,2,0,2,1,2,2,0,0,2,2,1,1,2,2,1,0,0,0,1,-9], // T_BON_SPADE_2C     (BON1)
-    [0,2,0,2,1,2,2,0,0,2,1,0,1,2,2,1,0,1,2,1,2],  // T_BON_CULT_4C      (BON2)
+    [0,2,0,2,1,2,2,0,0,2,1,0,1,2,0,1,0,1,2,1,2],  // T_BON_CULT_4C      (BON2)
     [0,0,1,1,0,0,0,0,0,0,0,0,0,0,0,1,0,1,2,0,2],  // T_BON_6C           (BON3)
     [0,1,1,0,0,0,0,1,0,0,0,2,2,0,0,2,2,0,1,2,-9], // T_BON_3PW_SHIP     (BON4)
     [0,1,1,0,1,1,1,2,1,0,0,0,1,1,1,2,2,0,0,2,1],  // T_BON_3PW_1W       (BON5)
     [0,1,1,1,2,2,1,1,2,0,2,0,2,1,1,1,1,2,2,2,3],  // T_BON_PASSDVP_2C   (BON6)
-    [0,1,2,1,2,1,1,1,2,0,2,0,1,1,1,1,1,1,1,1,0],  // T_BON_PASSTPVP_1W  (BON7)
-    [0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0],  // T_BON_PASSSHSAVP_2W(BON8)
+    [0,1,2,1,2,1,1,1,2,0,2,0,1,1,2,1,1,1,1,1,0],  // T_BON_PASSTPVP_1W  (BON7)
+    [0,1,1,1,1,1,1,1,1,0,1,0,1,1,0,0,0,0,0,0,1],  // T_BON_PASSSHSAVP_2W(BON8)
     [0,1,0,1,1,1,1,1,3,0,0,0,0,0,0,2,1,2,1,1,1],  // T_BON_1P           (BON9)
     [0,1,0,0,0,0,0,0,1,4,0,0,1,0,0,2,2,1,1,1,-9]  // T_BON_PASSSHIPVP_3PW(BON10)
     ];
@@ -1235,7 +1259,7 @@ AILou.prototype.scoreTownTile_ = function(player, tile, roundnum) {
     score = 2;
     score += 4;
     if(player.faction == F_CHAOS) score += 5;
-    else if(player.faction == F_GIANTS) score += 5;
+    else if(player.faction == F_GIANTS) score += 4;
     else if(player.faction == F_AUREN) score += 4;
     else if(player.faction == F_CULTISTS) score += 4;
     else if(player.faction == F_ICEMAIDENS) score += 3;
@@ -1251,31 +1275,47 @@ AILou.prototype.scoreTownTile_ = function(player, tile, roundnum) {
   }
   else if(tile == T_TW_5VP_6C) {
     score = 5;
-    if(player.c < 10) score += 3;
+    score += 2;
+    if(player.faction == F_NOMADS && roundnum <= 3) score += 5;
+    else if(player.faction == F_ENGINEERS) score -= 2;
+    else if(player.faction == F_RIVERWALKERS) score +=2;  
+    //Use values after current move
+    else if(player.c < 8 && player.w >= player.c && player.w > 2) score += 2;
   }
   else if(tile == T_TW_6VP_8PW) {
     score = 6;
-    if(player.pw0  * 2 + player.pw1 >= 7) score += 4;
+    var needpw = player.pw0*2 + player.pw1;
+    if(needpw > 8) needpw = 8;
+    score += needpw/2;
   }
   else if(tile == T_TW_7VP_2W) {
-    score = 7;
-    if(player.w < 4) score += 3;
+    score = 7; 
+    score += 1;   
+    if(player.faction == F_ENGINEERS  && player.c > player.w*2) score += 2;
+    else if(player.w < 4 && player.c > player.w*2) score += 2;
   }
   else if(tile == T_TW_8VP_CULT) {
     //TODO: calculate if increasing all cults is benificial and give better score based on that
-    score = 10;
-    if(player.faction == F_RIVERWALKERS) score += 5;
-    else if(player.faction == F_SHAPESHIFTERS) score += 5;
+    score = 8;
+    //when current value from cultSum < 6, subtract score as no cult help 
+    var sumCult = 0;
+    for(var j = C_F; j <= C_A; j++) {
+      sumCult += player.cult[j];
+    }      
+    if(sumCult > 5) score += 2;  
+    if(player.faction == F_SHAPESHIFTERS) score += 3;
     else if(player.faction == F_ICEMAIDENS) score += 3;
     else if(player.faction == F_YETIS) score += 3;
   }
   else if(tile == T_TW_9VP_P) {
-    score = 10;
-    if(player.p == 0) score += 2;
+    score = 9;
+    score += 1;   
+    if(player.p == 0) score += 1;
     if(player.faction == F_DARKLINGS) score += 2;
   }
   else if(tile == T_TW_11VP) {
     score = 9;
+    if(state.round >= 5) score += 1;
     if(state.round >= 6) score += 3;
   }
   return score;
@@ -1359,8 +1399,8 @@ AILou.prototype.chooseInitialFavorTile = function(playerIndex, callback) {
     [3, 1,7,[ 6, 7],[ 9, 7],[ 6, 5], 0, 0,0,R],   // Fireice CHAOS
     [3, 2,4,[ 9, 7],[ 6, 7],[ 8, 4], 0, 0,0,R],   // Fireice GIANTS
     [3, 3,4,[ 8, 3],[10, 2],[ 0, 0], 0, 0,0,Y],   // Fireice FAKIRS
-    [3, 4,5,[ 8, 3],[10, 2],[ 5, 1], 0, 0,0,Y],   // Fireice NOMADS
-    [3, 4,2,[ 3, 7],[ 2, 2],[ 4, 4], 0, 0,0,Y],   // Fireice NOMADS
+    [3, 4,5,[ 8, 3],[ 5, 1],[11, 1], 0, 0,0,Y],   // Fireice NOMADS
+    [3, 4,3,[ 3, 7],[ 2, 2],[ 4, 4], 0, 0,0,Y],   // Fireice NOMADS
     [3, 5,4,[11, 5],[11, 2],[ 0, 0], 0, 0,0,U],   // Fireice HALFLINGS
     [3, 6,4,[ 5, 8],[ 3, 5],[ 0, 0], 0, 0,0,U],   // Fireice CULTISTS
     [3, 7,4,[10, 8],[12, 7],[ 0, 0], 0, 0,0,K],   // Fireice ALCHEMISTS
@@ -1377,6 +1417,7 @@ AILou.prototype.chooseInitialFavorTile = function(playerIndex, callback) {
     [3,13,4,[ 2, 4],[ 1, 7],[ 0, 0], 0, 0,0,S],   // Fireice ENGINEERS
     [3,13,5,[12, 6],[10, 7],[ 9, 5], 0, 0,0,S],   // Fireice ENGINEERS
     [3,14,4,[10, 7],[ 6, 8],[ 0, 0], 0, 0,0,S],   // Fireice DWARVES
+    [3,14,2,[ 1, 7],[ 6, 8],[ 0, 0], 0, 0,0,S],   // Fireice DWARVES
     [3,15,3,[ 5, 8],[ 3, 5],[ 9, 6], 0, 0,0,U],   // Fireice ICEMAIDENS    brown
     [3,15,2,[11, 5],[ 9, 4],[11, 2], 0, 0,0,U],   // Fireice ICEMAIDENS    brown
     [3,15,3,[10, 6],[12, 4],[ 0, 0], 0, 0,0,B],   // Fireice ICEMAIDENS    blue
@@ -1691,7 +1732,7 @@ AILou.prototype.chooseInitialDwelling = function(playerIndex, callback) {
       case 1: score = 0;
               break;
       //discourage being extremely close
-      case 2: if(player.faction != F_NOMADS && player.faction != F_ENGINEERS) score /= 2;
+      case 2: if(player.faction != F_ENGINEERS) score /= 2;
               break;
       case 3: score += 2;
               break;
@@ -2138,14 +2179,14 @@ AILou.scoreAction = function(player, actions, values, roundnum) {
     //==== DWELLING ====
     } else if(type == A_SANDSTORM) {
       dig++; //TODO: use color distance
-      if(touchesExistingTown(action.co[0], action.co[1], player.woodcolor)) existingtown++;
+      if(touchesExistingTownWood(action.co[0], action.co[1], player.woodcolor)) existingtown++;
       if(goesTowardsNewTown(action.co[0], action.co[1], player)) towardstown++;
       //TODO: use Sandstorm to connect
       values.networkcon++;
     } else if(type == A_BUILD || type == A_WITCHES_D) {
       if(type == A_BUILD) subtractIncome(res, player.getFaction().getBuildingCost(B_D, false));
       b_d++;
-      if(touchesExistingTown(action.co[0], action.co[1], player.woodcolor)) existingtown++;
+      if(touchesExistingTownWood(action.co[0], action.co[1], player.woodcolor)) existingtown++;
       if(goesTowardsNewTown(action.co[0], action.co[1], player)) towardstown++;
       if(hasNeighbor(action.co[0], action.co[1], player.woodcolor)) interacts++;
       var countColor = AILou.getColorTilesAdjacent(player, action.co[0], action.co[1]);
@@ -2229,11 +2270,11 @@ AILou.scoreAction = function(player, actions, values, roundnum) {
     } else if(type == A_UPGRADE_TP) {
       subtractIncome(res, player.getFaction().getBuildingCost(B_TP, hasNeighbor(action.co[0], action.co[1], player.woodcolor)));
       b_tp++;
-      if(touchesExistingTown(action.co[0], action.co[1], player.woodcolor)) existingtown++;
+      if(touchesExistingTownWood(action.co[0], action.co[1], player.woodcolor)) existingtown++;
       if(goesTowardsNewTown(action.co[0], action.co[1], player)) towardstown++;
     } else if(type == A_SWARMLINGS_TP) {
       b_tp++;
-      if(touchesExistingTown(action.co[0], action.co[1], player.woodcolor)) existingtown++;
+      if(touchesExistingTownWood(action.co[0], action.co[1], player.woodcolor)) existingtown++;
       if(goesTowardsNewTown(action.co[0], action.co[1], player)) towardstown++;
 
     //==== TEMPLE actions ====
@@ -2269,7 +2310,7 @@ AILou.scoreAction = function(player, actions, values, roundnum) {
     } else if(type == A_UPGRADE_SH) {
       subtractIncome(res, player.getFaction().getBuildingCost(B_SH, false));
       b_sh++;
-      if(touchesExistingTown(action.co[0], action.co[1], player.woodcolor)) existingtown++;
+      if(touchesExistingTownWood(action.co[0], action.co[1], player.woodcolor)) existingtown++;
       //if(goesTowardsNewTown(action.co[0], action.co[1], player)) towardstown++;
       //examine SH/SA distance for conditions
      if(game.finalscoring == 2 && built_sa(player)) {
@@ -2297,7 +2338,7 @@ AILou.scoreAction = function(player, actions, values, roundnum) {
     } else if(type == A_UPGRADE_SA) {
       subtractIncome(res, player.getFaction().getBuildingCost(B_SA, false));
       b_sa++;
-      if(touchesExistingTown(action.co[0], action.co[1], player.woodcolor)) existingtown++;
+      if(touchesExistingTownWood(action.co[0], action.co[1], player.woodcolor)) existingtown++;
       //if(goesTowardsNewTown(action.co[0], action.co[1], player)) towardstown++;
       //examine SH/SA distance for conditions
       if(game.finalscoring == 2 && built_sh(player)) {
@@ -2634,6 +2675,3 @@ AILou.scoreTileEnemyEnvironment = function(tx, ty, color, center) {
   }
   return score;
 };
-
-
-

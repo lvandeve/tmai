@@ -1,4 +1,4 @@
-/* strategy6
+/* strategy6C.js
 TM AI
 
 Copyright (C) 2013 by Lode Vandevenne
@@ -537,6 +537,16 @@ function shUpgradeWithHalflings(player, restrictions, co, dwelling, result) {
   }
 }
 
+//LOU do not consider bridge near previous bridge
+function bridgeNear(bridgeNow, bridgePre) {
+  var h1 = hexDist(bridgeNow[0], bridgeNow[1], bridgePre[0], bridgePre[1]);
+  var h2 = hexDist(bridgeNow[0], bridgeNow[1], bridgePre[2], bridgePre[3]);
+  var h3 = hexDist(bridgeNow[2], bridgeNow[3], bridgePre[0], bridgePre[1]);
+  var h4 = hexDist(bridgeNow[2], bridgeNow[3], bridgePre[2], bridgePre[3]);
+  var dist = Math.min(h1,h2,h3,h4);
+  return dist;
+}
+  
 //LOU add the Riverwalkers two bridge bonus for the SH after Round 4
 function shUpgradeWithRiverwalkers(player, actions) {
   if(state.round <= 4) return;
@@ -546,21 +556,23 @@ function shUpgradeWithRiverwalkers(player, actions) {
   //select the two bridges that allow for the highest score where there is at
   //least one town, and also the largest number of tiles toward another town. 
   //Tiles that are already part of a town are excluded from consideration.
+  //TODO.  avoid tiles where the new SH or BRIDGE creates a new town
   var numbridges = 0;
   var locbridge1 = [0,0,0,0];
-  player.numactions = 0;
+  player.numactions = 1;
   tiles = getOccupiedTiles(player);
   var dirs = [D_N, D_NE, D_SE, D_S, D_SW, D_NW];
   for(var t = 0; t < tiles.length; t++) {
     if(game.finalscoring == 4  && numbridges == 1) continue;
     //remove tiles that are part of a town
-    if(touchesExistingTown(tiles[t][0], tiles[t][1], player.woodcolor)) continue;
+    if(touchesExistingTownWood(tiles[t][0], tiles[t][1], player.woodcolor)) continue;
     for (var d = 0; d < dirs.length; d++) {
       if(game.finalscoring == 4  && numbridges == 1) continue;
       if(numbridges >= 2 || player.bridgepool <= 0) continue;
+      if(numbridges == 1 && player.bridgepool <= 1) continue;
       var co2 = bridgeCo(tiles[t][0], tiles[t][1], dirs[d], game.btoggle);
       if(outOfBounds(co2[0], co2[1])) continue;
-      if(touchesExistingTown(co2[0], co2[1], player.woodcolor)) continue;
+      if(touchesExistingTownWood(co2[0], co2[1], player.woodcolor)) continue;
       if(getBuilding(co2[0], co2[1])[1] == player.woodcolor && co2[1] > tiles[t][1]) continue;
       //avoid adding twice the same action with just swapped tiles
       if(!canHaveBridge(tiles[t][0], tiles[t][1], co2[0], co2[1], player.woodcolor)) continue;
@@ -569,19 +581,22 @@ function shUpgradeWithRiverwalkers(player, actions) {
       if(building1[0] == B_NONE || building2[0] == B_NONE) continue;
       if(building1[1] != player.woodcolor || building2[1] != player.woodcolor) continue;
       var locbridge = [tiles[t][0], tiles[t][1], co2[0], co2[1]];
-      if(locbridge == locbridge1) continue;
+      if(numbridges == 1) {
+        if(locbridge == locbridge1) continue;
+        if(bridgeNear(locbridge, locbridge1) < 2) continue;
+      }
       action2 = new Action();
       action2.type = A_PLACE_BRIDGE;
       action2.cos.push(tiles[t]);
       action2.cos.push(co2);
       actions.push(action2);
-      numbridges++;
+      numbridges++;     
+      //TODO: bridge or SH may create town, add temp bridge for "touchesExistingTown"
       locbridge1 = locbridge;
     }
   }
 }
-
-
+ 
 //tests convert action sequence with resources stored in player_. Returns result as resource array. Only handles convert actions, no others. Intention: determining how many workers can be turned into priests after darklings build SH.
 function testConvertSequence(player, actions) {
   var testres = { c: player.c, w: player.w, p: player.p, pw: [player.pw1, player.pw2], vp: player.vp };

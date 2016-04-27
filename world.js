@@ -1,4 +1,4 @@
-/*
+/* world6.js
 TM AI
 
 Copyright (C) 2013 by Lode Vandevenne
@@ -587,6 +587,18 @@ function touchesExistingTown(x, y, color) {
 
   return false;
 }
+
+function touchesExistingTownWood(x, y, woodcolor) {
+  var tiles = getConnectedTiles(x, y);
+  tiles.push([x, y]);
+  for(var i = 0; i < tiles.length; i++) {
+    var build1 = getBuilding(tiles[i][0], tiles[i][1]);     
+    if(build1[1] == woodcolor && isInTown(tiles[i][0], tiles[i][1])) return true;
+  }
+
+  return false;
+}
+
 
 //returns the largest town cluster (by power) of that color that this touches (including itself), or null if none
 function mostPowerfulTouchedCluster(x, y, color) {

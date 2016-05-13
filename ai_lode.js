@@ -634,6 +634,11 @@ AILode.prototype.chooseAuxColor = function(playerIndex, callback) {
 
     var i = AILode.pickWithBestScore(colors, scores, false);
     chosen = colors[i];
+    //LOU fireice update, must have 1 or 2 coins to pick the color, otherwise it is a priest
+    if (state.fireiceerrata && player.c < 2) {
+      ispriestcolor = false;
+      chosen = Z;
+    }
   }
 
   var error = callback(playerIndex, chosen);

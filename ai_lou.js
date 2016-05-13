@@ -1,4 +1,4 @@
-/*  ailou7A.js
+/*  ailou7B.js
 TM AI
 
 Copyright (C) 2013-2016 by Lode Vandevenne
@@ -719,6 +719,7 @@ AILou.prototype.updateScoreActionValues_ = function(player, roundnum) {
   if(player.faction == F_ACOLYTES) {
     if(roundnum > 2) makeTemple(1,0,0,0,0);
     if(roundnum > 4) makeShipping(1,0,0,0,0);
+    s.b_tp -= 1;
   }
 
   //Add special tuning for Dragonlords to make SH after Round 1 and keep 4 Power
@@ -1043,7 +1044,7 @@ AILou.prototype.scoreBonusTile_ = function(player, tile, roundnum) {
     [0,2,3,0,0,1,1,1,1,5,1,5,4,1,0,1,1,1,2,5,-9], // T_BON_3PW_SHIP     (BON4)
     [0,3,2,1,2,2,2,4,3,1,1,0,3,3,3,5,2,1,2,3,0],  // T_BON_3PW_1W       (BON5)
     [0,0,2,1,3,2,1,1,1,1,2,0,1,1,1,2,4,2,1,3,2],  // T_BON_PASSDVP_2C   (BON6)
-    [0,2,1,1,2,1,1,1,1,1,1,0,1,1,2,1,0,1,1,1,0],  // T_BON_PASSTPVP_1W  (BON7)
+    [0,2,1,1,2,1,1,1,1,1,4,0,1,1,2,1,0,1,1,1,0],  // T_BON_PASSTPVP_1W  (BON7)
     [0,4,5,1,5,1,0,4,2,1,1,0,1,1,1,1,0,1,4,6,0],  // T_BON_PASSSHSAVP_2W(BON8)
     [0,2,1,3,1,0,2,3,5,1,2,0,1,1,1,1,0,2,1,1,6],  // T_BON_1P           (BON9)
     [0,0,1,0,0,1,1,1,1,4,1,0,1,0,0,1,0,1,1,3,-9]  // T_BON_PASSSHIPVP_3PW(BON10)
@@ -1059,7 +1060,7 @@ AILou.prototype.scoreBonusTile_ = function(player, tile, roundnum) {
     [0,1,1,0,0,0,0,1,0,0,0,2,2,0,0,1,1,0,1,2,-9], // T_BON_3PW_SHIP     (BON4)
     [0,1,1,0,1,1,1,2,1,0,0,0,1,1,1,3,1,0,0,2,1],  // T_BON_3PW_1W       (BON5)
     [0,1,1,1,2,2,1,1,2,0,2,0,2,1,1,2,2,2,2,2,3],  // T_BON_PASSDVP_2C   (BON6)
-    [0,1,2,1,2,1,1,1,2,0,2,0,1,1,2,1,1,1,1,1,0],  // T_BON_PASSTPVP_1W  (BON7)
+    [0,1,2,1,2,1,1,1,2,0,4,0,1,1,2,1,1,1,1,1,0],  // T_BON_PASSTPVP_1W  (BON7)
     [0,1,1,1,1,1,1,1,1,0,1,0,1,1,0,0,1,0,0,0,1],  // T_BON_PASSSHSAVP_2W(BON8)
     [0,1,0,1,1,1,1,1,3,0,0,0,0,0,0,1,0,2,1,1,1],  // T_BON_1P           (BON9)
     [0,1,0,0,0,0,0,0,1,4,0,0,1,0,0,1,1,1,1,1,-9]  // T_BON_PASSSHIPVP_3PW(BON10)
@@ -1118,9 +1119,9 @@ function getPlayerFavorPref(xfaction, yfavor) {
     [0,4,0,0,0, 3,2,0,0,0,0,0,0,2,3, 5,2,0,1,0,0],  // T_FAV_2E_1PW1W (FAV7)
     [0,5,0,2,0, 0,1,0,0,0,0,0,2,3,2, 3,4,0,4,3,0],  // T_FAV_2A_4PW   (FAV8)
     [0,3,0,2,0, 0,0,0,0,0,0,0,0,0,0, 4,0,0,1,0,0],  // T_FAV_1F_3C    (FAV9)
-    [0,3,2,0,3, 0,0,0,0,2,5,0,2,0,0, 3,0,0,0,3,3],  // T_FAV_1W_TPVP  (FAV10)
+    [0,3,2,0,3, 0,0,0,0,2,6,0,2,0,0, 3,0,0,0,3,3],  // T_FAV_1W_TPVP  (FAV10)
     [0,0,3,2,6, 4,0,0,5,4,0,0,4,0,2, 2,2,0,3,5,6],  // T_FAV_1E_DVP   (FAV11)
-    [0,0,0,0,0, 0,0,0,0,0,3,0,0,0,0, 0,0,0,0,0,0]   // T_FAV_1A_PASSTPVP (FAV12)
+    [0,0,0,0,0, 0,0,0,0,0,4,0,0,0,0, 0,0,0,0,0,0]   // T_FAV_1A_PASSTPVP (FAV12)
     ];
   var result = 0;
   result = FAVOR_PREF[Math.floor(yfavor)][Math.floor(xfaction)];
@@ -1398,7 +1399,7 @@ AILou.prototype.chooseInitialFavorTile = function(playerIndex, callback) {
     [1,20,5,[ 8, 2],[ 8, 5],[ 0, 0], 0, 0,0,Y],  // RIVERWALKERS  yellow
     [3, 1,7,[ 6, 7],[ 9, 7],[ 6, 5], 0, 0,0,R],   // Fireice CHAOS
     [3, 2,4,[ 9, 7],[ 6, 7],[ 8, 4], 0, 0,0,R],   // Fireice GIANTS
-    [3, 3,4,[ 8, 3],[10, 2],[ 0, 0], 0, 0,0,Y],   // Fireice FAKIRS
+    [3, 3,4,[ 5, 1],[10, 2],[ 0, 0], 0, 0,0,Y],   // Fireice FAKIRS
     [3, 4,5,[ 8, 3],[ 5, 1],[11, 1], 0, 0,0,Y],   // Fireice NOMADS
     [3, 4,3,[ 3, 7],[ 2, 2],[ 4, 4], 0, 0,0,Y],   // Fireice NOMADS
     [3, 5,4,[11, 5],[11, 2],[ 0, 0], 0, 0,0,U],   // Fireice HALFLINGS
@@ -1417,7 +1418,7 @@ AILou.prototype.chooseInitialFavorTile = function(playerIndex, callback) {
     [3,13,4,[ 2, 4],[ 1, 7],[ 0, 0], 0, 0,0,S],   // Fireice ENGINEERS
     [3,13,5,[12, 6],[ 9, 5],[10, 7], 0, 0,0,S],   // Fireice ENGINEERS
     [3,14,4,[10, 7],[ 6, 8],[ 0, 0], 0, 0,0,S],   // Fireice DWARVES
-    [3,14,2,[ 1, 7],[ 6, 8],[ 0, 0], 0, 0,0,S],   // Fireice DWARVES
+    [3,14,3,[ 1, 7],[ 6, 8],[ 0, 0], 0, 0,0,S],   // Fireice DWARVES
     [3,15,2,[ 5, 8],[ 3, 5],[ 9, 6], 0, 0,0,U],   // Fireice ICEMAIDENS    brown
     [3,15,1,[11, 5],[ 9, 4],[11, 2], 0, 0,0,U],   // Fireice ICEMAIDENS    brown
     [3,15,4,[ 5, 7],[ 7, 4],[ 7, 8], 0, 0,0,B],   // Fireice ICEMAIDENS    blue
@@ -1438,7 +1439,7 @@ AILou.prototype.chooseInitialFavorTile = function(playerIndex, callback) {
     [3,20,2,[ 3, 5],[ 6, 3],[ 0, 0], 0, 0,0,U],   // Fireice RIVERWALKERS  brown
     [3,20,4,[ 5, 4],[ 4, 8],[ 2, 3], 0, 0,0,K],   // Fireice RIVERWALKERS  black
     [3,20,3,[ 4, 4],[ 3, 7],[ 0, 0], 0, 0,0,Y],   // Fireice RIVERWALKERS  yellow
-    [3,20,5,[ 6, 5],[ 6, 2],[ 0, 0], 0, 0,0,R]    // Fireice RIVERWALKERS  red
+    [3,20,5,[ 6, 2],[ 6, 5],[ 0, 0], 0, 0,0,R]    // Fireice RIVERWALKERS  red
     ];
 
 
@@ -1837,8 +1838,9 @@ AILou.prototype.scoreFaction_ = function(player, already, faction) {
   else if(index == F_SWARMLINGS) factionwinpercentage = game.finalscoring == 2 ? 27:22;
   else if(index == F_AUREN) factionwinpercentage = game.bonustiles[T_BON_3PW_SHIP] ? 14:11;
   else if(index == F_WITCHES) factionwinpercentage = game.finalscoring >= 3 ? 25:20;
-  else if(index == F_ENGINEERS) factionwinpercentage = game.finalscoring == 4 ? 14:22;
-  else if(index == F_ENGINEERS) factionwinpercentage = game.finalscoring <= 1 ? 26:22;
+  else if(index == F_ENGINEERS) {
+    factionwinpercentage = game.finalscoring == 4 ? 14:22;
+    factionwinpercentage = game.finalscoring <= 1 ? 26:22; }
   else if(index == F_DWARVES) factionwinpercentage = game.finalscoring >= 3 ? 20:15;
   else if(index == F_ICEMAIDENS) factionwinpercentage = game.finalscoring == 2 ? 26:16;
   else if(index == F_YETIS) factionwinpercentage = game.players.length == 5 ? 20:15;
@@ -1846,8 +1848,10 @@ AILou.prototype.scoreFaction_ = function(player, already, faction) {
   else if(index == F_DRAGONLORDS) factionwinpercentage = game.finalscoring == 2 ? 21:16;
   //Values for SS and RW will change with snellman v4+ rules
   else if(index == F_SHAPESHIFTERS) factionwinpercentage = game.finalscoring == 2 ? 31:24;
-  else if(index == F_RIVERWALKERS) factionwinpercentage = game.finalscoring > 2 ? 34:24;
-  else if(index == F_RIVERWALKERS) factionwinpercentage += game.bonustiles[T_BON_1P] ? 2:0; 
+  else if(index == F_RIVERWALKERS) {
+    factionwinpercentage = game.finalscoring > 2 ? 34:24;
+    factionwinpercentage += game.finalscoring == 1 ? -12:0;
+    factionwinpercentage += game.bonustiles[T_BON_1P] ? 2:0; } 
   score += (factionwinpercentage - 10) / 20;
   return score;
 };
@@ -2680,3 +2684,7 @@ AILou.scoreTileEnemyEnvironment = function(tx, ty, color, center) {
   }
   return score;
 };
+
+
+
+

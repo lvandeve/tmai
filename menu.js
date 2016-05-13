@@ -48,9 +48,9 @@ function renderPreScreen(px, py, standardButtonFun, randomButtonFun, beginnerBut
 
   makeText(px, py - 135, 'TM AI: Play TM against AI players.<br/>'
       + 'Programmed by Lode Vandevenne.<br/>'
-      + 'AI tweaks by Lou New.<br/>'
+      + 'AI alternate by Lou New.<br/>'
       + 'Drawings by Giordano Segatta.<br/>'
-      + 'version: v.20160316<br/>'
+      + 'version: v.20160512<br/>'
       + 'Links:<br/>'
       + 'TM on BGG: <a href="http://boardgamegeek.com/boardgame/120677/terra-mystica">http://boardgamegeek.com/boardgame/120677/terra-mystica</a><br/>'
       + 'Snellman: <a href="http://terra.snellman.net/">http://terra.snellman.net/</a><br/>'
@@ -92,7 +92,7 @@ function renderPreScreen(px, py, standardButtonFun, randomButtonFun, beginnerBut
   var turnordercb = makeCheckbox(px + 160, ppy + 72, parent, 'Variable Turn Order', 'Enable variable turn order expansion. NOTE: With this checkbox disabled, the original fixed turn order after the first player pass is used.');
   turnordercb.checked = preferences.turnorder;
 
-  var louAIcb = makeCheckbox(px + 350, ppy + 72, parent, 'Lou New\'s AI (<font color="red">experimental!</font>)', 'Work-in-progress new AI by Lou New. This AI may be stronger and supports the expansion factions better. It is experimental, so may still contain bugs! May be better with some factions, have bugs with some others');
+  var louAIcb = makeCheckbox(px + 350, ppy + 72, parent, 'Lou New\'s alternate AI ', 'Work-in-progress new AI by Lou New. This AI may be stronger and supports the expansion factions better.');
   louAIcb.checked = preferences.louAI;
 
   var fireiceerratacb = makeCheckbox(px, ppy + 89, parent, 'Fire&Ice Errata', 'The official rule change of 2015, making shapeshifters and riverwalkers less powerful.');
@@ -421,6 +421,9 @@ function getLocalStorage() {
   if(localStorage['fireiceerrata'] != undefined) preferences.fireiceerrata = localStorage['fireiceerrata'] == 'true';
   if(localStorage['roundtilepromo2015'] != undefined) preferences.roundtilepromo2015 = localStorage['roundtilepromo2015'] == 'true';
 }
+
+window.onbeforeunload = setLocalStorage;
+getLocalStorage();
 
 window.onbeforeunload = setLocalStorage;
 getLocalStorage();

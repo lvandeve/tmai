@@ -1,4 +1,4 @@
-/*  ailou7B.js
+/*  ailou8.js
 TM AI
 
 Copyright (C) 2013-2016 by Lode Vandevenne
@@ -447,6 +447,9 @@ AILou.prototype.updateScoreActionValues_ = function(player, roundnum) {
   //The AIs are not building sanctuaries.... let's add some score
   //LOU SA seem to be built prematurely, only add score in round 4 or greater.
   if(roundnum > 3) s.b_sa += sanctuarytwiddle;
+  if(game.finalscoring == 2 && roundnum < 5) s.b_sa = 0;
+  //LOU for settlements, shipping is better for expansion
+  if(game.finalscoring == 4) s.shipping += 1;
 
   // make SH essential, except for the given power actions
   var makeSHEssential = function(pow_7c, pow_2w, pow_dig1, pow_dig2) {
@@ -493,8 +496,8 @@ AILou.prototype.updateScoreActionValues_ = function(player, roundnum) {
     //add value for dwelling as an outpost
     if(game.finalscoring == 1) s.b_d += 2;
     //select SH and SA to give SH_SA distance bonus in selection
-    if(game.finalscoring == 2 && built_sa(player) > 0) s.b_sh += 2;
-    if(game.finalscoring == 2 && built_sh(player) > 0) s.b_sa += 2;
+    if(game.finalscoring == 2 && built_sa(player) > 0) s.b_sh += 6;
+    if(game.finalscoring == 2 && built_sh(player) > 0) s.b_sa += 5;
   }
 
   //Faction specific
@@ -566,7 +569,12 @@ AILou.prototype.updateScoreActionValues_ = function(player, roundnum) {
   }
 
   if(player.faction == F_ALCHEMISTS) {
-    makeSHEssential(5, 10, 0, player.w > 6 ? 15 : 0);
+    if(roundnum < 2) {
+      makeSHEssential(0, 0, 0, 0);
+      s.specific[A_POWER_SPADE] = 10;
+      s.specific[A_POWER_2SPADE] = 20;
+    } 
+    makeSHEssential(5, 10, 0, player.w > 4 ? 15 : 0);
     if(roundnum < 6) s.b_d += 2; //because alchemists will be low on workers
     if(roundnum > 4) makeShipping(1,0,0,0,0);
     s.specific[A_POWER_7C] = 0; //alchemists can get coin from VP
@@ -583,19 +591,20 @@ AILou.prototype.updateScoreActionValues_ = function(player, roundnum) {
 
   //build TE (63%); defer town?
   if(player.faction == F_MERMAIDS) {
-    // if (roundnum == 1) makeTemple (1,0,0,3,9);
+    if (roundnum >= 2) makeTemple (1,0,0,3,9);
     if(roundnum < 6) s.b_te += 5;
     if(roundnum < 6) s.b_d += 10;
     if (player.pw2 >= 4) s.specific[A_POWER_7C] = player.c < 9 ? 12:6;
     s.bridge = -50;  // rarely build bridges
     s.forbridge = -50;
+    if(game.finalscoring == 2) s.b_sh += 4;
     //increase shipping for shipVP bonus
+    s.shipping += player.shipping;
     if (game.bonustiles[T_BON_PASSSHIPVP_3PW] != 0) {
-      if(player.shipping < 3) s.shipping += 5;
-      if(player.shipping == 1 && roundnum > 3) s.shipping += 5;
-      if(player.shipping == 2 && roundnum > 4) s.shipping += 5;
-      if(player.shipping >= 3 && roundnum > 5) s.shipping += 5;
+      if(player.shipping < 3) s.shipping += 3;
+      if(player.shipping >= 3 && roundnum > 4) s.shipping += 6;
     }
+    if (player.shipping == 5) s.shipping = 0;
   }
 
   //SH gives free TP per round
@@ -997,7 +1006,7 @@ AILou.prototype.scoreBonusTile_ = function(player, tile, roundnum) {
   else if(tile == T_BON_3PW_SHIP) {
     AILou.ybonus = 4;
     score += s.pw * 3;
-    score += getNumFreeTilesReachableByShipping(player, player.shipping + 1)[0] * 3;
+    if(roundnum < 3) score += getNumFreeTilesReachableByShipping(player, player.shipping + 1)[0] * 3;
     if(roundnum < 3 && player.faction != F_NOMADS && player.faction != F_HALFLINGS) score++; //TODO what is the value of shipping?
   }
   else if(tile == T_BON_3PW_1W) {
@@ -1038,51 +1047,51 @@ AILou.prototype.scoreBonusTile_ = function(player, tile, roundnum) {
   //Add starting preference score for the faction and the bonus tile
   var BONUS_PREF = [
     [0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0],
-    [0,3,1,3,2,3,3,0,0,3,2,1,2,3,3,2,4,1,1,2,-9], // T_BON_SPADE_2C     (BON1)
-    [0,0,2,1,1,1,4,0,1,2,1,0,3,3,0,1,3,2,3,2,3],  // T_BON_CULT_4C      (BON2)
-    [0,0,2,2,1,1,1,0,1,1,1,0,1,1,0,2,3,2,4,1,4],  // T_BON_6C           (BON3)
-    [0,2,3,0,0,1,1,1,1,5,1,5,4,1,0,1,1,1,2,5,-9], // T_BON_3PW_SHIP     (BON4)
-    [0,3,2,1,2,2,2,4,3,1,1,0,3,3,3,5,2,1,2,3,0],  // T_BON_3PW_1W       (BON5)
+    [0,3,1,3,3,3,3,0,0,4,2,1,2,3,3,2,4,1,1,2,-9], // T_BON_SPADE_2C     (BON1)
+    [0,0,2,1,2,1,4,0,1,2,1,0,3,3,0,1,3,2,3,2,3],  // T_BON_CULT_4C      (BON2)
+    [0,0,2,2,3,1,1,0,1,3,1,0,1,1,0,2,3,2,4,1,4],  // T_BON_6C           (BON3)
+    [0,2,3,0,0,1,1,1,1,6,1,5,4,1,0,1,1,1,2,3,-9], // T_BON_3PW_SHIP     (BON4)
+    [0,3,2,1,1,2,2,4,3,0,1,0,3,3,3,5,2,1,2,3,0],  // T_BON_3PW_1W       (BON5)
     [0,0,2,1,3,2,1,1,1,1,2,0,1,1,1,2,4,2,1,3,2],  // T_BON_PASSDVP_2C   (BON6)
-    [0,2,1,1,2,1,1,1,1,1,4,0,1,1,2,1,0,1,1,1,0],  // T_BON_PASSTPVP_1W  (BON7)
-    [0,4,5,1,5,1,0,4,2,1,1,0,1,1,1,1,0,1,4,6,0],  // T_BON_PASSSHSAVP_2W(BON8)
+    [0,2,1,1,2,1,1,1,1,0,1,0,1,1,2,1,0,1,1,1,0],  // T_BON_PASSTPVP_1W  (BON7)
+    [0,4,5,1,6,1,0,5,2,1,2,0,1,1,1,1,0,1,4,4,0],  // T_BON_PASSSHSAVP_2W(BON8)
     [0,2,1,3,1,0,2,3,5,1,2,0,1,1,1,1,0,2,1,1,6],  // T_BON_1P           (BON9)
-    [0,0,1,0,0,1,1,1,1,4,1,0,1,0,0,1,0,1,1,3,-9]  // T_BON_PASSSHIPVP_3PW(BON10)
+    [0,0,1,0,0,1,1,1,1,2,1,0,1,0,0,1,0,1,1,3,-9]  // T_BON_PASSSHIPVP_3PW(BON10)
     ];
-  if(roundnum <= 2) score += BONUS_PREF[Math.floor(AILou.ybonus)][Math.floor(AILou.xfaction)];
+  if(roundnum <= 1) score += BONUS_PREF[Math.floor(AILou.ybonus)][Math.floor(AILou.xfaction)];
 
   //Add middle preference score for the faction and the bonus tile
   var BONUS_PREF2 = [
     [0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0],
     [0,2,0,2,1,2,2,0,0,2,2,1,1,2,2,3,1,0,0,1,-9], // T_BON_SPADE_2C     (BON1)
     [0,2,0,2,1,2,2,0,0,2,1,0,1,2,0,1,2,1,2,1,2],  // T_BON_CULT_4C      (BON2)
-    [0,0,1,1,0,0,0,0,0,0,0,0,0,0,0,3,2,1,2,0,2],  // T_BON_6C           (BON3)
-    [0,1,1,0,0,0,0,1,0,0,0,2,2,0,0,1,1,0,1,2,-9], // T_BON_3PW_SHIP     (BON4)
+    [0,0,2,1,2,0,0,0,0,0,0,0,0,0,0,3,2,1,2,0,2],  // T_BON_6C           (BON3)
+    [0,1,1,0,0,0,0,2,0,1,0,2,2,0,0,1,1,0,1,2,-9], // T_BON_3PW_SHIP     (BON4)
     [0,1,1,0,1,1,1,2,1,0,0,0,1,1,1,3,1,0,0,2,1],  // T_BON_3PW_1W       (BON5)
-    [0,1,1,1,2,2,1,1,2,0,2,0,2,1,1,2,2,2,2,2,3],  // T_BON_PASSDVP_2C   (BON6)
-    [0,1,2,1,2,1,1,1,2,0,4,0,1,1,2,1,1,1,1,1,0],  // T_BON_PASSTPVP_1W  (BON7)
-    [0,1,1,1,1,1,1,1,1,0,1,0,1,1,0,0,1,0,0,0,1],  // T_BON_PASSSHSAVP_2W(BON8)
+    [0,1,1,1,2,2,1,1,2,2,2,0,2,1,1,2,2,2,2,2,3],  // T_BON_PASSDVP_2C   (BON6)
+    [0,1,2,1,2,1,1,3,2,2,4,0,1,1,2,1,1,1,1,1,0],  // T_BON_PASSTPVP_1W  (BON7)
+    [0,1,1,1,1,1,1,2,1,0,1,0,1,1,0,0,1,0,0,0,1],  // T_BON_PASSSHSAVP_2W(BON8)
     [0,1,0,1,1,1,1,1,3,0,0,0,0,0,0,1,0,2,1,1,1],  // T_BON_1P           (BON9)
-    [0,1,0,0,0,0,0,0,1,4,0,0,1,0,0,1,1,1,1,1,-9]  // T_BON_PASSSHIPVP_3PW(BON10)
+    [0,1,0,0,0,0,0,0,1,4,0,0,1,0,0,1,1,0,0,1,-9]  // T_BON_PASSSHIPVP_3PW(BON10)
     ];
-  if(roundnum ==3 || roundnum == 4 )
+  if(roundnum ==2 || roundnum == 3 )
     score += BONUS_PREF2[Math.floor(AILou.ybonus)][Math.floor(AILou.xfaction)]
 
   //Add end preference score for the faction and the bonus tile
   var BONUS_PREF3 = [
     [0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0],
-    [0,0,0,1,0,0,0,0,0,0,2,0,1,0,1,2,0,0,2,0,-9], // T_BON_SPADE_2C     (BON1)
-    [0,0,0,0,0,0,2,0,0,0,0,0,0,0,1,0,2,0,0,0,2],  // T_BON_CULT_4C      (BON2)
-    [0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,2,2,0,0,0,2],  // T_BON_6C           (BON3)
-    [0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,1,1,0,0,4,-9], // T_BON_3PW_SHIP     (BON4)
+    [0,0,0,1,0,0,0,0,0,1,2,0,1,0,1,2,0,0,2,0,-9], // T_BON_SPADE_2C     (BON1)
+    [0,0,0,0,0,0,2,0,0,1,0,0,0,0,1,0,2,0,0,0,2],  // T_BON_CULT_4C      (BON2)
+    [0,0,0,0,2,0,0,0,0,0,0,0,0,0,0,2,2,0,0,0,2],  // T_BON_6C           (BON3)
+    [0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,1,1,0,0,1,-9], // T_BON_3PW_SHIP     (BON4)
     [0,0,0,0,0,1,0,0,0,0,0,0,0,0,1,3,1,0,0,3,1],  // T_BON_3PW_1W       (BON5)
-    [0,1,2,1,4,3,1,1,5,2,2,0,2,1,1,3,2,2,3,2,4],  // T_BON_PASSDVP_2C   (BON6)
-    [0,1,2,1,2,1,1,1,3,0,4,0,1,1,1,1,2,1,0,1,0],  // T_BON_PASSTPVP_1W  (BON7)
-    [0,1,2,0,5,0,1,2,2,0,2,0,1,1,1,1,2,1,4,5,0],  // T_BON_PASSSHSAVP_2W(BON8)
-    [0,1,0,1,1,0,1,3,2,0,1,0,1,1,1,1,0,2,0,1,1],  // T_BON_1P           (BON9)
-    [0,1,1,0,1,0,1,1,0,5,1,0,1,0,0,1,1,1,1,4,-9]  // T_BON_PASSSHIPVP_3PW(BON10)
+    [0,1,2,1,4,3,1,1,5,3,2,0,2,1,1,3,2,2,3,2,4],  // T_BON_PASSDVP_2C   (BON6)
+    [0,1,2,1,2,1,1,4,3,2,4,0,1,1,1,1,2,1,0,1,0],  // T_BON_PASSTPVP_1W  (BON7)
+    [0,1,2,0,5,0,1,3,2,1,2,0,1,1,1,1,2,1,4,5,0],  // T_BON_PASSSHSAVP_2W(BON8)
+    [0,1,0,1,1,0,1,2,2,0,1,0,1,1,1,1,0,2,0,1,1],  // T_BON_1P           (BON9)
+    [0,1,1,0,1,0,1,1,0,6,1,0,1,0,0,1,1,0,0,3,-9]  // T_BON_PASSSHIPVP_3PW(BON10)
     ];
-  if(roundnum >= 5) score += BONUS_PREF3[Math.floor(AILou.ybonus)][Math.floor(AILou.xfaction)]
+  if(roundnum >= 4) score += BONUS_PREF3[Math.floor(AILou.ybonus)][Math.floor(AILou.xfaction)]
 
   return score;
 };
@@ -1114,14 +1123,14 @@ function getPlayerFavorPref(xfaction, yfavor) {
     [0,0,0,0,0, 0,0,0,0,0,0,0,0,0,0, 0,0,0,0,0,0],  // T_FAV_3W       (FAV2)
     [0,0,0,0,0, 0,0,0,0,0,0,0,0,0,0, 0,0,0,0,0,0],  // T_FAV_3E       (FAV3)
     [0,0,0,0,0, 0,0,0,0,0,0,0,0,0,0, 0,0,0,0,0,0],  // T_FAV_3A       (FAV4)
-    [0,0,2,-9,3,0,0,2,4,1,2,0,0,0,-9,2,1,0,0,2,4],  // T_FAV_2F_6TW   (FAV5)
+    [0,0,2,-9,3,0,0,2,4,1,1,0,0,0,-9,2,1,0,0,2,4],  // T_FAV_2F_6TW   (FAV5)
     [0,0,1,0,0, 0,3,0,0,2,2,4,0,0,0, 2,1,0,1,0,0],  // T_FAV_2W_CULT  (FAV6)
     [0,4,0,0,0, 3,2,0,0,0,0,0,0,2,3, 5,2,0,1,0,0],  // T_FAV_2E_1PW1W (FAV7)
     [0,5,0,2,0, 0,1,0,0,0,0,0,2,3,2, 3,4,0,4,3,0],  // T_FAV_2A_4PW   (FAV8)
     [0,3,0,2,0, 0,0,0,0,0,0,0,0,0,0, 4,0,0,1,0,0],  // T_FAV_1F_3C    (FAV9)
-    [0,3,2,0,3, 0,0,0,0,2,6,0,2,0,0, 3,0,0,0,3,3],  // T_FAV_1W_TPVP  (FAV10)
-    [0,0,3,2,6, 4,0,0,5,4,0,0,4,0,2, 2,2,0,3,5,6],  // T_FAV_1E_DVP   (FAV11)
-    [0,0,0,0,0, 0,0,0,0,0,4,0,0,0,0, 0,0,0,0,0,0]   // T_FAV_1A_PASSTPVP (FAV12)
+    [0,3,2,0,3, 0,0,0,0,4,6,0,2,0,0, 3,3,0,3,3,3],  // T_FAV_1W_TPVP  (FAV10)
+    [0,0,3,2,6, 4,0,0,5,5,0,0,4,0,2, 2,3,0,3,5,6],  // T_FAV_1E_DVP   (FAV11)
+    [0,0,0,0,2, 0,0,0,0,0,4,0,0,0,0, 0,0,0,0,0,0]   // T_FAV_1A_PASSTPVP (FAV12)
     ];
   var result = 0;
   result = FAVOR_PREF[Math.floor(yfavor)][Math.floor(xfaction)];
@@ -1273,6 +1282,9 @@ AILou.prototype.scoreTownTile_ = function(player, tile, roundnum) {
     else if(player.faction == F_DWARVES) score = 0;
     else if(player.faction == F_RIVERWALKERS) score = 0;
     else if(player.faction == F_MERMAIDS) score += 6;
+    //prevent selection for faction at max shipping
+    if(player.faction == F_MERMAIDS && player.shipping >= 5) score = 0;
+    else if(player.faction != F_MERMAIDS && player.shipping >= 3) score = 0;
   }
   else if(tile == T_TW_5VP_6C) {
     score = 5;
@@ -1355,7 +1367,7 @@ AILou.prototype.chooseInitialFavorTile = function(playerIndex, callback) {
   //LOU These are based on published experience and preference for a given world.
   // NOT YET implemented, should be made a constant
   /* parameters used for matrix
-     0 - World used, 0=none, 1=standard, 2=fireicealtered, 3=fireice
+     0 - World used, 0=none, 1=standard, 2=fireicealtered, 3=fireice, 4=loonlakes
      1 - player.faction+1 number (like 1=F_CHAOS, 2=F_GIANTS, ...)
      2 - score modifier
      3 - first dwelling location [x,y]
@@ -1408,6 +1420,7 @@ AILou.prototype.chooseInitialFavorTile = function(playerIndex, callback) {
     [3, 8,5,[10, 8],[12, 7],[12, 5], 0, 0,0,K],   // Fireice DARKLINGS
     [3, 8,3,[12, 2],[12, 7],[12, 5], 0, 0,0,K],   // Fireice DARKLINGS
     [3, 9,4,[10, 6],[12, 4],[ 0, 0], 0, 0,0,B],   // Fireice MERMAIDS
+    [3, 9,2,[ 5, 7],[ 2, 8],[ 0, 0], 0, 0,0,B],   // Fireice MERMAIDS
     [3,10,4,[10, 6],[12, 4],[ 0, 0], 0, 0,0,B],   // Fireice SWARMLINGS
     [3,10,3,[ 7, 8],[10, 6],[ 9, 9], 0, 0,0,B],   // Fireice SWARMLINGS
     [3,10,2,[ 5, 7],[ 2, 8],[ 9, 9], 0, 0,0,B],   // Fireice SWARMLINGS
@@ -1433,7 +1446,7 @@ AILou.prototype.chooseInitialFavorTile = function(playerIndex, callback) {
     [3,18,3,[ 9, 4],[ 6, 3],[11, 5], 0, 0,0,U],   // Fireice DRAGONLORDS   brown
     [3,18,4,[ 7, 4],[ 7, 8],[10, 6], 0, 0,0,B],   // Fireice DRAGONLORDS   blue
     [3,18,5,[ 5, 6],[ 7, 7],[ 3, 4], 0, 0,0,G],   // Fireice DRAGONLORDS   green
-    [3,19,4,[ 9, 7],[ 6, 7],[ 0, 0], 0, 0,0,R],   // Fireice SHAPESHIFTERS red
+    [3,19,1,[ 9, 7],[ 6, 7],[ 0, 0], 0, 0,0,R],   // Fireice SHAPESHIFTERS red
     [3,19,3,[11, 2],[ 9, 4],[11, 5], 0, 0,0,U],   // Fireice SHAPESHIFTERS brown
     [3,19,3,[ 8, 5],[11, 4],[ 5, 6], 0, 0,0,G],   // Fireice SHAPESHIFTERS green
     [3,20,2,[ 3, 5],[ 6, 3],[ 0, 0], 0, 0,0,U],   // Fireice RIVERWALKERS  brown
@@ -1606,10 +1619,10 @@ AILou.getNewAuxColor = function(player, oldColor) {
 };
 
 //gets number of color tiles adjacent to the given tile
-//count in position: 0 = color tiles, 1 = river and color, 2 = same building color adjacent
+//count in position: 0 = color tiles, 1 = river and color, 2 = same building color adjacent, 3 = vacant and woodcolor
 AILou.getColorTilesAdjacent = function(player, x, y) {
   var tiles = getNeighborTiles(x, y);
-  var countColor = [0,0,0];
+  var countColor = [0,0,0,0];
   for(var i = 0; i < tiles.length; i++) {
     if (tiles[i] != null)  {
       var tilecolor = getWorld(tiles[i][0], tiles[i][1]);
@@ -1617,6 +1630,7 @@ AILou.getColorTilesAdjacent = function(player, x, y) {
       if (tilecolor != N) countColor[1]++;
       var building = getBuilding(tiles[i][0], tiles[i][1]);
       if(building[0] != B_NONE && building[1] == player.woodcolor) countColor[2]++;
+      if(building[0] == B_NONE && tilecolor == player.woodcolor) countColor[3]++;
     }
   }
   return countColor;
@@ -1626,9 +1640,10 @@ AILou.getColorTilesAdjacent = function(player, x, y) {
 AILou.worldindex = function() {
   var windex = 0;
   var xw = game.world;
-  if(xw[1]==S && xw[2]==G && xw[3]==B && xw[4]==Y) windex = 1;
-  if(xw[1]==S && xw[2]==G && xw[3]==B && xw[4]==U) windex = 2;
-  if(xw[1]==I && xw[2]==U && xw[3]==K && xw[4]==Y) windex = 3;
+  if(xw[1]==S && xw[2]==G && xw[3]==B && xw[4]==Y) windex = 1;  //Standard
+  if(xw[1]==S && xw[2]==G && xw[3]==B && xw[4]==U) windex = 2;  //Fire&Ice Altered
+  if(xw[1]==I && xw[2]==U && xw[3]==K && xw[4]==Y) windex = 3;  //Fire&Ice World
+  if(xw[1]==S && xw[2]==R && xw[3]==G && xw[4]==U) windex = 4;  //Loon Lakes World
   return windex;
 };
 
@@ -1743,13 +1758,15 @@ AILou.prototype.chooseInitialDwelling = function(playerIndex, callback) {
       case 4: score += 4;
               break;
       case 5: if (!state.fireice) score += 4;
+              if (state.fireice) score += 2;
               break;
       //LOU fireice places premium on network, too far
       case 6: if (!state.fireice) score += 2;
-              if (state.fireice) score = 2;
+              if (state.fireice) score = 1;
               break;
-      //LOU discourage really far away
+      //LOU discourage really far away for fireice
       default: score = 1;
+               if (state.fireice) score = -5;
       }
       //LOU Notice that build used is first in y direction.  Others are ignored (Nomads)
       if(player.faction == F_NOMADS) {
@@ -1806,6 +1823,44 @@ AILou.prototype.chooseFaction = function(playerIndex, callback) {
   }
 };
 
+//LOU start faction probability converted into tabular form
+//1. faction.index+1
+//2. game.finalscoring = None
+//3. game.finalscoring = Most Outposts
+//4. game.finalscoring = Sanctuary-Stronghold
+//5. game.finalscoring = Greatest Distance 
+//6. game.finalscoring = Most Settlements
+//7. game.players.length == 5
+//8. game.bonustiles = [T_BON_1P] 
+//9. game.bonustiles = [T_BON_3PW_SHIP] 
+//10. game.bonustiles = [T_BON_PASSSHIPVP_3PW] 
+//11. game.bonustiles = [T_BON_PASSSHSAVP_2W] 
+//12. game.bonustiles = [T_BON_PASSTPVP_1W] 
+//13. game.bonustiles = [FireIceWorld]
+//14. game.bonustiles = [LoonLakesWorld]
+var START_FACTIONS = [
+    [ 1,  21, 16, 21, 19, 19, -5,  0,  0,  0,  0,  0,  0,  0],   //  CHAOS
+    [ 2,  24, 24, 19, 22, 22,  0,  0,  0,  0,  2,  0,  0, -2],   //  GIANTS
+    [ 3,  14, 14, 14, 19, 19,  0,  0,  0,  0,  0,  0,  0,  0],   //  FAKIRS
+    [ 4,  30, 32, 30, 24, 22,  0,  0,  0,  0,  2,  0,  0,  2],   //  NOMADS
+    [ 5,  19, 24, 19, 19, 19,  0,  0,  0,  0,  0,  0,  0,  0],   //  HALFLINGS
+    [ 6,  23, 23, 21, 23, 23,  0,  0,  0,  0,  0,  0,  0,  0],   //  CULTISTS
+    [ 7,  17, 15, 21, 11, 13,  0,  0,  0,  0,  0,  0,  0, -1],   //  ALCHEMISTS
+    [ 8,  29, 31, 14, 22, 20,  0,  4,  0,  0,  0,  0,  0,  0],   //  DARKLINGS
+    [ 9,  15, 10, 12, 15, 15,  2,  0,  3,  8,  0,  2, -3,  4],   //  MERMAIDS
+    [ 10, 22, 14, 25, 20, 20,  0,  0,  0,  0,  0,  2,  0,  0],   //  SWARMLINGS
+    [ 11, 12, 12, 11, 11, 11,  0,  0,  3,  0,  0,  0,  0,  0],   //  AUREN
+    [ 12, 20, 20, 20, 25, 25,  0,  0,  0,  0,  0,  0,  0, -5],   //  WITCHES
+    [ 13, 24, 24, 20, 16, 12,  2,  0,  0,  0,  0,  0,  0, -3],   //  ENGINEERS
+    [ 14, 15, 15, 15, 20, 20,  0,  0,  0,  0,  0,  0,  0,  0],   //  DWARVES
+    [ 15, 16, 16, 22, 16, 16,  0,  0,  0,  0,  0,  2,  0,  0],   //  ICEMAIDENS    
+    [ 16, 15, 12, 28, 15, 19,  5,  0,  0,  0,  2,  0,  0,  3],   //  YETIS 
+    [ 17, 12, 12, 10, 10, 12,  0,  0,  0,  0,  0,  0,  0,  0],   //  ACOLYTES 
+    [ 18, 16, 14, 21, 14, 16,  0,  0,  0,  0,  0,  0,  0,  0],   //  DRAGONLORDS
+    [ 19, 18, 16, 25, 16, 18,  0,  0,  0,  0,  0,  0, -3, -4],   //  SHAPESHIFTERS 
+    [ 20, 24, 12, 22, 34, 34,  0,  4,  0,  0,  0,  0,  0,  0]    //  RIVERWALKERS 
+    ];
+
 //already = object that has true value for each already chosen color
 AILou.prototype.scoreFaction_ = function(player, already, faction) {
   var score = 0;
@@ -1820,39 +1875,34 @@ AILou.prototype.scoreFaction_ = function(player, already, faction) {
 
   // Based on in percentages of http://terra.snellman.net/stats.html (before v4 changes)
   var factionwinpercentage = 20;
-  var index = faction.index;
+  var xfaction = faction.index;
   //LOU winpercentage = (snellmanRating -900)/10 + 10) fireice added
-  if(index == F_CHAOS) factionwinpercentage = game.players.length == 5 ? 16:21;
-  else if(index == F_GIANTS) factionwinpercentage = game.finalscoring == 2 ? 24:19;
-  else if(index == F_FAKIRS) factionwinpercentage = game.finalscoring >= 3 ? 19:14;
-  else if(index == F_NOMADS) factionwinpercentage = game.finalscoring <= 2 ? 30:24;
-  else if(index == F_HALFLINGS) factionwinpercentage = game.finalscoring == 1 ? 24:19;
-  else if(index == F_CULTISTS) factionwinpercentage = 23;
-  else if(index == F_ALCHEMISTS) factionwinpercentage = 13;
-  else if(index == F_DARKLINGS) {
-    factionwinpercentage = game.finalscoring <= 1 ? 29:24;
-    factionwinpercentage += game.finalscoring == 2 ? -4:0;
-    factionwinpercentage += game.finalscoring == 4 ? -4:0;
-    factionwinpercentage += game.bonustiles[T_BON_1P] ? 2:0; }
-  else if(index == F_MERMAIDS) factionwinpercentage = game.bonustiles[T_BON_PASSSHIPVP_3PW] ? 25:15;
-  else if(index == F_SWARMLINGS) factionwinpercentage = game.finalscoring == 2 ? 27:22;
-  else if(index == F_AUREN) factionwinpercentage = game.bonustiles[T_BON_3PW_SHIP] ? 14:11;
-  else if(index == F_WITCHES) factionwinpercentage = game.finalscoring >= 3 ? 25:20;
-  else if(index == F_ENGINEERS) {
-    factionwinpercentage = game.finalscoring == 4 ? 14:22;
-    factionwinpercentage = game.finalscoring <= 1 ? 26:22; }
-  else if(index == F_DWARVES) factionwinpercentage = game.finalscoring >= 3 ? 20:15;
-  else if(index == F_ICEMAIDENS) factionwinpercentage = game.finalscoring == 2 ? 26:16;
-  else if(index == F_YETIS) factionwinpercentage = game.players.length == 5 ? 20:15;
-  else if(index == F_ACOLYTES) factionwinpercentage = 12;
-  else if(index == F_DRAGONLORDS) factionwinpercentage = game.finalscoring == 2 ? 21:16;
-  //Values for SS and RW will change with snellman v4+ rules
-  else if(index == F_SHAPESHIFTERS) factionwinpercentage = game.finalscoring == 2 ? 31:24;
-  else if(index == F_RIVERWALKERS) {
-    factionwinpercentage = game.finalscoring > 2 ? 34:24;
-    factionwinpercentage += game.finalscoring == 1 ? -12:0;
-    factionwinpercentage += game.bonustiles[T_BON_1P] ? 2:0; } 
+  //code converted to table lookup by faction and setup parameters
+  var result = 0;
+  var yvalue = game.finalscoring+1;
+  result = START_FACTIONS[Math.floor(xfaction)][Math.floor(yvalue)];
+  var delta = 0;
+  delta = START_FACTIONS[xfaction] [6]; 
+  if (delta != 0 && game.players.length == 5) result += delta;
+  delta = START_FACTIONS[xfaction] [7]; 
+  if (delta != 0 && game.bonustiles[T_BON_1P] ) result += delta;  
+  delta = START_FACTIONS[xfaction] [8]; 
+  if (delta != 0 && game.bonustiles[T_BON_3PW_SHIP]) result += delta;  
+  delta = START_FACTIONS[xfaction] [9]; 
+  if (delta != 0 && game.bonustiles[T_BON_PASSSHIPVP_3PW]) result += delta;
+  delta = START_FACTIONS[xfaction] [10]; 
+  if (delta != 0 && game.bonustiles[T_BON_PASSSHSAVP_2W]) result += delta;
+  delta = START_FACTIONS[xfaction] [11]; 
+  if (delta != 0 && game.bonustiles[T_BON_PASSTPVP_1W]) result += delta;
+  var windex = AILou.worldindex(); 
+  delta = START_FACTIONS[xfaction] [12]; 
+  if (delta != 0 && windex == 3) result += delta; 
+  delta = START_FACTIONS[xfaction] [13]; 
+  if (delta != 0 && windex == 4) result += delta;
+
+  factionwinpercentage = result;
   score += (factionwinpercentage - 10) / 20;
+  if(AILou.info) addLog('WINP: AI score win_' +(xfaction+1)+ ': ' +result+ '   score: '+ score);
   return score;
 };
 
@@ -1876,18 +1926,34 @@ AILou.prototype.leechPower = function(playerIndex, fromPlayer, amount, vpcost, r
     return;
   }
 
+  //LOU decline power that can not be used (should not happen)
+  var needpw = player.pw0*2 + player.pw1;
+  if(vpcost+1 > needpw) {
+    addLog('POWER: AI power excess for: ' + logPlayerNameFun(player) );
+    callback(playerIndex, false);
+    return;
+  }
+
+  //LOU YETIS can make better use of power, stronghold allows reuse of POWER actions
+  if(player.faction == F_YETIS) {
+    var gainpw = 7;
+    if (built_sh(player) == 1) gainpw += 2; 
+    if(vpcost < gainpw-roundnum) {
+      callback(playerIndex, true);
+      return;
+    }
+  }
+
+  //LOU change power from leech to round 1-6, power 4,3,2,1,1,0
+  // previous power from leech was round 1-6, power 3,2,1,1,0,0
+  var gainpw = 6;
+  if(vpcost < gainpw-roundnum) {
+      callback(playerIndex, true);
+      return;
+  }
+
   if(vpcost == 1) {
-    callback(playerIndex, roundnum < 5);
-    return;
-  }
-
-  if(vpcost == 2) {
-    callback(playerIndex, roundnum < 3);
-    return;
-  }
-
-  if(vpcost == 3) {
-    callback(playerIndex, roundnum < 2 && player.vp > 20);
+    callback(playerIndex, roundnum <= 5);
     return;
   }
 
@@ -1897,6 +1963,8 @@ AILou.prototype.leechPower = function(playerIndex, fromPlayer, amount, vpcost, r
 AILou.prototype.doRoundBonusSpade = function(playerIndex, callback) {
   var player = game.players[playerIndex];
   var num = player.spades;
+  //LOU Giants rule is that one spade is forfeit, two spades digs anywhere
+  //LOU when two spades, then Error: giants cannot have more than one round bonus digs (fixed in rules.js)
   var result = [];
   var dummy = [];
   var locations = [];
@@ -2202,10 +2270,13 @@ AILou.scoreAction = function(player, actions, values, roundnum) {
       //increase value of adding D next to other D (limit roundnum for this)
       if(existingtown == 0 && towardstown == 0) {
         newtown += countColor[2]*2;
-        if(AILou.info && newtown > 0) {
-          addLog('NEWD: AI New Dwelling: '+logPlayerNameFun(player)+' newtown: '+newtown
+      }
+      else if(towardstown > 0) {
+        newtown += countColor[3];
+      }
+      if(AILou.info && newtown > 0) {
+        addLog('NEWD: AI New Dwelling: '+logPlayerNameFun(player)+' newtown: '+newtown
             +' location: '+letters[action.co[1]]+numbers[action.co[0]]);
-        }
       }
 
       //CONNECT evaluation. rounds 2+
@@ -2319,6 +2390,7 @@ AILou.scoreAction = function(player, actions, values, roundnum) {
     } else if(type == A_UPGRADE_SH) {
       subtractIncome(res, player.getFaction().getBuildingCost(B_SH, false));
       b_sh++;
+      if(player.faction == F_MERMAIDS) shipping++;
       if(touchesExistingTownWood(action.co[0], action.co[1], player.woodcolor)) existingtown++;
       //if(goesTowardsNewTown(action.co[0], action.co[1], player)) towardstown++;
       //examine SH/SA distance for conditions
@@ -2684,7 +2756,6 @@ AILou.scoreTileEnemyEnvironment = function(tx, ty, color, center) {
   }
   return score;
 };
-
 
 
 

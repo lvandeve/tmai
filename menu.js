@@ -1,4 +1,4 @@
-/*
+/* menu8.js
 TM AI
 
 Copyright (C) 2013-2014 by Lode Vandevenne
@@ -232,8 +232,9 @@ function renderPreScreen(px, py, standardButtonFun, randomButtonFun, beginnerBut
 
   makeText(px, py + 480 + 17, '<h3>Documentation:</h3>' +
     '<h4>Updates</h4>' +
-    '<p>20151024: Added the new official fire&ice rule change as an option. Also added the new 2015 mini expansion: 4VP for temple round bonus tile.<p/>' +
-    '<p>20150525: There is now a choice between the old AI, and Lou\'s new AI. The new AI is a work in progress! It is stronger than the old AI and works with the expansion factions, but is experimental so may have a few bugs.<p/>' +
+    '<p>20160804: Added LoonLake option.  Known bugs fixed.  Lou AI works best with World Map: Fire & Ice World. Changed probability of factions based upon final scoring. <p/>' +
+'<p>20151024: Added the new official fire&ice rule change as an option. Also added the new 2015 mini expansion: 4VP for temple round bonus tile.<p/>' +
+    '<p>20150525: There is now a choice between the old AI, and Lou\'s new AI. The new AI is a work in progress! It is stronger than the old AI and works with the expansion factions, but is experimental.<p/>' +
     '<p>20150509: AI tweaks by Lou New added.<p/>' +
     '<p>20150108: Riverwalkers added (possibly still with bugs).<p/>' +
     '<p>20141021: The alternate Fire & Ice world also added.<p/>' +
@@ -421,9 +422,6 @@ function getLocalStorage() {
   if(localStorage['fireiceerrata'] != undefined) preferences.fireiceerrata = localStorage['fireiceerrata'] == 'true';
   if(localStorage['roundtilepromo2015'] != undefined) preferences.roundtilepromo2015 = localStorage['roundtilepromo2015'] == 'true';
 }
-
-window.onbeforeunload = setLocalStorage;
-getLocalStorage();
 
 window.onbeforeunload = setLocalStorage;
 getLocalStorage();

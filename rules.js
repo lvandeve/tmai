@@ -509,7 +509,9 @@ function canDoRoundBonusDig2(player, type, x, y) {
 function canDoRoundBonusDigs(player, digs) {
   var maxnum = getRoundBonusDigs(player, state.round);
   if(digs.length > maxnum) return 'too many bonus digs, have max ' + maxnum;
-  if(player.faction == F_GIANTS && digs.length > 1) return 'giants cannot have more than one round bonus digs';
+  //LOU The Giants can not use one bonus dig, but two digs are good on any one hex 
+  //This is called from state.js, before the Giants check for a single dig(two single digs excluded elsewhere)
+  //if(player.faction == F_GIANTS && digs.length > 1) return 'giants cannot have more than one round bonus digs';
   for(var i = 0; i < digs.length; i++) {
     var error = canDoRoundBonusDig(player, digs[i][0], digs[i][1], digs[i][2]);
     if(error != '') return error;
@@ -771,7 +773,7 @@ function addExtrasForAction(player, action) {
     if(action.type == A_UPGRADE_SH) {
       player.getFaction().getOneTimeStrongholdIncome(player);
       addIncome(player, player.getFaction().getActionIncome(player, action.type)); 
-      //TODO: ensure this is not done more globally elsewhere already. This is currently only used by riverwalkers SH for the two bridges.
+//TODO: ensure this is not done more globally elsewhere already. This is currently only used by riverwalkers SH for the two bridges.
     }
   }
 

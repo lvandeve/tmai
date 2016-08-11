@@ -1,4 +1,4 @@
-/*
+/* fireice8.js
 TM AI
 
 Copyright (C) 2013-2014 by Lode Vandevenne
@@ -453,6 +453,26 @@ registerWorld('Fire & Ice World', 'fire_ice', function(game) {
   game.bh = 9;
   game.btoggle = true;
   game.world = clone(fireIceWorld);
+});
+
+/////////// Loon Lakes version 1.3 //////////////////////////////////////////
+
+var loonLakeWorld = [ G,S,R,G,U,B,U,R,I,I,G,B,N,
+                    Y,K,B,I,I,K,Y,I,G,S,I,K,U,
+                     U,I,I,G,R,S,I,K,B,R,I,Y,N,
+                    B,R,S,I,Y,U,G,I,I,Y,I,R,K,
+                     G,Y,I,K,B,I,I,R,I,B,S,U,N,
+                    S,I,U,S,I,Y,I,S,I,U,K,G,R,
+                     R,I,I,I,R,B,G,K,Y,I,I,B,N,
+                    Y,B,K,I,G,S,U,I,I,S,G,I,S,
+                     K,U,I,B,I,I,I,Y,R,U,Y,K,N];
+
+
+registerWorld('Loon Lakes World', 'loon_lake', function(game) {
+  game.bw = 13;
+  game.bh = 9;
+  game.btoggle = true;
+  game.world = clone(loonLakeWorld);
 });
 
 ////////////////////////////////////////////////////////////////////////////////

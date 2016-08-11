@@ -1,4 +1,4 @@
-/*
+/* render8.js
 TM AI
 
 Copyright (C) 2013-2014 by Lode Vandevenne
@@ -1645,7 +1645,7 @@ function drawSaveLoadUI(onlyload) {
   }
 
   if(!onlyload) {
-    button = makeLinkButton(100, 0, 'new', parent);
+    button = makeLinkButton(100, 0, 'NEW', parent);
     button.onclick = function() {
       if(state.type == S_PRE) return;
       var el = makeSizedDiv(50, 50, 400, 150, document.body);
@@ -1665,6 +1665,7 @@ function drawSaveLoadUI(onlyload) {
       }, 'No');
 
     }
+    button.title = 'Start NEW game';
 
     button = makeLinkButton(150, 0, 'undo', parent);
     button.onclick = function() {
@@ -1689,7 +1690,27 @@ function drawSaveLoadUI(onlyload) {
     };
     button.title = 'Redo undone action';
 
-
+   button = makeLinkButton(250, 0, 'help', parent);
+    button.onclick = function() {
+      var el = makeSizedDiv(50, 50, 400, 220, document.body);
+      el.style.backgroundColor = 'white';
+      el.style.border = '1px solid black';
+      makeText(5, 5, 'Play Fast: Always click Fast when available', el);
+      makeText(5,20, 'POWER:     Automatically burns power if needed for action', el);
+      makeText(5,35, 'CONVERT:   Use these features to get needed resources first', el);
+      makeText(5,50, 'PRIEST:    Click on Cult track to use available Priest there', el);
+      makeText(5,65, 'Dwelling:    Click on empty hex or TRANSFORM: build, then hex', el);
+      makeText(5,80, 'TradingPost: Click on Dwelling hex', el);
+      makeText(5,95, 'Stronghold:  Click on UPGRADE: upgr1, then TradingPost hex', el);
+      makeText(5,110, 'Temple:      Click on UPGRADE: upgr2, then TradingPost hex', el);
+      makeText(5,125,'Sanctuary:   Click on Temple hex', el);
+      makeText(5,140,'Red color menu items indicate actions for this round', el);
+      var button3 = makeButton(25, 165, 'Erase', el, function() {
+        document.body.removeChild(el);
+      }, 'Erase');  
+    };
+    button.title = 'Human instructions';
+    
     var debugbutton = makeLinkButton(1040, 5, 'debug', uiElement);
     debugbutton.onclick = function() {
       if(state.type == S_PRE) return;

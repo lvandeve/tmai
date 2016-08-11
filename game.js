@@ -207,11 +207,11 @@ function initialGameRender() {
 function initWorldForParams(params) {
   if(localStorageSupported() && location && location.search &&
       location.search.indexOf('playtest') >= 0 &&
-      localStorage['karteneditor_world']) {
-    parseWorld(localStorage['karteneditor_world']);
+      localStorage['mapeditor_world']) {
+    parseWorld(localStorage['mapeditor_world']);
+  } else {
+    params.worldGenerator(game);
   }
-
-  params.worldGenerator(game);
 }
 
 function getAIPlayerName(index) {

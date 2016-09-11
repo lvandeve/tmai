@@ -1,4 +1,4 @@
-/*
+/* state9.js
 TM AI
 
 Copyright (C) 2013-2014 by Lode Vandevenne
@@ -87,13 +87,14 @@ var State = function() {
   this.fireiceerrata = true; // Official change of rules for shapeshifters and riverwalkers. https://www.boardgamegeek.com/thread/1456706/official-change-rules
 
   // Variable turnorder by Lou
-  this.turnorder = false;
+  this.turnorder = true;  //LOU variable turn order is now default
   this.currentOrder = 0;  //turn position in the order list
   this.passOrder = 0;     //turn position of next pass
   this.turnMatrix = [[],[]];   //current round, next round
 
-  // if true, when a new game initializes, AI's get Lou's AI instead of Lode's AI. TODO: maybe later allow selecting individual AI of every bot
-  this.louAI = false;
+  //if ONE, when a new game initializes, AI is Lou AILou instead of AILode. 
+  //DONE: maybe later allow selecting individual AI of every bot
+  this.louAI = 1;  //LOU start with louAI as default
 };
 
 function logPlayerNameFun(player) {
@@ -216,6 +217,7 @@ function getInitialDwellingsDone(player) {
   return 8 - player.b_d;
 }
 
+var startTime;
 //TODO: this function probably belongs in rules.js (but not the addLog things)
 function addEndGameScore() {
   //cult tracks
@@ -264,6 +266,10 @@ function addEndGameScore() {
   for(var i = 0; i < game.players.length; i++) {
     addLog(logPlayerNameFun(game.players[i]) + ': ' + game.players[i].vp);
   }
+  addLog('');
+  var date = new Date();
+  var endTime = date.getTime();
+  addLog(' TIME - elapsed run time: ' + (endTime-startTime)/1000. + ' seconds ');  
 }
 
 function wrapPlayer(i) {
@@ -287,7 +293,7 @@ State.prototype.selectNextActionPlayer_ = function() {
       if(this.currentOrder == game.players.length) this.currentOrder = 0;
       this.currentPlayer = this.turnMatrix[0][this.currentOrder];
       if(this.currentPlayer < 0) throw new Error('selectNextActionPlayer should not return negative');
-      if(!game.players[this.currentPlayer].passed) break;  //LOU line288
+      if(!game.players[this.currentPlayer].passed) break;  //LOU previous problem area
       count++;
     } else {
       this.currentPlayer = wrapPlayer(this.currentPlayer + 1);
@@ -349,6 +355,8 @@ State.prototype.initNewStateType = function(type) {
   if(type == S_PRE) {
   }
   else if(type == S_INIT_FACTION) {
+    var date = new Date();
+    startTime = date.getTime();
     recalculateColorMaps(); // there may already be colors in it if preset factions were set
     this.currentPlayer = this.startPlayer;
     this.numHandledForState = 0;
@@ -395,6 +403,7 @@ State.prototype.transitionStateCore_ = function(next_state) {
   }
   else if(this.type == S_INIT_FACTION) {
     next_state = S_INIT_FACTION_COLOR;
+  
   }
   else if(this.type == S_INIT_FACTION_COLOR) {
     next_state = S_INIT_FAVOR;

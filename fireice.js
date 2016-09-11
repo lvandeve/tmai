@@ -1,4 +1,4 @@
-/* fireice8.js
+/* fireice9.js
 TM AI
 
 Copyright (C) 2013-2014 by Lode Vandevenne
@@ -437,6 +437,8 @@ registerWorld('Fire & Ice Altered', 'fire_ice_altered', function(game) {
   game.world = clone(fireIceAltered);
 });
 
+registerWorld('Fire & Ice World', 'fire_ice', initFireIceWorld);
+
 var fireIceWorld = [ U,I,U,K,Y,I,S,G,R,B,Y,B,N,
                     R,Y,I,B,S,R,I,I,I,Y,U,K,S,
                      G,K,I,I,I,U,G,Y,I,I,I,I,N,
@@ -447,13 +449,23 @@ var fireIceWorld = [ U,I,U,K,Y,I,S,G,R,B,Y,B,N,
                     K,B,I,K,U,S,B,I,Y,K,I,R,B,
                      S,G,I,R,Y,K,Y,I,B,U,I,U,N];
 
+//The world array has the color of each hex. It is inited with the standard world map.
+function initFireIceWorld(game) {
+  game.bw = 13;
+  game.bh = 9;
+  game.btoggle = true;
+  game.world = clone(fireIceWorld);
+}
 
+
+/*
 registerWorld('Fire & Ice World', 'fire_ice', function(game) {
   game.bw = 13;
   game.bh = 9;
   game.btoggle = true;
   game.world = clone(fireIceWorld);
-});
+};
+*/
 
 /////////// Loon Lakes version 1.3 //////////////////////////////////////////
 

@@ -170,12 +170,16 @@ function initialGameLogMessage() {
   addLog('Players: ' + playernames);
   addLog(game.players[state.startPlayer].name + ' is the starting player');
 
+  if(state.louAI == 0) addLog('0:  AI_Lode enabled');
+  if(state.louAI == 1) addLog('1:  AI_Lou enabled');
+  if(state.louAI == 2) addLog('2:  AI_Level2(rev 9) enabled');
+  if(state.louAI == 3) addLog('3:  AI_Level3(future) enabled');
+
   if(state.newcultistsrule) addLog('cultists errata enabled');
   if(state.towntilepromo2013) addLog('town tiles promo 2013 enabled');
   if(state.bonustilepromo2013) addLog('shipping bonus tile promo 2013 enabled');
   if(state.fireice) addLog('fire & ice expansion enabled');
-  if(state.turnorder) addLog('variable turn order enabled');
-  if(state.louAI) addLog('Lou New\'s AI enabled');
+  if(state.turnorder) addLog('variable turn order enabled'); 
   if(state.fireiceerrata) addLog('fire & ice errata enabled');
   if(state.roundtilepromo2015) addLog('round tile promo 2015 enabled');
 

@@ -663,4 +663,3 @@ function getSettlementEndScores() {
 }
 
 registerFinalScoring('settlements' ,'Most Settlements', getSettlementEndScores);
-

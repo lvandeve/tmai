@@ -84,7 +84,8 @@ var State = function() {
   this.towntilepromo2013 = true; // new town tiles
   this.bonustilepromo2013 = true; // new bonus tile
   this.fireice = true; // Fire & Ice expansion
-  this.fireiceerrata = true; // Official change of rules for shapeshifters and riverwalkers. https://www.boardgamegeek.com/thread/1456706/official-change-rules
+  this.fireiceerrata = true; // Official change of rules for shapeshifters and riverwalkers.  
+                             // https://www.boardgamegeek.com/thread/1456706/official-change-rules
 
   // Variable turnorder by Lou
   this.turnorder = true;  //LOU variable turn order is now default
@@ -95,6 +96,7 @@ var State = function() {
   //if ONE, when a new game initializes, AI is Lou AILou instead of AILode. 
   //DONE: maybe later allow selecting individual AI of every bot
   this.louAI = 1;  //LOU start with louAI as default
+  this.worldMap = 4; //Fire & Ice World
 };
 
 function logPlayerNameFun(player) {

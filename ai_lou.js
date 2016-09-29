@@ -1,4 +1,4 @@
-/*  ailou9.js
+/*  ailou9b.js
 TM AI
 
 Copyright (C) 2013-2016 by Lode Vandevenne
@@ -589,6 +589,11 @@ AILou.prototype.updateScoreActionValues_ = function(player, roundnum) {
     s.b_sh = (player.w >= 7 && player.c >= 6) ? 10 : -5;
     //only build SH if can convert 3w to 3p and must not burn too much manna (coin from 4 to 6)
     if(roundnum < 6) s.b_te += 5;  //get more priests for digging
+    //SA here produces two priests, so is good before round 6
+    if(AILou.ail > 1 && (roundnum == 4 || roundnum == 5)) {
+      s.b_sa += 3;
+      if(built_te(player) > 0) s.b_te -= 2;
+    }    
     if(roundnum > 4) makeShipping(1,0,0,0,0);
   }
 
@@ -623,6 +628,11 @@ AILou.prototype.updateScoreActionValues_ = function(player, roundnum) {
       s.b_sa++;
     }
     if(roundnum > 2) makeTemple(1,0,0,0,0);
+    //SA here produces two priests, so is good before round 6
+    if(AILou.ail > 1 && (roundnum == 4 || roundnum == 5)) {
+      s.b_sa += 3;
+      if(built_te(player) > 0) s.b_te -= 2;
+    }    
     if(roundnum > 4) makeShipping(1,0,0,0,0);
   }
 
@@ -1858,15 +1868,15 @@ var START_FACTIONS = [
     [ 5,  19, 24, 19, 19, 19,  0,  0,  0,  0,  0,  0,  0,  0],   //  HALFLINGS
     [ 6,  23, 23, 21, 23, 23,  0,  0,  0,  0,  0,  0,  0,  0],   //  CULTISTS
     [ 7,  17, 15, 21, 11, 13,  0,  0,  0,  0,  0,  0,  0, -1],   //  ALCHEMISTS
-    [ 8,  29, 31, 14, 22, 19,  0,  3,  0,  0,  0,  0,  0,  0],   //  DARKLINGS
+    [ 8,  29, 31, 15, 20, 22,  0,  3,  0,  0,  0,  0,  0,  0],   //  DARKLINGS
     [ 9,  15, 10, 12, 15, 15,  2,  0,  3,  8,  0,  2, -3,  4],   //  MERMAIDS
     [ 10, 22, 14, 25, 20, 20,  0,  0,  0,  0,  0,  2,  0,  0],   //  SWARMLINGS
     [ 11, 12, 12, 11, 11, 11,  0,  0,  3,  0,  0,  0,  0,  0],   //  AUREN
     [ 12, 20, 20, 20, 25, 25,  0,  0,  0,  0,  0,  0,  0, -5],   //  WITCHES
-    [ 13, 24, 24, 20, 16, 12,  2,  0,  0,  0,  0,  0,  0, -3],   //  ENGINEERS
+    [ 13, 24, 24, 20, 16, 12,  2,  0,  0,  0,  0,  0, -2, -3],   //  ENGINEERS
     [ 14, 15, 15, 15, 22, 22,  0,  0,  0,  0,  0,  0,  0,  0],   //  DWARVES
     [ 15, 16, 16, 22, 17, 22,  0,  0,  0,  0,  0,  2,  0,  0],   //  ICEMAIDENS    
-    [ 16, 15, 12, 22, 15, 20,  2,  0,  0,  0,  2,  0,  0,  3],   //  YETIS 
+    [ 16, 15, 12, 21, 15, 20,  2,  0,  0,  0,  0,  0,  0,  3],   //  YETIS 
     [ 17, 12, 12, 10, 10, 12,  0,  0,  0,  0,  0,  0,  0,  0],   //  ACOLYTES 
     [ 18, 16, 14, 21, 14, 16,  0,  0,  0,  0,  0,  0,  0,  0],   //  DRAGONLORDS
     [ 19, 18, 16, 25, 16, 18,  0,  0,  0,  0,  0,  0, -3, -4],   //  SHAPESHIFTERS 
@@ -1877,7 +1887,7 @@ var START_FACTIONS = [
 AILou.prototype.scoreFaction_ = function(player, already, faction) {
   //LOU add revised processing
   AILou.ail = state.louAI;
-  if(AILou.ail == 3) AILou.info = false;
+  if(AILou.ail == 3) AILou.info = false;  //change to true to get more info for level3
   else AILou.info = false; 
   var score = 0;
   var color = factionColor(faction);
@@ -2490,7 +2500,19 @@ AILou.scoreAction = function(player, actions, values, roundnum) {
     } else if(type == A_UPGRADE_SA) {
       subtractIncome(res, player.getFaction().getBuildingCost(B_SA, false));
       b_sa++;
-
+	
+      //see if there is enough resources leftover after SA to build a TE first
+      if(game.finalscoring == 2 && roundnum ==6 && built_sh(player)) {
+        var rest = res;
+        if(AILou.ail > 1 ) subtractIncome(rest, player.getFaction().getBuildingCost(B_TE, false));
+        if((player.c+player.pw2 + rest[0]) >= 0 && (player.w + player.p + rest[1]) >= 0) {  
+          if(AILou.info) {
+            addLog('TEMPLE_BUILD: '+logPlayerNameFun(player)+' location: '+letters[action.co[1]]+numbers[action.co[0]] 
+              +' player res(c,w,p,pw2): '+player.c+', '+player.w+', '+player.p+', '+player.pw2+ '  SA,TE res: '+rest[0]+', '+rest[1]);
+          }
+          //try to build the TE first, may be further away, b_sa--
+        }
+      } 
       //subtract IceMaidens SH bonus for one temple
       if(AILou.ail > 1 && player.faction == F_ICEMAIDENS) res[4] -= 3*built_sh(player)*(7-roundnum);
 
@@ -2526,7 +2548,7 @@ AILou.scoreAction = function(player, actions, values, roundnum) {
       player.shipping = xshipping;
       if(roundnum > 4) shtosacon = Math.min(scoreSHSA, distanceSHSA*values.shtosacon);
      }
-
+     
     //==== CULT actions ====
     } else if(type == A_CULT_PRIEST3) {
       // TODO: power income of those (note that it's half the pw value)

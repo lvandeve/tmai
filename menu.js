@@ -1,4 +1,4 @@
-/* menu9.js
+/* menu9b.js
 TM AI
 
 Copyright (C) 2013-2014 by Lode Vandevenne
@@ -50,7 +50,7 @@ function renderPreScreen(px, py, standardButtonFun, randomButtonFun, beginnerBut
       + 'Programmed by Lode Vandevenne.<br/>'
       + 'AI alternates by Lou New.<br/>'
       + 'Drawings by Giordano Segatta.<br/>'
-      + 'version: v.20160909<br/>'
+      + 'version: v.20160930<br/>'
       + 'Links:<br/>'
       + 'TM on BGG: <a href="http://boardgamegeek.com/boardgame/120677/terra-mystica">http://boardgamegeek.com/boardgame/120677/terra-mystica</a><br/>'
       + 'Snellman: <a href="http://terra.snellman.net/">http://terra.snellman.net/</a><br/>'
@@ -94,7 +94,7 @@ function renderPreScreen(px, py, standardButtonFun, randomButtonFun, beginnerBut
 
   //var louAIcb = makeCheckbox(px + 350, ppy + 72, parent, 'Lou New\'s alternate AI ', 'new AI by Lou New. This AI is  stronger and supports the expansion factions better.');
   //louAIcb.checked = preferences.louAI;
-  var aiTypeDropDown = makeLabeledDropDown(px + 350, ppy, 'AI Type', ['AI_Lode(original)', 'AI_Lou(rev 8)', 'AI_Level2(rev 9)', 'AI_Level3(future)'], parent);
+  var aiTypeDropDown = makeLabeledDropDown(px + 350, ppy, 'AI Type', ['AI_Lode(original)', 'AI_Lou(revised)', 'AI_Level2', 'AI_Level3(topFactions)'], parent);
   assignPreferenceToDropdown(aiTypeDropDown, preferences.louAI);
 
 
@@ -208,6 +208,7 @@ function renderPreScreen(px, py, standardButtonFun, randomButtonFun, beginnerBut
     params.louAI = aiTypeDropDown.selectedIndex;
     params.fireiceerrata = fireiceerratacb.checked;
     params.roundtilepromo2015 = roundtilepromo2015cb.checked;
+    params.worldMap = worldMapEl.selectedIndex;
 
     preferences.newcultistsrule = newcultistcb.checked;
     preferences.towntilepromo2013 = towntilepromo2013cb.checked;
@@ -236,6 +237,7 @@ function renderPreScreen(px, py, standardButtonFun, randomButtonFun, beginnerBut
 
   makeText(px, py + 480 + 17, '<h3>Documentation:</h3>' +
     '<h4>Updates</h4>' +
+    '<p>20160930: AI_Level2 processing improvements.  <p/>' +
     '<p>20160909: Make Fire&Ice World the default map along with Fire&Ice options and Variable Turn Order.  Added new AI option choice with Lou AI default.  <p/>' +
     '<p>20160804: Added LoonLake option.  Known bugs fixed.  Lou AI works best with World Map: Fire&Ice World. Changed probability of factions based upon final scoring. <p/>' +
 '<p>20151024: Added the new official fire&ice rule change as an option. Also added the new 2015 mini expansion: 4VP for temple round bonus tile.<p/>' +

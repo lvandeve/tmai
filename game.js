@@ -1,4 +1,4 @@
-/*
+/* game9b.js
 TM AI
 
 Copyright (C) 2013-2014 by Lode Vandevenne
@@ -128,6 +128,7 @@ function initParams(params) {
   state.louAI = params.louAI;
   state.fireiceerrata = params.fireiceerrata;
   state.roundtilepromo2015 = params.roundtilepromo2015;
+  state.worldMap = params.worldMap;
 
   var finalscoring = params.finalscoring;
   if(finalscoring == -1) {
@@ -170,14 +171,29 @@ function initialGameLogMessage() {
   addLog('Players: ' + playernames);
   addLog(game.players[state.startPlayer].name + ' is the starting player');
 
+  if(game.finalscoring == 0) addLog('0:  no final scoring');
+  else if(game.finalscoring == 1) addLog('1:  outpost final scoring');
+  else if(game.finalscoring == 2) addLog('2:  SH-SA distance final scoring');
+  else if(game.finalscoring == 3) addLog('3:  building distance final scoring');
+  else if(game.finalscoring == 4) addLog('4:  settlements final scoring');
+  if(state.louAI == 0) addLog('0:  AI_Lode enabled');
+  else if(state.louAI == 1) addLog('1:  AI_Lou enabled');
+  else if(state.louAI == 2) addLog('2:  AI_Level2(revision 9) enabled');
+  else if(state.louAI == 3) addLog('3:  AI_Level3(topFactions) enabled');
+  if(state.worldMap == 0) addLog('0:  Standard World enabled');
+  else if(state.worldMap == 1) addLog('1:  Randomized World enabled');
+  else if(state.worldMap == 2) addLog('2:  Randomized Small World enabled');
+  else if(state.worldMap == 3) addLog('3:  Fire & Ice Altered World enabled');
+  else if(state.worldMap == 4) addLog('4:  Fire & Ice World enabled');
+  else if(state.worldMap == 5) addLog('5:  Loon Lakes World enabled');
+
   if(state.newcultistsrule) addLog('cultists errata enabled');
   if(state.towntilepromo2013) addLog('town tiles promo 2013 enabled');
   if(state.bonustilepromo2013) addLog('shipping bonus tile promo 2013 enabled');
-  if(state.fireice) addLog('fire & ice expansion enabled');
-  if(state.turnorder) addLog('variable turn order enabled');
-  if(state.louAI) addLog('Lou New\'s AI enabled');
-  if(state.fireiceerrata) addLog('fire & ice errata enabled');
   if(state.roundtilepromo2015) addLog('round tile promo 2015 enabled');
+  if(state.turnorder) addLog('variable turn order enabled'); 
+  if(state.fireice) addLog('fire & ice expansion enabled'); 
+  if(state.fireiceerrata) addLog('fire & ice errata enabled'); 
 
   addLog('round 1 tile: ' + tileToStringLong(game.roundtiles[1], true));
   addLog('round 2 tile: ' + tileToStringLong(game.roundtiles[2], true));

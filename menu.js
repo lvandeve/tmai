@@ -233,7 +233,7 @@ function renderPreScreen(px, py, standardButtonFun, randomButtonFun, beginnerBut
     if(gameTypeDropDown.selectedIndex == 1) randomButtonFun(params);
     if(gameTypeDropDown.selectedIndex == 2) beginnerButtonFun(params);
     if(gameTypeDropDown.selectedIndex == 3) quickButtonFun(params);
-  }), 'Start new game');
+  }), 'Start a new game');
 
   makeText(px, py + 480 + 17, '<h3>Documentation:</h3>' +
     '<h4>Updates</h4>' +
@@ -361,7 +361,7 @@ var preferences = {
   startplayerdropdown: undefined,
   presetroundtiles: [],
   presetbonustiles: [], //booleans
-  
+
   newcultistsrule: true,
   towntilepromo2013: true,
   bonustilepromo2013: true,

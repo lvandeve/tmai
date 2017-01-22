@@ -1,4 +1,4 @@
-/*  ailou9b.js
+/*  ailou10.js
 TM AI
 
 Copyright (C) 2013-2016 by Lode Vandevenne
@@ -39,6 +39,7 @@ AILou.ybonus = 0;
 AILou.yfavor = 0;
 AILou.info = false;  //information please, print extra processing data in output file
 AILou.ail = 1;       //processing level
+var townSelected = []; //avoid previous action town tile
 
 var letters = ['A','B','C','D','E','F','G','H','I'];
 var numbers = ['1','2','3','4','5','6','7','8','9','10','11','12','13','14','15','16','17','18','19','20'];
@@ -227,11 +228,11 @@ AILou.prototype.doAction = function(playerIndex, callback) {
     chosen = actions[besti];
   }
 
-  var notChosen = 0;;
+  var favtown6 = -1;
   var cantPass = 0;
   if(!chosen) {
     //LOU this is where pass option selected, convert power before pass
-    notChosen = 1;
+    twoTown = 0;
     var actionPass = new Action(A_PASS);
     if(state.round != 6) actionPass.bontile = this.getPreferredBonusTile_(player);
     var actionCoin = [];
@@ -256,56 +257,38 @@ AILou.prototype.doAction = function(playerIndex, callback) {
     }
   }
 
- if (notChosen == 0) {
-  var favtown6 = -1;
-  for(var i = 0; i < chosen.length; i++) {
+  // some chosen action taken, find selected Favor or Town
+  else {
+   townSelected = [];
+   for(var i = 0; i < chosen.length; i++) {
     for(var j = 0; j < chosen[i].favtiles.length; j++) {
       var tiles = getPossibleFavorTiles(player, chosen[i].favtiles);
       chosen[i].favtiles[j] = this.getPreferredFavorTile_(player, tiles);
       if (chosen[i].favtiles[j] == T_FAV_2F_6TW) favtown6 = i;
     }
-    //LOU modify this section to prevent selecting the same town tile type twice
-    var townTileUsed = [];
+
+    //LOU10 when FAV6TW selected, examine for possible towns
+    if (favtown6 >= 0) {
+      //from rules.js --  var numtw = actionCreatesTown(player, chosen, null);
+      calculateTownClusters();
+      var town6 = getPlayerTownSize(player.woodcolor, townclusters, 6);
+      if(AILou.info) addLog('NEWTOWN: add 6 size town(s) = ' + town6.length + ' favtown6 ID = ' + favtown6);
+      chosen[i].twtiles.length = town6.length;
+    }
+
     for(var j = 0; j < chosen[i].twtiles.length; j++) {
       var tiles = getPossibleTownTiles(player, chosen[i].twtiles);
-      //LOU remove already used town tile from candidate list
-      if(townTileUsed.length > 0) {
-        for(var tu = 0; tu < townTileUsed.length; tu++) {
-          for(var tv = 0; tv < tiles.length; tv++) {
-            if(townTileUsed[tu] == tiles[tv]) tiles.splice(tv, 1);  //remove tile from list 
-          }
-        }
-      }  
       chosen[i].twtiles[j] = this.getPreferredTownTile_(player, tiles);
-      townTileUsed.push(chosen[i].twtiles[j]); 
-      updateWToPConversionAfterDarklingsSHTownTile(player, chosen[i]);
+      townSelected.push(chosen[i].twtiles[j]);
+      updateWToPConversionAfterDarklingsSHTownTile(player, chosen);
     }
+   }
   }
-  // check for fav6tw and then add town tile
-  if (favtown6 >= 0) {
-    //from rules.js --  var numtw = actionCreatesTown(player, chosen, null);
-    calculateTownClusters();
-    var town6 = getPlayerTownSize(player.woodcolor, townclusters, 6);
-    if(AILou.info) addLog('NEWTOWN: add town(s) of size 6. '
-      + town6.length + ' favtown6 number ' + favtown6);
-    var townTileUsed = [];
-    for(var j = 0; j < town6.length; j++) {
-      var tiles = getPossibleTownTiles(player, chosen[favtown6].twtiles);
-      if(townTileUsed.length > 0) {
-        for(var tu = 0; tu < townTileUsed.length; tu++) {
-          for(var tv = 0; tv < tiles.length; tv++) {
-            if(townTileUsed[tu] == tiles[tv]) tiles.splice(tv, 1);  //remove tile from list 
-          }
-        }
-      }  
-    chosen[favtown6].twtiles[j] = this.getPreferredTownTile_(player, tiles);
-    townTileUsed.push(chosen[favtown6].twtiles[j]); 
-    }
-  }
- }
 
   //LOU this is where the chosen action 'place bridge' and 'get favor6tw' previously fails.
-  //LOU this is where favor6tw fails when making a town. Error: too few town tiles chosen
+  //LOU this is where favor6tw fails when making a town. Error: too few town tiles chosen (fixed)
+  //LOU10 Error: this town tile is no longer available (fixed, two same town tiles chosen by action)
+  //LOU10 Error: no town tile chosen , Error: town tile chosen injustly (these are correct)
   var error = callback(playerIndex, chosen);
   if(error != '') {
     addLog('ERROR: AI tried invalid EXECUTE/PASS action. Error: ' + error);
@@ -1069,7 +1052,7 @@ AILou.prototype.scoreBonusTile_ = function(player, tile, roundnum) {
     [0,2,1,1,0,1,1,1,1,0,1,0,1,1,2, 1,0,1,1,1,0],  // T_BON_PASSTPVP_1W  (BON7)
     [0,4,5,1,8,1,0,5,2,1,2,0,1,1,1, 2,0,1,4,4,0],  // T_BON_PASSSHSAVP_2W(BON8)
     [0,2,1,3,1,0,2,3,5,1,2,0,1,1,1, 1,0,2,1,1,6],  // T_BON_1P           (BON9)
-    [0,0,1,0,0,1,1,1,1,2,1,0,1,0,0, 1,0,1,1,3,-9]  // T_BON_PASSSHIPVP_3PW(BON10)
+    [0,0,1,0,0,1,1,1,1,2,1,0,1,0,0, 1,0,1,1,3,-2]  // T_BON_PASSSHIPVP_3PW(BON10)
     ];
   if(roundnum <= 1) score += BONUS_PREF[Math.floor(AILou.ybonus)][Math.floor(AILou.xfaction)];
 
@@ -1083,9 +1066,9 @@ AILou.prototype.scoreBonusTile_ = function(player, tile, roundnum) {
     [0,1,1,0,1,1,1,2,1,0,0,0,1,1,1, 3,1,0,0,2,1],  // T_BON_3PW_1W       (BON5)
     [0,1,1,1,2,2,1,1,2,2,2,0,2,1,1, 2,2,2,2,2,3],  // T_BON_PASSDVP_2C   (BON6)
     [0,1,2,1,2,1,1,3,2,2,4,0,1,1,2, 1,1,1,1,1,0],  // T_BON_PASSTPVP_1W  (BON7)
-    [0,1,1,1,2,1,1,2,1,0,1,0,1,1,0, 0,1,0,0,0,1],  // T_BON_PASSSHSAVP_2W(BON8)
-    [0,1,0,1,1,1,1,1,3,0,0,0,0,0,0, 1,0,2,1,1,2],  // T_BON_1P           (BON9)
-    [0,1,0,0,0,0,0,0,1,4,0,0,1,0,0, 1,1,0,0,1,-9]  // T_BON_PASSSHIPVP_3PW(BON10)
+    [0,1,1,1,2,1,1,2,1,0,1,0,1,1,1, 0,1,0,0,0,1],  // T_BON_PASSSHSAVP_2W(BON8)
+    [0,1,0,1,1,1,1,1,3,0,0,0,0,0,1, 1,0,2,1,1,2],  // T_BON_1P           (BON9)
+    [0,1,0,0,0,0,0,0,1,4,0,0,1,0,0, 1,1,0,0,1,-2]  // T_BON_PASSSHIPVP_3PW(BON10)
     ];
   if(roundnum ==2 || roundnum == 3 )
     score += BONUS_PREF2[Math.floor(AILou.ybonus)][Math.floor(AILou.xfaction)]
@@ -1097,12 +1080,12 @@ AILou.prototype.scoreBonusTile_ = function(player, tile, roundnum) {
     [0,0,0,0,0,0,2,0,0,1,0,0,0,0,1, 0,2,0,0,0,2],  // T_BON_CULT_4C      (BON2)
     [0,0,0,0,2,0,0,0,0,0,0,0,0,0,0, 2,2,0,0,0,2],  // T_BON_6C           (BON3)
     [0,0,0,0,0,0,0,0,0,0,0,0,0,0,0, 1,1,0,0,1,-9], // T_BON_3PW_SHIP     (BON4)
-    [0,0,0,0,0,1,0,0,0,0,0,0,0,0,1, 3,1,0,0,3,1],  // T_BON_3PW_1W       (BON5)
-    [0,1,2,1,4,3,1,1,5,3,2,0,2,1,1, 3,2,2,3,2,4],  // T_BON_PASSDVP_2C   (BON6)
-    [0,1,2,1,2,1,1,4,3,2,4,0,1,1,1, 1,2,1,0,1,2],  // T_BON_PASSTPVP_1W  (BON7)
-    [0,1,2,0,5,0,1,3,2,1,2,0,1,1,1, 1,2,1,4,5,0],  // T_BON_PASSSHSAVP_2W(BON8)
-    [0,1,0,1,1,0,1,2,2,0,1,0,1,1,1, 1,0,2,0,1,1],  // T_BON_1P           (BON9)
-    [0,1,1,0,1,0,1,1,0,6,1,0,1,0,0, 1,1,0,0,3,-9]  // T_BON_PASSSHIPVP_3PW(BON10)
+    [0,0,0,0,0,1,0,0,0,0,0,0,0,0,1, 3,1,0,0,3,-3], // T_BON_3PW_1W       (BON5)
+    [0,1,2,1,4,3,1,1,5,3,2,0,2,1,2, 3,2,2,3,2,5],  // T_BON_PASSDVP_2C   (BON6)
+    [0,1,2,1,2,1,1,4,3,2,4,0,1,1,2, 1,2,1,0,1,3],  // T_BON_PASSTPVP_1W  (BON7)
+    [0,1,2,0,5,0,1,3,2,1,2,0,1,1,1, 1,2,1,4,5,1],  // T_BON_PASSSHSAVP_2W(BON8)
+    [0,1,0,1,1,0,1,2,2,0,1,0,1,1,1, 1,0,2,0,1,2],  // T_BON_1P           (BON9)
+    [0,1,1,0,1,0,1,1,0,6,1,0,1,0,0, 1,1,0,0,3,-2]  // T_BON_PASSSHIPVP_3PW(BON10)
     ];
   if(roundnum >= 4) score += BONUS_PREF3[Math.floor(AILou.ybonus)][Math.floor(AILou.xfaction)]
 
@@ -1141,7 +1124,7 @@ function getPlayerFavorPref(xfaction, yfavor) {
     [0,4,0,0,0, 3,2,0,0,0,0,0,0,2,3, 4,2,0,1,0,0],  // T_FAV_2E_1PW1W (FAV7)
     [0,5,0,2,0, 0,1,0,0,0,0,0,2,3,2, 3,4,0,4,3,0],  // T_FAV_2A_4PW   (FAV8)
     [0,3,0,2,0, 0,0,0,0,0,0,0,0,0,0, 4,0,0,1,0,0],  // T_FAV_1F_3C    (FAV9)
-    [0,3,2,0,3, 0,0,0,0,4,6,0,2,0,0, 2,3,0,3,3,3],  // T_FAV_1W_TPVP  (FAV10)
+    [0,3,2,0,3, 0,0,0,0,4,6,0,2,0,1, 2,3,0,3,3,3],  // T_FAV_1W_TPVP  (FAV10)
     [0,0,3,2,6, 4,0,0,5,5,0,0,4,0,2, 4,3,0,3,5,6],  // T_FAV_1E_DVP   (FAV11)
     [0,0,0,0,2, 0,0,0,0,0,4,0,0,0,0, 0,0,0,0,0,0]   // T_FAV_1A_PASSTPVP (FAV12)
     ];
@@ -1263,7 +1246,6 @@ AILou.prototype.scoreFavorTile_ = function(player, tile, roundnum) {
   return score;
 };
 
-
 //town tile chosen from given array
 AILou.prototype.getPreferredTownTile_ = function(player, tiles) {
   var scores = [];
@@ -1274,6 +1256,11 @@ AILou.prototype.getPreferredTownTile_ = function(player, tiles) {
   return tiles[AILou.pickWithBestScore(tiles, scores, false)];
 };
 
+//LOU10 provide function to test against already used towns
+function checkTown(arr,val) {
+  return arr.some(function(arrval) { return val == arrval }); 
+}
+
 AILou.prototype.scoreTownTile_ = function(player, tile, roundnum) {
   var score = 0;
 
@@ -1281,12 +1268,26 @@ AILou.prototype.scoreTownTile_ = function(player, tile, roundnum) {
     //TODO: calculate if increasing all cults is benificial and give better score based on that
     score = 2;
     score += 4;
-    if(player.faction == F_CHAOS) score += 5;
-    else if(player.faction == F_GIANTS) score += 4;
+    if(player.faction == F_CHAOS) score += 4;
+    else if(player.faction == F_GIANTS) score += 3;
     else if(player.faction == F_AUREN) score += 4;
     else if(player.faction == F_CULTISTS) score += 4;
     else if(player.faction == F_ICEMAIDENS) score += 3;
     else if(player.faction == F_YETIS) score += 3;
+
+    //LOU10 if needpw is less than power increase from cult bonus, this town will be judged injust with forced pass
+    //TODO turn extra pw2 into coin before select TW2
+    var needpw = player.pw0*2 + player.pw1;
+    var getpw = 0;
+    for (icult = 0; icult < 4; icult++) {
+      if (player.cult[icult] == 1 || player.cult[icult] == 2) getpw++;
+      else if (player.cult[icult] == 3 || player.cult[icult] == 4) getpw += 2;
+      else if (player.cult[icult] == 5 || player.cult[icult] == 6) getpw += 2;
+      //LOU10 do not allow cult of 10 (yet) since town needed
+      else if (player.cult[icult] >= 8) {getpw += 3; needpw = 0};  
+    }
+    if (getpw > needpw) score = 0;
+    if (checkTown(townSelected, tile)) score = 0;
   }
   else if(tile == T_TW_4VP_SHIP) {
     score = 6;
@@ -1298,6 +1299,7 @@ AILou.prototype.scoreTownTile_ = function(player, tile, roundnum) {
     //prevent selection for faction at max shipping
     if(player.faction == F_MERMAIDS && player.shipping >= 5) score = 0;
     else if(player.faction != F_MERMAIDS && player.shipping >= 3) score = 0;
+if (checkTown(townSelected, tile)) score = 0;
   }
   else if(tile == T_TW_5VP_6C) {
     score = 5;
@@ -1307,18 +1309,27 @@ AILou.prototype.scoreTownTile_ = function(player, tile, roundnum) {
     else if(player.faction == F_RIVERWALKERS) score +=2;  
     //Use values after current move
     else if(player.c < 8 && player.w >= player.c && player.w > 2) score += 2;
+    if (checkTown(townSelected, tile)) score = 0;
   }
   else if(tile == T_TW_6VP_8PW) {
     score = 6;
+
+    //LOU10 if needpw is less than 8, this town will be judged injust with forced pass
+    //TODO turn pw2 into coin first
     var needpw = player.pw0*2 + player.pw1;
-    if(needpw > 8) needpw = 8;
-    score += needpw/2;
+    if(needpw >= 8) {
+      needpw = 8;
+      score += needpw/2;
+    }
+    else if (needpw < 8) score = 0; 
+    if (checkTown(townSelected, tile)) score = 0;    
   }
   else if(tile == T_TW_7VP_2W) {
     score = 7; 
     score += 1;   
     if(player.faction == F_ENGINEERS  && player.c > player.w*2) score += 2;
     else if(player.w < 4 && player.c > player.w*2) score += 2;
+    if (checkTown(townSelected, tile)) score = 0;
   }
   else if(tile == T_TW_8VP_CULT) {
     //TODO: calculate if increasing all cults is benificial and give better score based on that
@@ -1332,17 +1343,39 @@ AILou.prototype.scoreTownTile_ = function(player, tile, roundnum) {
     if(player.faction == F_SHAPESHIFTERS) score += 3;
     else if(player.faction == F_ICEMAIDENS) score += 3;
     else if(player.faction == F_YETIS) score += 3;
+
+    //LOU10 if needpw is less than power increase from cult bonus, this town will be judged injust with forced pass
+    var needpw = player.pw0*2 + player.pw1;
+    var getpw = 0;
+    var towncount = 0;
+    var needtown = 0;
+    for (icult = 0; icult < 4; icult++) {
+      if (player.cult[icult] == 2) getpw++;
+      else if (player.cult[icult] == 4) getpw += 2;
+      else if (player.cult[icult] == 6) getpw += 2;
+      //LOU10 do not allow cult of 10 (yet) since town needed
+      else if (player.cult[icult] == 9) {getpw += 3; needtown++;}
+      else if (player.cult[icult] == 10) {getpw += 3; needtown++; needpw = 0;}
+      if(player.towntiles[icult] != undefined) towncount++; //examine how many town tiles are available 
+    }
+    if (needtown > towncount) needpw = 0;
+    if (getpw > needpw) score = 0;
+    if (checkTown(townSelected, tile)) score = 0;
   }
   else if(tile == T_TW_9VP_P) {
     score = 9;
     score += 1;   
     if(player.p == 0) score += 1;
     if(player.faction == F_DARKLINGS) score += 2;
+    //LOU10 eliminate the chance to get P, since that gives RW double action
+    else if(player.faction == F_RIVERWALKERS) score = 0;
+    if (checkTown(townSelected, tile)) score = 0;
   }
   else if(tile == T_TW_11VP) {
     score = 9;
     if(state.round >= 5) score += 1;
     if(state.round >= 6) score += 3;
+    if (checkTown(townSelected, tile)) score = 0;
   }
   return score;
 };
@@ -1861,25 +1894,25 @@ AILou.prototype.chooseFaction = function(playerIndex, callback) {
 //13. game.bonustiles = [FireIceWorld]
 //14. game.bonustiles = [LoonLakesWorld]
 var START_FACTIONS = [
-    [ 1,  21, 16, 21, 19, 19, -4,  0,  0,  0,  0,  0,  0,  0],   //  CHAOS
-    [ 2,  24, 24, 19, 22, 22,  0,  0,  0,  0,  2,  0,  0, -2],   //  GIANTS
+    [ 1,  19, 16, 21, 19, 19, -4,  0,  0,  0,  0,  0,  0,  0],   //  CHAOS
+    [ 2,  19, 21, 21, 20, 20,  0,  0,  0,  0,  2,  0,  0, -2],   //  GIANTS
     [ 3,  14, 14, 14, 19, 19,  0,  0,  0,  0,  0,  0,  0,  0],   //  FAKIRS
     [ 4,  30, 32, 26, 25, 23,  0,  0,  0,  0,  2,  0,  0,  2],   //  NOMADS
-    [ 5,  19, 24, 19, 19, 19,  0,  0,  0,  0,  0,  0,  0,  0],   //  HALFLINGS
-    [ 6,  23, 23, 21, 23, 23,  0,  0,  0,  0,  0,  0,  0,  0],   //  CULTISTS
+    [ 5,  19, 24, 19, 19, 20,  0,  0,  0,  0,  0,  0,  0,  0],   //  HALFLINGS
+    [ 6,  20, 22, 21, 23, 19,  0,  0,  0,  0,  0,  0,  0,  0],   //  CULTISTS
     [ 7,  17, 15, 21, 11, 13,  0,  0,  0,  0,  0,  0,  0, -1],   //  ALCHEMISTS
-    [ 8,  29, 31, 15, 20, 22,  0,  3,  0,  0,  0,  0,  0,  0],   //  DARKLINGS
-    [ 9,  15, 10, 12, 15, 15,  2,  0,  3,  8,  0,  2, -3,  4],   //  MERMAIDS
-    [ 10, 22, 14, 25, 20, 20,  0,  0,  0,  0,  0,  2,  0,  0],   //  SWARMLINGS
+    [ 8,  29, 31, 15, 22, 22,  0,  3,  0,  0,  0,  0,  0,  0],   //  DARKLINGS
+    [ 9,  14, 10, 12, 14, 12,  2,  0,  3,  8,  0,  2, -3,  4],   //  MERMAIDS
+    [ 10, 22, 14, 25, 20, 18,  0,  0,  0,  0,  0,  2,  0,  0],   //  SWARMLINGS
     [ 11, 12, 12, 11, 11, 11,  0,  0,  3,  0,  0,  0,  0,  0],   //  AUREN
     [ 12, 20, 20, 20, 25, 25,  0,  0,  0,  0,  0,  0,  0, -5],   //  WITCHES
-    [ 13, 24, 24, 20, 16, 12,  2,  0,  0,  0,  0,  0, -2, -3],   //  ENGINEERS
-    [ 14, 15, 15, 15, 22, 22,  0,  0,  0,  0,  0,  0,  0,  0],   //  DWARVES
+    [ 13, 17, 17, 17, 16, 12,  0,  0,  0,  0,  0,  0, -2, -3],   //  ENGINEERS
+    [ 14, 21, 18, 18, 23, 23,  2,  0,  0,  0,  0,  0,  0,  0],   //  DWARVES
     [ 15, 16, 16, 22, 17, 22,  0,  0,  0,  0,  0,  2,  0,  0],   //  ICEMAIDENS    
     [ 16, 15, 12, 21, 15, 20,  2,  0,  0,  0,  0,  0,  0,  3],   //  YETIS 
     [ 17, 12, 12, 10, 10, 12,  0,  0,  0,  0,  0,  0,  0,  0],   //  ACOLYTES 
     [ 18, 16, 14, 21, 14, 16,  0,  0,  0,  0,  0,  0,  0,  0],   //  DRAGONLORDS
-    [ 19, 18, 16, 25, 16, 18,  0,  0,  0,  0,  0,  0, -3, -4],   //  SHAPESHIFTERS 
+    [ 19, 18, 16, 20, 16, 18,  0,  0,  0,  0,  0,  0, -3, -4],   //  SHAPESHIFTERS 
     [ 20, 24, 12, 22, 34, 34,  0,  4,  0,  0,  0,  0,  0,  0]    //  RIVERWALKERS 
     ];
 

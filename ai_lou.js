@@ -1,4 +1,4 @@
-/*  ailou10.js
+/*  ailou11.js
 TM AI
 
 Copyright (C) 2013-2016 by Lode Vandevenne
@@ -40,6 +40,7 @@ AILou.yfavor = 0;
 AILou.info = false;  //information please, print extra processing data in output file
 AILou.ail = 1;       //processing level
 var townSelected = []; //avoid previous action town tile
+var upgradeSA = -1;    //avoid both FAV6tw and upgradeSA during same action 
 
 var letters = ['A','B','C','D','E','F','G','H','I'];
 var numbers = ['1','2','3','4','5','6','7','8','9','10','11','12','13','14','15','16','17','18','19','20'];
@@ -228,7 +229,10 @@ AILou.prototype.doAction = function(playerIndex, callback) {
     chosen = actions[besti];
   }
 
+  AILou.xfaction = player.faction + 1;
   var favtown6 = -1;
+  townSelected = []
+  upgradeSA = -1; // used to avoid selection of FAV6TW
   var cantPass = 0;
   if(!chosen) {
     //LOU this is where pass option selected, convert power before pass
@@ -259,21 +263,21 @@ AILou.prototype.doAction = function(playerIndex, callback) {
 
   // some chosen action taken, find selected Favor or Town
   else {
-   townSelected = [];
    for(var i = 0; i < chosen.length; i++) {
-    for(var j = 0; j < chosen[i].favtiles.length; j++) {
+    for(var j = 0; j < chosen[i].favtiles.length; j++) {  
+      if (chosen[i].twtiles.length > 0) upgradeSA = 1; 
       var tiles = getPossibleFavorTiles(player, chosen[i].favtiles);
       chosen[i].favtiles[j] = this.getPreferredFavorTile_(player, tiles);
       if (chosen[i].favtiles[j] == T_FAV_2F_6TW) favtown6 = i;
     }
 
-    //LOU10 when FAV6TW selected, examine for possible towns
+    //LOU10 when FAV6TW selected by TE, examine for possible towns, avoid selected by SA
     if (favtown6 >= 0) {
       //from rules.js --  var numtw = actionCreatesTown(player, chosen, null);
-      calculateTownClusters();
+      //calculateTownClusters();
       var town6 = getPlayerTownSize(player.woodcolor, townclusters, 6);
-      if(AILou.info) addLog('NEWTOWN: add 6 size town(s) = ' + town6.length + ' favtown6 ID = ' + favtown6);
-      chosen[i].twtiles.length = town6.length;
+      if(town6.length > 0) addLog('NEWTOWN: add 6 size town(s) = ' + town6.length + ' favtown6 ID = ' + favtown6);
+      chosen[i].twtiles.length += town6.length;
     }
 
     for(var j = 0; j < chosen[i].twtiles.length; j++) {
@@ -287,10 +291,11 @@ AILou.prototype.doAction = function(playerIndex, callback) {
 
   //LOU this is where the chosen action 'place bridge' and 'get favor6tw' previously fails.
   //LOU this is where favor6tw fails when making a town. Error: too few town tiles chosen (fixed)
-  //LOU10 Error: this town tile is no longer available (fixed, two same town tiles chosen by action)
-  //LOU10 Error: no town tile chosen , Error: town tile chosen injustly (these are correct)
+  //LOU10 Error: this town tile is no longer available (fixed, two same town tiles no longer chosen by action)
+  //LOU10 Error: no town tile chosen , Error: town tile chosen injustly (these are not errors)
   var error = callback(playerIndex, chosen);
   if(error != '') {
+    addLog('=============================================================');
     addLog('ERROR: AI tried invalid EXECUTE/PASS action. Error: ' + error);
 
     //instead, pass.
@@ -376,13 +381,13 @@ AILou.prototype.updateScoreActionValues_ = function(player, roundnum) {
 
   s.t_fav = player.favortiles.length > 3 ? 0 : 1;
 
-  //get TOWN count and favor5 available
+  //get TOWN count and favor6TW available
   var towncount = 0;
-  var favor5 = 0;
+  var favor6TW = 0;
   for(var i = 0; i < 4; i++) if(player.towntiles[i] != undefined) towncount++;
   var tiles = getPossibleFavorTiles(player, {});
   for(var i = 0; i < tiles.length; i++) {
-    if (tiles[i] == T_FAV_2F_6TW) favor5 = 1;
+    if (tiles[i] == T_FAV_2F_6TW) favor6TW = 1;
   }
 
   // Round specific
@@ -486,7 +491,7 @@ AILou.prototype.updateScoreActionValues_ = function(player, roundnum) {
   }
 
   //Faction specific
-  AILou.xfaction = player.faction + 1
+  AILou.xfaction = player.faction + 1;
 
   if(player.faction == F_CHAOS) {
     s.b_tp += 4;
@@ -1119,7 +1124,7 @@ function getPlayerFavorPref(xfaction, yfavor) {
     [0,0,0,0,0, 0,0,0,0,0,0,0,0,0,0, 0,0,0,0,0,0],  // T_FAV_3W       (FAV2)
     [0,0,0,0,0, 0,0,0,0,0,0,0,0,0,0, 0,0,0,0,0,0],  // T_FAV_3E       (FAV3)
     [0,0,0,0,0, 0,0,0,0,0,0,0,0,0,0, 0,0,0,0,0,0],  // T_FAV_3A       (FAV4)
-    [0,0,2,-9,3,0,0,2,4,1,1,0,0,0,-9,2,1,0,0,2,4],  // T_FAV_2F_6TW   (FAV5)
+    [0,0,2,0,3, 0,0,2,4,1,1,0,2,0,0, 2,1,0,0,2,4],  // T_FAV_2F_6TW   (FAV5)
     [0,0,1,0,0, 0,3,0,0,2,2,4,0,0,0, 2,1,0,1,0,0],  // T_FAV_2W_CULT  (FAV6)
     [0,4,0,0,0, 3,2,0,0,0,0,0,0,2,3, 4,2,0,1,0,0],  // T_FAV_2E_1PW1W (FAV7)
     [0,5,0,2,0, 0,1,0,0,0,0,0,2,3,2, 3,4,0,4,3,0],  // T_FAV_2A_4PW   (FAV8)
@@ -1169,23 +1174,15 @@ AILou.prototype.scoreFavorTile_ = function(player, tile, roundnum) {
   }
   else if(tile == T_FAV_2F_6TW) {
     AILou.yfavor = 5;
-    if(getPlayerFavorPref(AILou.xfaction, AILou.yfavor) > 0) {
-      if (roundnum >= 4) score += (6-roundnum);
-      calculateTownClusters();
-      var size = 6;
-      var town6 = getPlayerTownSize(player.woodcolor, townclusters, size);
-      size = 5;
-      var town5 = getPlayerTownSize(player.woodcolor, townclusters, size);
-      if(town5.length > 0 && roundnum < 6) {
-        score += 3;
-        if (getRoundTileP1() == T_ROUND_TW5VP_4E1DIG) score += 2;
+    if(upgradeSA >= 0) score = -5;    
+    else if(getPlayerFavorPref(AILou.xfaction, AILou.yfavor) > 0 ) {
+      if (roundnum >= 4) {
+       score += (6-roundnum);
+       if (getRoundTileP1() == T_ROUND_TW5VP_4E1DIG) score += 2;
+       if (getRoundTile() == T_ROUND_TW5VP_4E1DIG) score += 2;      
+       //LOU11 alter comment
+       if (score >= 3 && AILou.info) addLog('FAVOR6tw for: ' + logPlayerNameFun(player) + ' score: ' + score);
       }
-      else if(town6.length > 0) {
-        score += 4;
-        if (getRoundTile() == T_ROUND_TW5VP_4E1DIG) score += 2;
-      }
-      if (score >= 3 && AILou.info) addLog('FAVOR: AI FAVOR5 for: '+logPlayerNameFun(player)
-        +' town5 num:'+town5.length+' town6 num:'+town6.length+' fav5 score:'+score);
     }
   }
   else if(tile == T_FAV_2W_CULT) {

@@ -1,4 +1,4 @@
-/*
+/* rules11.js
 TM AI
 
 Copyright (C) 2013-2016 by Lode Vandevenne
@@ -1266,8 +1266,9 @@ function tryAction(player, action /*Action object*/) {
 
   // Check town tiles. Also takes care of the T_FAV_2F_6TW tile.
   var numtw = actionCreatesTown(player, action, null);
-  if(action.twtiles.length < numtw) return action.favtiles.length == 0 ? 'no town tile chosen' : 'too few town tiles chosen';
-  if(action.twtiles.length > numtw) return numtw == 0 ? 'town tile chosen injustly' : 'too many town tiles chosen';
+  //LOU11 every time "no town tile chosen' or 'town tile chosen injustly', rules is incorrect (change needed somewhere)
+  if(action.twtiles.length < numtw && action.twtiles.length != 0)  return 'too few town tiles chosen';
+  if(action.twtiles.length > numtw && numtw != 0 ) return 'too many town tiles chosen';
 
   // Check favor tiles
   if(action.favtiles.length < actionGivesFavorTile(player, action)) return action.favtiles.length == 0 ? 'no favor tile chosen' : 'too few favor tiles chosen';

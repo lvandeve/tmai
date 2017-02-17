@@ -1,4 +1,4 @@
-/*  ailou11.js
+/*  ailou12.js
 TM AI
 
 Copyright (C) 2013-2016 by Lode Vandevenne
@@ -276,7 +276,6 @@ AILou.prototype.doAction = function(playerIndex, callback) {
       //from rules.js --  var numtw = actionCreatesTown(player, chosen, null);
       //calculateTownClusters();
       var town6 = getPlayerTownSize(player.woodcolor, townclusters, 6);
-      if(town6.length > 0) addLog('NEWTOWN: add 6 size town(s) = ' + town6.length + ' favtown6 ID = ' + favtown6);
       chosen[i].twtiles.length += town6.length;
     }
 
@@ -482,7 +481,8 @@ AILou.prototype.updateScoreActionValues_ = function(player, roundnum) {
   //no resources given after this round
   if (roundnum == 6) {
     //modify favor selection so build temple for last round gets cult+3 favor
-    s.b_te += 2;
+    //LOU12 sometimes no temple is built unless value is greater than residual of 2.33
+    s.b_te += 3;
     //add value for dwelling as an outpost
     if(game.finalscoring == 1) s.b_d += 2;
     //select SH and SA to give SH_SA distance bonus in selection
@@ -536,7 +536,15 @@ AILou.prototype.updateScoreActionValues_ = function(player, roundnum) {
     }
     if(roundnum > 4) makeShipping(1,0,0,0,0)
     if(player.pw2 >= 4) s.specific[A_POWER_7C] = player.c < 9 ? 12 : 6;
-    if(player.p == 0 && roundnum == 6) s.specific[A_POWER_1P] = 8;
+    if(roundnum > 4 && (player.pw0 + player.pw1) <= 1) {
+      s.specific[A_POWER_1P] = 8;
+      if(player.c > 2*player.w) {
+        s.specific[A_POWER_2W] = 10;
+      } else {
+        if (player.w < 7) s.specific[A_POWER_2W] = 10;
+        s.specific[A_POWER_7C] = 14;
+      }
+    }
    }
 
   //look for spade>>2 in round 4
@@ -639,6 +647,7 @@ AILou.prototype.updateScoreActionValues_ = function(player, roundnum) {
       s.b_te = -5;  //no way, first SH
     }
     s.t_tw += 5;  //get extra 5VP for making town
+    s.bridge -= 4;  //avoid unneeded bridge from E9-D11 in F&I World
     if(roundnum > 3) makeTemple(1,0,0,0,0);
     if(roundnum > 4) makeShipping(1,0,0,0,0);
   }
@@ -702,6 +711,8 @@ AILou.prototype.updateScoreActionValues_ = function(player, roundnum) {
     if(roundnum >= 1) makeTemple(1,0,0,4,2);
     if(roundnum > 2) makeTemple(2,0,0,5,3);
     if(roundnum > 4) makeShipping(1,0,0,6,4);
+    //LOU12 digging is beneficial to ice factions
+    s.digging += 2;
     if(built_te(player) >= 2) s.b_sh += 11;
     if(built_sh(player) && game.finalscoring != 2) s.b_sa -= 5;
     s.specific[A_POWER_7C] -= 2;
@@ -715,7 +726,12 @@ AILou.prototype.updateScoreActionValues_ = function(player, roundnum) {
     s.specific[A_POWER_7C] = player.c < 6 ? 6 : 3;
     s.specific[A_POWER_SPADE] = 6;
     s.specific[A_POWER_2SPADE] = 8;
-    if(built_d(player) > 2) makeTemple(1,0,0,0,0);
+    if(getRoundTile() == T_ROUND_SHSA5VP_2F1W || getRoundTile() == T_ROUND_SHSA5VP_2A1W) {
+      makeSHEssential(0,0,0,0);
+    }  
+    else if(built_d(player) > 2) makeTemple(1,0,0,0,0);
+    //LOU12 digging is beneficial to ice factions
+    s.digging += 2;
     //need to keep more tokens for later use
     if(roundnum < 6) {
       s.burn = -.3;
@@ -787,6 +803,7 @@ AILou.prototype.updateScoreActionValues_ = function(player, roundnum) {
     } else {
       makeTemple(2,5,0,0,0);
     }
+
     s.b_sa = 0;
     s.b_d += 4;
     if(roundnum > 5) {
@@ -794,14 +811,38 @@ AILou.prototype.updateScoreActionValues_ = function(player, roundnum) {
       s.b_sh += 4;
     }
 
+    //LOU12 improve odds of SH in rounds 4 and 5, avoid building bridges pending 2 bridge build
+    if(roundnum == 4) {
+      if(getRoundTile() == T_ROUND_SHSA5VP_2F1W || getRoundTile() == T_ROUND_SHSA5VP_2A1W) {
+        s.b_sh += 5;
+        if(built_sh(player) == 0) s.bridge -=10;
+      }
+      if(getRoundTileP1() == T_ROUND_SHSA5VP_2F1W || getRoundTileP1() == T_ROUND_SHSA5VP_2A1W) {
+        s.b_sh -= 5;
+        s.t_tw -= 5;
+        if(built_sh(player) == 0) s.bridge -= 10;
+      }
+    }
+    else if(roundnum == 5) {
+      if(getRoundTile() == T_ROUND_SHSA5VP_2F1W || getRoundTile() == T_ROUND_SHSA5VP_2A1W) {
+        s.b_sh += 5;
+        if(built_sh(player) == 0) s.bridge -=10;
+      }
+      if(game.finalscoring == 2) {
+        s.b_sh += 10;
+        if(built_sh(player) == 0) s.bridge -=10;
+      }  
+    }  
+    else if(roundnum == 6 && game.finalscoring == 2 && built_sh(player) > 0) s.b_sa += 15;
+
     //must use power if full or less than replacement (SPADE not allowed)
     if(roundnum > 4 && (player.pw0 + player.pw1) <= 1) {
-      s.specific[A_POWER_1P] += 4;
+      s.specific[A_POWER_1P] = 10;
       if(player.c > 2*player.w) {
-        s.specific[A_POWER_2W] += 4;
+        s.specific[A_POWER_2W] = 12;
       } else {
-        if (player.w < 7) s.specific[A_POWER_2W] += 4;
-        s.specific[A_POWER_7C] += 8;
+        if (player.w < 7) s.specific[A_POWER_2W] = 12;
+        s.specific[A_POWER_7C] = 16;
       }
     }
     s.existingtown = -4;
@@ -1048,32 +1089,32 @@ AILou.prototype.scoreBonusTile_ = function(player, tile, roundnum) {
   //Add starting preference score for the faction and the bonus tile
   var BONUS_PREF = [
     [0,0,0,0,0,0,0,0,0,0,0,0,0,0,0, 0,0,0,0,0,0],
-    [0,3,1,3,3,3,3,0,0,4,2,1,2,3,3, 2,4,1,1,2,-9], // T_BON_SPADE_2C     (BON1)
+    [0,3,1,3,3,3,3,0,0,4,2,1,2,3,3, 3,4,1,1,2,-9], // T_BON_SPADE_2C     (BON1)
     [0,0,2,1,2,1,4,0,1,2,1,0,3,3,0, 1,3,2,3,2,5],  // T_BON_CULT_4C      (BON2)
-    [0,0,2,2,3,1,1,0,1,3,1,0,1,1,0, 1,3,2,4,1,4],  // T_BON_6C           (BON3)
+    [0,0,2,2,3,1,1,0,1,3,1,0,1,1,0, 1,2,2,4,1,4],  // T_BON_6C           (BON3)
     [0,2,3,0,0,1,1,1,1,6,1,5,4,1,0, 1,1,1,2,3,-9], // T_BON_3PW_SHIP     (BON4)
-    [0,3,2,1,1,2,2,4,3,0,1,0,3,3,3, 4,2,1,2,3,0],  // T_BON_3PW_1W       (BON5)
-    [0,0,2,1,5,2,1,1,1,1,2,0,1,1,1, 2,3,2,1,3,2],  // T_BON_PASSDVP_2C   (BON6)
+    [0,3,2,1,1,2,2,4,3,0,1,0,3,3,3, 4,4,1,2,3,0],  // T_BON_3PW_1W       (BON5)
+    [0,0,2,1,5,2,1,1,1,1,2,0,1,1,1, 2,2,2,1,3,2],  // T_BON_PASSDVP_2C   (BON6)
     [0,2,1,1,0,1,1,1,1,0,1,0,1,1,2, 1,0,1,1,1,0],  // T_BON_PASSTPVP_1W  (BON7)
-    [0,4,5,1,8,1,0,5,2,1,2,0,1,1,1, 2,0,1,4,4,0],  // T_BON_PASSSHSAVP_2W(BON8)
+    [0,4,5,1,8,1,0,5,2,1,2,0,1,1,1, 3,1,1,4,4,0],  // T_BON_PASSSHSAVP_2W(BON8)
     [0,2,1,3,1,0,2,3,5,1,2,0,1,1,1, 1,0,2,1,1,6],  // T_BON_1P           (BON9)
-    [0,0,1,0,0,1,1,1,1,2,1,0,1,0,0, 1,0,1,1,3,-2]  // T_BON_PASSSHIPVP_3PW(BON10)
+    [0,0,1,0,0,1,1,1,1,2,1,0,1,0,0, 0,0,1,1,3,-2]  // T_BON_PASSSHIPVP_3PW(BON10)
     ];
   if(roundnum <= 1) score += BONUS_PREF[Math.floor(AILou.ybonus)][Math.floor(AILou.xfaction)];
 
   //Add middle preference score for the faction and the bonus tile
   var BONUS_PREF2 = [
     [0,0,0,0,0,0,0,0,0,0,0,0,0,0,0, 0,0,0,0,0,0],
-    [0,2,0,2,3,2,2,0,0,2,2,1,1,2,2, 3,1,0,0,1,-9], // T_BON_SPADE_2C     (BON1)
+    [0,2,0,2,3,2,2,0,0,2,2,1,1,2,2, 3,3,0,0,1,-9], // T_BON_SPADE_2C     (BON1)
     [0,2,0,2,2,2,2,0,0,2,1,0,1,2,0, 1,2,1,2,1,2],  // T_BON_CULT_4C      (BON2)
-    [0,0,2,1,3,0,0,0,0,0,0,0,0,0,0, 3,2,1,2,0,2],  // T_BON_6C           (BON3)
-    [0,1,1,0,0,0,0,2,0,1,0,2,2,0,0, 1,1,0,1,2,-9], // T_BON_3PW_SHIP     (BON4)
-    [0,1,1,0,1,1,1,2,1,0,0,0,1,1,1, 3,1,0,0,2,1],  // T_BON_3PW_1W       (BON5)
-    [0,1,1,1,2,2,1,1,2,2,2,0,2,1,1, 2,2,2,2,2,3],  // T_BON_PASSDVP_2C   (BON6)
+    [0,0,2,1,3,0,0,0,0,0,0,0,0,0,0, 3,1,1,2,0,2],  // T_BON_6C           (BON3)
+    [0,1,1,0,0,0,0,2,0,1,0,2,2,0,0, 1,2,0,1,2,-9], // T_BON_3PW_SHIP     (BON4)
+    [0,1,1,0,1,1,1,2,1,0,0,0,1,1,1, 3,3,0,0,2,1],  // T_BON_3PW_1W       (BON5)
+    [0,1,1,1,2,2,1,1,2,2,2,0,2,1,1, 2,1,2,2,2,3],  // T_BON_PASSDVP_2C   (BON6)
     [0,1,2,1,2,1,1,3,2,2,4,0,1,1,2, 1,1,1,1,1,0],  // T_BON_PASSTPVP_1W  (BON7)
     [0,1,1,1,2,1,1,2,1,0,1,0,1,1,1, 0,1,0,0,0,1],  // T_BON_PASSSHSAVP_2W(BON8)
     [0,1,0,1,1,1,1,1,3,0,0,0,0,0,1, 1,0,2,1,1,2],  // T_BON_1P           (BON9)
-    [0,1,0,0,0,0,0,0,1,4,0,0,1,0,0, 1,1,0,0,1,-2]  // T_BON_PASSSHIPVP_3PW(BON10)
+    [0,1,0,0,0,0,0,0,1,4,0,0,1,0,0, 1,0,0,0,1,-2]  // T_BON_PASSSHIPVP_3PW(BON10)
     ];
   if(roundnum ==2 || roundnum == 3 )
     score += BONUS_PREF2[Math.floor(AILou.ybonus)][Math.floor(AILou.xfaction)]
@@ -1081,9 +1122,9 @@ AILou.prototype.scoreBonusTile_ = function(player, tile, roundnum) {
   //Add end preference score for the faction and the bonus tile
   var BONUS_PREF3 = [
     [0,0,0,0,0,0,0,0,0,0,0,0,0,0,0, 0,0,0,0,0,0],
-    [0,0,0,1,0,0,0,0,0,1,2,0,1,0,1, 2,0,0,2,0,-9], // T_BON_SPADE_2C     (BON1)
+    [0,0,0,1,0,0,0,0,0,1,2,0,1,0,1, 2,1,0,2,0,-9], // T_BON_SPADE_2C     (BON1)
     [0,0,0,0,0,0,2,0,0,1,0,0,0,0,1, 0,2,0,0,0,2],  // T_BON_CULT_4C      (BON2)
-    [0,0,0,0,2,0,0,0,0,0,0,0,0,0,0, 2,2,0,0,0,2],  // T_BON_6C           (BON3)
+    [0,0,0,0,2,0,0,0,0,0,0,0,0,0,0, 2,1,0,0,0,2],  // T_BON_6C           (BON3)
     [0,0,0,0,0,0,0,0,0,0,0,0,0,0,0, 1,1,0,0,1,-9], // T_BON_3PW_SHIP     (BON4)
     [0,0,0,0,0,1,0,0,0,0,0,0,0,0,1, 3,1,0,0,3,-3], // T_BON_3PW_1W       (BON5)
     [0,1,2,1,4,3,1,1,5,3,2,0,2,1,2, 3,2,2,3,2,5],  // T_BON_PASSDVP_2C   (BON6)
@@ -1125,95 +1166,195 @@ function getPlayerFavorPref(xfaction, yfavor) {
     [0,0,0,0,0, 0,0,0,0,0,0,0,0,0,0, 0,0,0,0,0,0],  // T_FAV_3E       (FAV3)
     [0,0,0,0,0, 0,0,0,0,0,0,0,0,0,0, 0,0,0,0,0,0],  // T_FAV_3A       (FAV4)
     [0,0,2,0,3, 0,0,2,4,1,1,0,2,0,0, 2,1,0,0,2,4],  // T_FAV_2F_6TW   (FAV5)
-    [0,0,1,0,0, 0,3,0,0,2,2,4,0,0,0, 2,1,0,1,0,0],  // T_FAV_2W_CULT  (FAV6)
-    [0,4,0,0,0, 3,2,0,0,0,0,0,0,2,3, 4,2,0,1,0,0],  // T_FAV_2E_1PW1W (FAV7)
-    [0,5,0,2,0, 0,1,0,0,0,0,0,2,3,2, 3,4,0,4,3,0],  // T_FAV_2A_4PW   (FAV8)
-    [0,3,0,2,0, 0,0,0,0,0,0,0,0,0,0, 4,0,0,1,0,0],  // T_FAV_1F_3C    (FAV9)
-    [0,3,2,0,3, 0,0,0,0,4,6,0,2,0,1, 2,3,0,3,3,3],  // T_FAV_1W_TPVP  (FAV10)
-    [0,0,3,2,6, 4,0,0,5,5,0,0,4,0,2, 4,3,0,3,5,6],  // T_FAV_1E_DVP   (FAV11)
-    [0,0,0,0,2, 0,0,0,0,0,4,0,0,0,0, 0,0,0,0,0,0]   // T_FAV_1A_PASSTPVP (FAV12)
+    [0,0,1,0,0, 0,3,0,0,2,2,4,0,0,0, 2,2,0,1,0,0],  // T_FAV_2W_CULT  (FAV6)
+    [0,4,0,0,0, 3,2,0,0,0,0,0,0,2,3, 3,2,0,1,0,0],  // T_FAV_2E_1PW1W (FAV7)
+    [0,5,0,2,0, 0,1,0,0,0,0,0,2,3,2, 2,8,0,4,3,0],  // T_FAV_2A_4PW   (FAV8)
+    [0,3,0,2,0, 0,0,0,0,0,0,0,0,0,0, 1,0,0,1,0,0],  // T_FAV_1F_3C    (FAV9)
+    [0,3,2,0,3, 0,0,0,0,4,6,0,2,0,1, 4,3,0,3,3,3],  // T_FAV_1W_TPVP  (FAV10)
+    [0,0,3,2,6, 4,0,0,5,5,0,0,4,0,2, 4,1,0,3,5,6],  // T_FAV_1E_DVP   (FAV11)
+    [0,0,0,0,0, 0,0,0,0,0,4,0,0,0,0, 0,0,0,0,0,0]   // T_FAV_1A_PASSTPVP (FAV12)
     ];
   var result = 0;
   result = FAVOR_PREF[Math.floor(yfavor)][Math.floor(xfaction)];
   return result;
 }
 
-AILou.prototype.scoreFavorTile_ = function(player, tile, roundnum) {
+AILou.prototype.scoreFavorTile_ = function(player, favtile, roundnum) {
   //Add starting preference score for the faction and the favor tiles
   var score = 0;
   AILou.yfavor = 0;
+  var scoreProjection = projectEndGameScores();
+  var scoreFavor0 = scoreProjection[player.index];
+  var scoreFavor1 = [0,0,0,0,0,0];
+  var deltaVP = 0;
 
   //LOU increase value for 3cult if round 6
-  if(tile == T_FAV_3F) {
+  if(favtile == T_FAV_3F) {
     AILou.yfavor = 1;
     if(player.cult[C_F] < 8) {
       score++;
-      if (roundnum == 6) score += 3;
+      if(roundnum == 6) {
+        player.cult[C_F] += 3;       
+        player.favortiles[favtile] = 1;
+        scoreProjection = projectEndGameScores();
+        scoreFavor1 = scoreProjection[player.index];
+        deltaVP = scoreFavor1[0] - scoreFavor0[0];
+        player.favortiles[favtile] = 0;
+        player.cult[C_F] -= 3;
+        score += deltaVP;
+        if(AILou.info) 
+        addLog('FAVOR GameVP score: '+scoreFavor1+' getFavor: '+tileToStringLong(favtile, 1)+' deltaVP: '+deltaVP);
+      } 
     }
   }
-  else if(tile == T_FAV_3W) {
+  else if(favtile == T_FAV_3W) {
     AILou.yfavor = 2;
     if(player.cult[C_W] < 8) {
       score++;
-      if (roundnum == 6) score += 3;
+      if(roundnum == 6) {
+        player.cult[C_W] += 3;       
+        player.favortiles[favtile] = 1;
+        scoreProjection = projectEndGameScores();
+        scoreFavor1 = scoreProjection[player.index];
+        deltaVP = scoreFavor1[0] - scoreFavor0[0];
+        player.favortiles[favtile] = 0;
+        player.cult[C_W] -= 3;
+        score += deltaVP;
+        if(AILou.info) 
+        addLog('FAVOR GameVP score: '+scoreFavor1+' getFavor: '+tileToStringLong(favtile, 1)+' deltaVP: '+deltaVP);
+      } 
     }
   }
-  else if(tile == T_FAV_3E) {
+  else if(favtile == T_FAV_3E) {
     AILou.yfavor = 3;
     if(player.cult[C_E] < 8) {
       score++;
-      if (roundnum == 6) score += 3;
+      if(roundnum == 6) {
+        player.cult[C_E] += 3;       
+        player.favortiles[favtile] = 1;
+        scoreProjection = projectEndGameScores();
+        scoreFavor1 = scoreProjection[player.index];
+        deltaVP = scoreFavor1[0] - scoreFavor0[0];
+        player.favortiles[favtile] = 0;
+        player.cult[C_E] -= 3;
+        score += deltaVP;
+        if(AILou.info) 
+        addLog('FAVOR GameVP score: '+scoreFavor1+' getFavor: '+tileToStringLong(favtile, 1)+' deltaVP: '+deltaVP);
+      } 
     }
   }
-  else if(tile == T_FAV_3A) {
+  else if(favtile == T_FAV_3A) {
     AILou.yfavor = 4;
     if(player.cult[C_A] < 8) {
       score++;
-      if (roundnum == 6) score += 3;
+      if(roundnum == 6) {
+        player.cult[C_A] += 3;       
+        player.favortiles[favtile] = 1;
+        scoreProjection = projectEndGameScores();
+        scoreFavor1 = scoreProjection[player.index];
+        deltaVP = scoreFavor1[0] - scoreFavor0[0];
+        player.favortiles[favtile] = 0;
+        player.cult[C_A] -= 3;
+        score += deltaVP;
+        if(AILou.info) 
+        addLog('FAVOR GameVP score: '+scoreFavor1+' getFavor: '+tileToStringLong(favtile, 1)+' deltaVP: '+deltaVP);
+      } 
     }
   }
-  else if(tile == T_FAV_2F_6TW) {
+  else if(favtile == T_FAV_2F_6TW) {
     AILou.yfavor = 5;
-    if(upgradeSA >= 0) score = -5;    
+    if(upgradeSA >= 0) score = -1;    
     else if(getPlayerFavorPref(AILou.xfaction, AILou.yfavor) > 0 ) {
-      if (roundnum >= 4) {
+      if(roundnum == 4 || roundnum == 5) {
        score += (6-roundnum);
        if (getRoundTileP1() == T_ROUND_TW5VP_4E1DIG) score += 2;
        if (getRoundTile() == T_ROUND_TW5VP_4E1DIG) score += 2;      
        //LOU11 alter comment
        if (score >= 3 && AILou.info) addLog('FAVOR6tw for: ' + logPlayerNameFun(player) + ' score: ' + score);
-      }
+      }    
+      else if(roundnum == 6) {
+        player.cult[C_F] += 2;       
+        player.favortiles[favtile] = 1;
+        scoreProjection = projectEndGameScores();
+        scoreFavor1 = scoreProjection[player.index];
+        deltaVP = scoreFavor1[0] - scoreFavor0[0];
+        player.favortiles[favtile] = 0;
+        player.cult[C_F] -= 2;
+        //LOU12 look for size 6 town
+        var town6 = getPlayerTownSize(player.woodcolor, townclusters, 6);
+        if(town6.length > 0) {
+          deltaVP += 8;
+          addLog('NEWTOWN: add 6 size town(s) for ' + logPlayerNameFun(player) + ' number = ' + town6.length);
+        }
+        score += deltaVP;
+        if(AILou.info) 
+        addLog('FAVOR GameVP score: '+scoreFavor1+' getFavor: '+tileToStringLong(favtile, 1)+' deltaVP: '+deltaVP);
+      } 
     }
   }
-  else if(tile == T_FAV_2W_CULT) {
+  else if(favtile == T_FAV_2W_CULT) {
     AILou.yfavor = 6;
     if(roundnum <= 3) score += 3;
-    else if(roundnum == 4 ) score += 2;
-    else if(roundnum == 5) score += 1;
-
+    else if(roundnum == 4) score += 3;
+    else if(roundnum == 5) score += 2;
+    else if(roundnum == 6) {
+        score += 2;  //LOU12 extra cult move at end helpful
+        player.cult[C_W] += 2;       
+        player.favortiles[favtile] = 1;
+        scoreProjection = projectEndGameScores();
+        scoreFavor1 = scoreProjection[player.index];
+        deltaVP = scoreFavor1[0] - scoreFavor0[0];
+        player.favortiles[favtile] = 0;
+        player.cult[C_W] -= 2;
+        score += deltaVP;
+        if(AILou.info) 
+        addLog('FAVOR GameVP score: '+scoreFavor1+' getFavor: '+tileToStringLong(favtile, 1)+' deltaVP: '+deltaVP);
+    } 
   }
-  else if(tile == T_FAV_2E_1PW1W) {
+  else if(favtile == T_FAV_2E_1PW1W) {
     AILou.yfavor = 7;
     if(roundnum <= 3) score += 3;
     else if(roundnum == 4) score += 2;
     else if(roundnum == 5) score += 1;
-    else if(roundnum == 6) score -= 4;
+    else if(roundnum == 6) {
+        player.cult[C_E] += 2;       
+        player.favortiles[favtile] = 1;
+        scoreProjection = projectEndGameScores();
+        scoreFavor1 = scoreProjection[player.index];
+        deltaVP = scoreFavor1[0] - scoreFavor0[0];
+        player.favortiles[favtile] = 0;
+        player.cult[C_E] -= 2;
+        score += deltaVP;
+        if(AILou.info) 
+        addLog('FAVOR GameVP score: '+scoreFavor1+' getFavor: '+tileToStringLong(favtile, 1)+' deltaVP: '+deltaVP);
+    } 
   }
-  else if(tile == T_FAV_2A_4PW) {
+  else if(favtile == T_FAV_2A_4PW) {
     AILou.yfavor = 8;
     if(roundnum <= 3) score += 3;
     else if(roundnum == 4) score += 2;
     else if(roundnum == 5) score += 1;
-    else if(roundnum == 6) score -= 4;
+    else if(roundnum == 6) {
+        player.cult[C_A] += 2;       
+        player.favortiles[favtile] = 1;
+        scoreProjection = projectEndGameScores();
+        scoreFavor1 = scoreProjection[player.index];
+        deltaVP = scoreFavor1[0] - scoreFavor0[0];
+        player.favortiles[favtile] = 0;
+        player.cult[C_A] -= 2;
+        score += deltaVP;
+        if(AILou.info) 
+        addLog('FAVOR GameVP score: '+scoreFavor1+' getFavor: '+tileToStringLong(favtile, 1)+' deltaVP: '+deltaVP);
+    } 
   }
-  else if(tile == T_FAV_1F_3C) {
+  else if(favtile == T_FAV_1F_3C) {
     AILou.yfavor = 9;
     if(roundnum <= 3) score += 2;
     else if(roundnum == 4) score += 1;
     else if(roundnum == 5) score += 0.5;
     else if(roundnum == 6) score -= 4;
   }
-  else if(tile == T_FAV_1W_TPVP) {
+  else if(favtile == T_FAV_1W_TPVP) {
     AILou.yfavor = 10;
     score++;
     if(player.b_tp < 3) score += 3;
@@ -1223,23 +1364,42 @@ AILou.prototype.scoreFavorTile_ = function(player, tile, roundnum) {
        getRoundTileP1() == T_ROUND_TP3VP_4A1DIG) score += 3;
     if(getRoundTileP2() == T_ROUND_TP3VP_4W1DIG || 
        getRoundTileP2() == T_ROUND_TP3VP_4A1DIG) score += 1.5;
+    if (roundnum == 3 || roundnum == 4) {
+      if(game.roundtiles[5] == T_ROUND_TP3VP_4W1DIG || 
+         game.roundtiles[5] == T_ROUND_TP3VP_4A1DIG) score += 1;
+      if(game.roundtiles[6] == T_ROUND_TP3VP_4W1DIG || 
+         game.roundtiles[6] == T_ROUND_TP3VP_4A1DIG) score += 2;
+    }
   }
-  else if(tile == T_FAV_1E_DVP) {
+  else if(favtile == T_FAV_1E_DVP) {
     AILou.yfavor = 11;
     score++;
     if(player.b_d > 0) score += 5;
     if(getRoundTileP1() == T_ROUND_D2VP_4W1P || getRoundTileP1() == T_ROUND_D2VP_4F4PW) score += 2;
   }
-  else if(tile == T_FAV_1A_PASSTPVP) {
-    AILou.yfavor = 12;
-    if(roundnum == 5) score += 2;
-    if(built_tp(player) > 1) score += 3;
-    if(built_tp(player) > 3) score += 1;
+  else if(favtile == T_FAV_1A_PASSTPVP) {
+    AILou.yfavor = 12; 
+    var numtp = built_tp(player);
+    if(upgradeSA < 0) numtp -= 1;  //LOU12 convert TP to TE for FAVOR
+    score = [0,0,2,3,3,4][numtp+1]; 
+    if(roundnum == 5) score *= 2;
+    else if(roundnum == 6) {
+        player.cult[C_A] += 1;       
+        player.favortiles[favtile] = 1;
+        scoreProjection = projectEndGameScores();
+        scoreFavor1 = scoreProjection[player.index];
+        deltaVP = scoreFavor1[0] - scoreFavor0[0];
+        if(upgradeSA < 0)deltaVP += [0,-2,-1,0,-1,0][numtp+1]; 
+        player.favortiles[favtile] = 0;
+        player.cult[C_A] -= 1;
+        score = deltaVP;  
+        if(AILou.info) 
+        addLog('FAVOR GameVP score: '+scoreFavor1+' getFavor: '+tileToStringLong(favtile, 1)+' deltaVP: '+deltaVP); 
+    }
   }
 
-  // add in faction specific values for ALL rounds
-  if(roundnum <= 6) score += getPlayerFavorPref(AILou.xfaction, AILou.yfavor);
-
+  // add faction specific values for rounds 1-5, actual VP computed for round 6
+  if(roundnum <= 5) score += getPlayerFavorPref(AILou.xfaction, AILou.yfavor);
   return score;
 };
 
@@ -1465,7 +1625,8 @@ AILou.prototype.chooseInitialFavorTile = function(playerIndex, callback) {
     [3, 4,3,[ 3, 7],[ 2, 2],[ 4, 4], 0, 0,0,Y],   // Fireice NOMADS
     [3, 5,4,[11, 5],[11, 2],[ 0, 0], 0, 0,0,U],   // Fireice HALFLINGS
     [3, 6,4,[ 5, 8],[ 3, 5],[ 0, 0], 0, 0,0,U],   // Fireice CULTISTS
-    [3, 7,4,[10, 8],[12, 7],[ 0, 0], 0, 0,0,K],   // Fireice ALCHEMISTS
+    [3, 7,4,[ 4, 8],[ 2, 3],[ 0, 0], 0, 0,0,K],   // Fireice ALCHEMISTS
+    [3, 7,3,[10, 8],[12, 7],[ 0, 0], 0, 0,0,K],   // Fireice ALCHEMISTS
     [3, 8,5,[10, 8],[12, 7],[12, 5], 0, 0,0,K],   // Fireice DARKLINGS
     [3, 8,3,[12, 2],[12, 7],[12, 5], 0, 0,0,K],   // Fireice DARKLINGS
     [3, 9,4,[10, 6],[12, 4],[ 0, 0], 0, 0,0,B],   // Fireice MERMAIDS
@@ -1997,7 +2158,7 @@ AILou.prototype.leechPower = function(playerIndex, fromPlayer, amount, vpcost, r
   if(player.faction == F_YETIS) {
     var gainpw = 7;
     if (built_sh(player) == 1) gainpw += 2; 
-    if(vpcost < gainpw-roundnum) {
+    if(vpcost < gainpw-roundnum && roundnum < 6) {
       callback(playerIndex, true);
       return;
     }

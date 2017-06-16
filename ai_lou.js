@@ -1,4 +1,4 @@
-/*  ailou12.js
+/*  ailou13.js
 TM AI
 
 Copyright (C) 2013-2016 by Lode Vandevenne
@@ -482,7 +482,8 @@ AILou.prototype.updateScoreActionValues_ = function(player, roundnum) {
   if (roundnum == 6) {
     //modify favor selection so build temple for last round gets cult+3 favor
     //LOU12 sometimes no temple is built unless value is greater than residual of 2.33
-    s.b_te += 3;
+    s.b_te += 4;
+    if(built_tp(player) == 0) s.b_tp += 3;
     //add value for dwelling as an outpost
     if(game.finalscoring == 1) s.b_d += 2;
     //select SH and SA to give SH_SA distance bonus in selection
@@ -641,13 +642,23 @@ AILou.prototype.updateScoreActionValues_ = function(player, roundnum) {
 
   //build SH (50%) soon
   if(player.faction == F_WITCHES) {
-    if(player.b_sh != 0) {
+    if(built_sh(player) == 0) {
       if(built_d(player) >= 2 && built_tp(player) == 0) s.b_tp = 5;
       s.b_sh += 5;
+      if(game.finalscoring == 2) {
+        s.b_sh += 4;
+        if(built_d(player) >= 2 && built_tp(player) == 0) s.b_tp += 4;
+      } 
+      if(game.finalscoring == 3) {
+        s.b_sh += 2;
+        if(built_d(player) >= 2 && built_tp(player) == 0) s.b_tp += 2;
+      }           
       s.b_te = -5;  //no way, first SH
     }
+    //LOU13 probability of TE too small
+    if(built_sh(player) == 1 && built_te(player) == 0) s.b_te = roundnum+0.5; 
     s.t_tw += 5;  //get extra 5VP for making town
-    s.bridge -= 4;  //avoid unneeded bridge from E9-D11 in F&I World
+    s.bridge -= 2;  //avoid unneeded bridge from E9-D11 in F&I World
     if(roundnum > 3) makeTemple(1,0,0,0,0);
     if(roundnum > 4) makeShipping(1,0,0,0,0);
   }
@@ -1622,7 +1633,7 @@ AILou.prototype.chooseInitialFavorTile = function(playerIndex, callback) {
     [3, 2,4,[ 9, 7],[ 6, 7],[ 8, 4], 0, 0,0,R],   // Fireice GIANTS
     [3, 3,4,[ 5, 1],[10, 2],[ 0, 0], 0, 0,0,Y],   // Fireice FAKIRS
     [3, 4,5,[ 8, 3],[ 5, 1],[11, 1], 0, 0,0,Y],   // Fireice NOMADS
-    [3, 4,3,[ 3, 7],[ 2, 2],[ 4, 4], 0, 0,0,Y],   // Fireice NOMADS
+    [3, 4,2,[ 3, 7],[ 4, 4],[ 2, 2], 0, 0,0,Y],   // Fireice NOMADS
     [3, 5,4,[11, 5],[11, 2],[ 0, 0], 0, 0,0,U],   // Fireice HALFLINGS
     [3, 6,4,[ 5, 8],[ 3, 5],[ 0, 0], 0, 0,0,U],   // Fireice CULTISTS
     [3, 7,4,[ 4, 8],[ 2, 3],[ 0, 0], 0, 0,0,K],   // Fireice ALCHEMISTS
@@ -1635,16 +1646,16 @@ AILou.prototype.chooseInitialFavorTile = function(playerIndex, callback) {
     [3,10,3,[ 7, 8],[10, 6],[ 9, 9], 0, 0,0,B],   // Fireice SWARMLINGS
     [3,10,2,[ 5, 7],[ 2, 8],[ 9, 9], 0, 0,0,B],   // Fireice SWARMLINGS
     [3,11,4,[ 7, 7],[ 7, 3],[ 0, 0], 0, 0,0,G],   // Fireice AUREN
-    [3,12,4,[11, 4],[ 7, 3],[ 0, 0], 0, 0,0,G],   // Fireice WITCHES
-    [3,12,3,[ 8, 5],[ 7, 7],[ 0, 0], 0, 0,0,G],   // Fireice WITCHES   
+    [3,12,5,[ 7, 3],[ 8, 5],[ 0, 0], 0, 0,0,G],   // Fireice WITCHES
+    [3,12,3,[ 7, 7],[11, 5],[ 8, 5], 0, 0,0,G],   // Fireice WITCHES   
     [3,13,2,[ 2, 4],[ 4, 7],[ 0, 0], 0, 0,0,S],   // Fireice ENGINEERS
     [3,13,4,[ 2, 4],[ 1, 7],[ 0, 0], 0, 0,0,S],   // Fireice ENGINEERS
     [3,13,5,[12, 6],[ 9, 5],[10, 7], 0, 0,0,S],   // Fireice ENGINEERS
     [3,14,4,[10, 7],[ 6, 8],[ 0, 0], 0, 0,0,S],   // Fireice DWARVES
     [3,14,3,[ 1, 7],[ 6, 8],[ 0, 0], 0, 0,0,S],   // Fireice DWARVES
-    [3,15,2,[ 5, 8],[ 3, 5],[ 9, 6], 0, 0,0,U],   // Fireice ICEMAIDENS    brown
+    [3,15,3,[ 5, 8],[ 9, 6],[ 3, 5], 0, 0,0,U],   // Fireice ICEMAIDENS    brown
     [3,15,1,[11, 5],[ 9, 4],[11, 2], 0, 0,0,U],   // Fireice ICEMAIDENS    brown
-    [3,15,4,[ 5, 7],[ 7, 4],[ 7, 8], 0, 0,0,B],   // Fireice ICEMAIDENS    blue
+    [3,15,3,[ 5, 7],[ 7, 4],[ 7, 8], 0, 0,0,B],   // Fireice ICEMAIDENS    blue
     [3,15,3,[ 8, 5],[ 5, 6],[ 7, 7], 0, 0,0,G],   // Fireice ICEMAIDENS    green
     [3,16,2,[ 6, 3],[ 9, 6],[ 5, 8], 0, 0,0,U],   // Fireice YETIS         brown
     [3,16,2,[10, 8],[12, 5],[12, 2], 0, 0,0,K],   // Fireice YETIS         black
@@ -1846,6 +1857,25 @@ AILou.getColorTilesAdjacent = function(player, x, y) {
   return countColor;
 };
 
+//LOU13 gets number of building tiles in color adjacent to the given tile
+//count in position: 0 = color tiles, 1 = river and color, 2 = same building color adjacent, 3 = vacant and woodcolor
+AILou.getBuildingTilesAdjacent = function(colorCode, x, y) {
+  var tiles = getNeighborTiles(x, y);
+  var countColor = [0,0,0,0];
+  for(var i = 0; i < tiles.length; i++) {
+    if (tiles[i] != null)  {
+      var tilecolor = getWorld(tiles[i][0], tiles[i][1]);
+      if(tilecolor != I && tilecolor != N) countColor[0]++;
+      if (tilecolor != N) countColor[1]++;
+      var building = getBuilding(tiles[i][0], tiles[i][1]);
+      if(building[0] != B_NONE && building[1] == colorCode) countColor[2]++;
+      if(building[0] == B_NONE && tilecolor == colorCode) countColor[3]++;
+    }
+  }
+  return countColor;
+};
+
+
 //LOU returns world index.  Poor way to determine world used
 AILou.worldindex = function() {
   var windex = 0;
@@ -1922,12 +1952,21 @@ AILou.prototype.chooseInitialDwelling = function(playerIndex, callback) {
       else if(adjacentCount[1] < 6) score = -5;
       else if(adjacentCount[0] > 3) score = 6-adjacentCount[0];
     }
-    else if (game.finalscoring != 1) {
+    else if(game.finalscoring != 1) {
       if(adjacentCount[1] < 6 && (colorCode != Y && colorCode != K && colorCode != S)) score = 0;
       if(adjacentCount[0] < 4 && colorCode == B) score -= 4;
       if(adjacentCount[0] < 4 && colorCode == R) score -= 4;
       if(adjacentCount[0] < 3 && colorCode == G) score -= 4;
     }
+    //LOU13 give more score for tiles next to edge or one away from edge
+    else if(game.finalscoring == 1) {
+      if(adjacentCount[0] == 4) score +=1;  //top and bottom edge, not corner 
+      if(x == 1) score += 1;  //left edge one in
+      if(y == 1) score += 1;  //top edge one in
+      if(x == game.bw-2 && adjacentCount[0] == 6) score += 1;  //right edge odd, one in
+      if(y == game.bh-2) score += 1;  //bottom edge one in
+    }
+
 
     //add score if primary location is on the preferred list
     for(var ly = 1; ly < START_LOCATIONS.length; ly++) {
@@ -1976,13 +2015,16 @@ AILou.prototype.chooseInitialDwelling = function(playerIndex, callback) {
               break;
       //LOU discourage really far away for fireice
       default: score = 1;
-               if (state.fireice) score = -5;
+               if (state.fireice && player.faction != F_NOMADS) score = -5;
       }
       //LOU Notice that build used is first in y direction.  Others are ignored (Nomads)
-      if(player.faction == F_NOMADS) {
-        var done = getInitialDwellingsDone(player);
-        if (done == 2  && h > 3) score -= 2;
-        if (done == 2  && h >= 6) score -= 10;
+      var done = getInitialDwellingsDone(player);
+      if(player.faction == F_NOMADS && done == 2) {    
+        if (adjacentCount[0] <= 3 && game.finalscoring == 1) score -= 4;
+        else if (x == 1 && y == 1 && game.finalscoring == 1) score += 8;
+        else if (x == 3 && y == 3 && game.finalscoring == 2) score += 4;
+        else if (h >= 6) score -= 10;
+        else if (h > 3 && game.finalscoring != 1) score -= 2;     
       }
 
       //LOU CHEAT certain combination in fireice world cause problems
@@ -2063,9 +2105,9 @@ var START_FACTIONS = [
     [ 9,  14, 10, 12, 14, 12,  2,  0,  3,  8,  0,  2, -3,  4],   //  MERMAIDS
     [ 10, 22, 14, 25, 20, 18,  0,  0,  0,  0,  0,  2,  0,  0],   //  SWARMLINGS
     [ 11, 12, 12, 11, 11, 11,  0,  0,  3,  0,  0,  0,  0,  0],   //  AUREN
-    [ 12, 20, 20, 20, 25, 25,  0,  0,  0,  0,  0,  0,  0, -5],   //  WITCHES
+    [ 12, 20, 14, 22, 22, 22,  0,  0,  0,  0,  0,  0,  2, -5],   //  WITCHES
     [ 13, 17, 17, 17, 16, 12,  0,  0,  0,  0,  0,  0, -2, -3],   //  ENGINEERS
-    [ 14, 21, 18, 18, 23, 23,  2,  0,  0,  0,  0,  0,  0,  0],   //  DWARVES
+    [ 14, 21, 19, 18, 23, 23,  2,  0,  0,  0,  0,  0,  0,  0],   //  DWARVES
     [ 15, 16, 16, 22, 17, 22,  0,  0,  0,  0,  0,  2,  0,  0],   //  ICEMAIDENS    
     [ 16, 15, 12, 21, 15, 20,  2,  0,  0,  0,  0,  0,  0,  3],   //  YETIS 
     [ 17, 12, 12, 10, 10, 12,  0,  0,  0,  0,  0,  0,  0,  0],   //  ACOLYTES 
@@ -2352,7 +2394,7 @@ values has the following type:
   cultspade: value of future cult bonus dig
   cult[[4][4][4]]: value of fire,water,earth,air cult tracks for the AI. This function takes power gain and cult round bonuses into account, but NOT cult track VPs. That is what the AIs should fill in here.
   p_gone: cost of priest permanently gone to cult track (in negative VP)
-  existingtown: when doing anything that incrases an existing town's size (which is not useful, so make this number negative)
+  existingtown: when doing anything that increases an existing town's size (which is not useful, so make this number negative)
   towardstown: making an existing cluster (that has at least 3 power) bigger to be closer to a town (TODO: never do this in a too small cluster that is locked in)
   interacts: it's a new dwelling that interacts with another player, that is good because it is a good TP upgrade target, plus may steal a good spot from them
   networkcon: value for each extra location in network
@@ -2485,7 +2527,7 @@ AILou.scoreAction = function(player, actions, values, roundnum) {
       if(goesTowardsNewTown(action.co[0], action.co[1], player)) towardstown++;
       //TODO: use Sandstorm to connect
       var countColor = AILou.getColorTilesAdjacent(player, action.co[0], action.co[1]);
-      //increase value of adding D next to other D, towards town must have town vlaue of 3 
+      //increase value of adding D next to other D, towards town must have town value of 3 
       if(AILou.ail > 1) {
         if(existingtown == 0 && towardstown == 0) {
         newtown += countColor[2]*2;  
@@ -2574,6 +2616,9 @@ AILou.scoreAction = function(player, actions, values, roundnum) {
       else if(player.faction == F_ENGINEERS && roundnum >= 3 && game.finalscoring < 3) {
         if(action.co[0]==0 && action.co[1]==3) tilelink = 1; 
       }
+      else if(player.faction == F_DWARVES && roundnum >= 3 && game.finalscoring > 1) {
+        if(action.co[2]==0 && action.co[1]==6) tilelink = 3; 
+      }
       else if(game.finalscoring == 1 && roundnum > 4) {
         var result2 = [];
         //TODO: replicates calculateNetworkClusters internally
@@ -2609,6 +2654,67 @@ AILou.scoreAction = function(player, actions, values, roundnum) {
           if(canHaveBridge(action.co[0], action.co[1], co[0], co[1], player.color) && isOccupiedBy(co[0], co[1], player.woodcolor)) forbridge++;
         }
       }
+
+      //LOU WITCHES D in FI World- add points for closest green hex to another WITCHES hex
+      if(player.faction == F_WITCHES && roundnum >= 3 && AILou.worldindex == 3) {
+        if(action.co[0]==4 && action.co[1]==5) tilelink += 2;
+        else if(action.co[0]==12 && action.co[1]==1) tilelink += 4;  //turn gray tile
+        else if(action.co[0]==10 && action.co[1]==6) tilelink += 4;  //turn gray tile
+        else if(action.co[0]==6 && action.co[1]==6) tilelink += 2;
+        else if(action.co[0]==7 && action.co[1]==0) tilelink += 1;
+      }
+        //LOU13 WITCHES_D - lose points for green hex far away
+        //LOU13 - to use, must have SH already, look for any Green location
+        //LOU13 - adjacency first, then one shipping, then two shipping, then board center
+        if(type == A_WITCHES_D && getWorld(action.co[0], action.co[1]) == G) {
+          var tileGreen = 0;
+          if(existingtown > 0) { existingtown++; tileGreen++ }
+          else if(towardstown > 0) { towardstown++; tileGreen++ }
+          else {
+            var tiles = getFreeTilesReachableByShipping(player, 1);
+            for(var t = 0; t < tiles.length; t++) {
+              if(action.co[0] == tiles[t][0] && action.co[1] == tiles[t][1]) { 
+                tilelink += 4; tileGreen++;
+              }
+            }
+            tiles = getFreeTilesReachableByShipping(player, 2);
+            for(var t = 0; t < tiles.length; t++) {
+              if(action.co[0] == tiles[t][0] && action.co[1] == tiles[t][1]) { 
+                 tilelink += 2 ; tileGreen++;
+              }      
+            }
+          }
+          if(tileGreen == 0) {
+            var x_Witch = 7;
+            var y_Witch = 4;
+            var dist = hexDist(action.co[0], action.co[1], x_Witch, y_Witch);
+            if(dist > 2) tilelink -= 2*dist;
+          } 
+        }
+
+      //LOU13 - quit before A_BUILD and wait for A_WITCHES_D
+      //avoid factions with blue, gray, or RW color adjacent
+      if(player.faction == F_WITCHES && player.b_sh == 0 && player.b_d > 0 
+        && !player.octogons[A_WITCHES_D] && roundnum >= 4) {        
+        //LOU 13 subtract value if adjacent building can build on the new color
+        var newtown2 = 0;
+        var colorCode = B;  //blue
+        var countBuild = AILou.getBuildingTilesAdjacent(colorCode, action.co[0], action.co[1]);
+        newtown2 -= countBuild[2];
+        colorCode = S;  //gray
+        countBuild = AILou.getBuildingTilesAdjacent(colorCode, action.co[0], action.co[1]);
+        newtown2 -= countBuild[2];
+        var countColor = AILou.getColorTilesAdjacent(player, action.co[0], action.co[1]);
+        //increase value of adding D next to other D (limit roundnum for this)
+        if(existingtown == 0 && towardstown == 0) {
+          newtown2 += countColor[2]*2;
+        }
+        else if(towardstown > 0) newtown2 += 5;
+        if(AILou.info && newtown2 > 0) {
+          addLog('WITCH: AI New Dwelling: '+logPlayerNameFun(player)+' newtown: '+newtown
+            +' location: '+letters[action.co[1]]+numbers[action.co[0]]);
+        }
+      }  
 
     //==== TRADING POST ====
     } else if(type == A_UPGRADE_TP) {

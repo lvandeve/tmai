@@ -1,4 +1,4 @@
-/* game9b.js
+/* game13.js
 TM AI
 
 Copyright (C) 2013-2014 by Lode Vandevenne
@@ -30,7 +30,6 @@ General TODO's:
 -fix loading of snellman games
 -fix rule of double dig action: do not allow to use extra spade in some circumstances
 -refactor bridges? reported to be hard to use for programming AI's
--riverwalker AI sometimes makes error due to wrong color?
 -some AI's like giants make error with bonus digs sometimes??
 */
 
@@ -153,6 +152,23 @@ function startNewRound() {
     var income = getIncome(player, true, state.round - 1 /*because you get the round bonus from last round*/);
     addIncome(player, income);
     addLog(logPlayerNameFun(player) + ' Income: ' + incomeToStringWithPluses(income) + getGreyedResourcesLogString(player));
+    //LOU13 take Riverwalker priest color with income (from rules.js)
+    if(player.faction == F_RIVERWALKERS && income[2] > 0) {
+      //turn priests into color unlock
+      for (var p = 0; p < income[2]; p++) {
+ /* LOU13 from state.js: this.type == S_PRIEST_COLOR, get color with income.
+    Human has to select color on own when income received.
+    callbackState = CS_ACTOR;
+    var color = game.players[playerIndex].actor.chooseAuxColor(playerIndex, callback);
+    var error = unlockColorPriest(player, color);
+    if(error == '') {
+      if(color == Z) addLog(logPlayerNameFun(player) + ' chose priest instead of color. ' + getGreyedResourcesLogString(player));
+      else addLog(logPlayerNameFun(player) + ' chose priest color: ' + getColorName(color) + getGreyedResourcesLogString(player));
+    }
+    else addLog(logPlayerNameFun(player) + ' chose illegal priest color: ' + getColorName(color));
+ */
+      }
+    } 
     player.passed = false;
   }
 

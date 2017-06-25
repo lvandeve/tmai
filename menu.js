@@ -1,4 +1,4 @@
-/* menu9b.js
+/* menu13.js
 TM AI
 
 Copyright (C) 2013-2014 by Lode Vandevenne
@@ -50,7 +50,7 @@ function renderPreScreen(px, py, standardButtonFun, randomButtonFun, beginnerBut
       + 'Programmed by Lode Vandevenne.<br/>'
       + 'AI alternates by Lou New.<br/>'
       + 'Drawings by Giordano Segatta.<br/>'
-      + 'version: v.20160930<br/>'
+      + 'version.13: v.20170612<br/>'
       + 'Links:<br/>'
       + 'TM on BGG: <a href="http://boardgamegeek.com/boardgame/120677/terra-mystica">http://boardgamegeek.com/boardgame/120677/terra-mystica</a><br/>'
       + 'Snellman: <a href="http://terra.snellman.net/">http://terra.snellman.net/</a><br/>'
@@ -237,6 +237,7 @@ function renderPreScreen(px, py, standardButtonFun, randomButtonFun, beginnerBut
 
   makeText(px, py + 480 + 17, '<h3>Documentation:</h3>' +
     '<h4>Updates</h4>' +
+    '<p>20170612: AI_Level3 processing improvements.  Default to AI_Level3. <p/>' +
     '<p>20160930: AI_Level2 processing improvements.  <p/>' +
     '<p>20160909: Make Fire&Ice World the default map along with Fire&Ice options and Variable Turn Order.  Added new AI option choice with Lou AI default.  <p/>' +
     '<p>20160804: Added LoonLake option.  Known bugs fixed.  Lou AI works best with World Map: Fire&Ice World. Changed probability of factions based upon final scoring. <p/>' +
@@ -367,7 +368,7 @@ var preferences = {
   bonustilepromo2013: true,
   fireice: true,
   turnorder: true,
-  louAI: 1,
+  louAI: 3,
   fireiceerrata: true,
   roundtilepromo2015: true,
 };
@@ -420,6 +421,7 @@ function getLocalStorage() {
   if(localStorage['presetroundtiles']) preferences.presetroundtiles = JSON.parse(localStorage['presetroundtiles']);
   if(localStorage['presetbonustiles']) preferences.presetbonustiles = JSON.parse(localStorage['presetbonustiles']);
   preferences.numplayersdropdown = localStorage['numplayersdropdown'];
+  if(preferences.numplayersdropdown == undefined) preferences.numplayersdropdown = 0; //LOU13 default 4 players=1, 5 players=0 
   preferences.startplayerdropdown = localStorage['startplayerdropdown'];
   if(localStorage['newcultistsrule'] != undefined) preferences.newcultistsrule = localStorage['newcultistsrule'] == 'true';
   if(localStorage['towntilepromo2013'] != undefined) preferences.towntilepromo2013 = localStorage['towntilepromo2013'] == 'true';

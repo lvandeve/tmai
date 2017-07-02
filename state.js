@@ -84,7 +84,7 @@ var State = function() {
   this.towntilepromo2013 = true; // new town tiles
   this.bonustilepromo2013 = true; // new bonus tile
   this.fireice = true; // Fire & Ice expansion
-  this.fireiceerrata = true; // Official change of rules for shapeshifters and riverwalkers.  
+  this.fireiceerrata = true; // Official change of rules for shapeshifters and riverwalkers.
                              // https://www.boardgamegeek.com/thread/1456706/official-change-rules
 
   // Variable turnorder by Lou
@@ -93,9 +93,9 @@ var State = function() {
   this.passOrder = 0;     //turn position of next pass
   this.turnMatrix = [[],[]];   //current round, next round
 
-  //if ONE, when a new game initializes, AI is Lou AILou instead of AILode. 
+  //if ONE, when a new game initializes, AI is Lou AILou instead of AILode.
   //DONE: maybe later allow selecting individual AI of every bot
-  this.louAI = 1;  //LOU start with louAI as default
+  this.aiAlgorithm = 1;  //LOU start with aiAlgorithm as default
   this.worldMap = 4; //Fire & Ice World
 };
 
@@ -271,7 +271,7 @@ function addEndGameScore() {
   addLog('');
   var date = new Date();
   var endTime = date.getTime();
-  addLog(' TIME - elapsed run time: ' + (endTime-startTime)/1000. + ' seconds ');  
+  addLog(' TIME - elapsed run time: ' + (endTime-startTime)/1000. + ' seconds ');
 }
 
 function wrapPlayer(i) {
@@ -405,7 +405,7 @@ State.prototype.transitionStateCore_ = function(next_state) {
   }
   else if(this.type == S_INIT_FACTION) {
     next_state = S_INIT_FACTION_COLOR;
-  
+
   }
   else if(this.type == S_INIT_FACTION_COLOR) {
     next_state = S_INIT_FAVOR;

@@ -94,7 +94,12 @@ var Game = function() {
 var game = new Game();
 
 var newAI = function() {
-  return state.louAI ? new AILou() : new AILode();
+  if(state.aiAlgorithm == 0) return new AILode();
+  if(state.aiAlgorithm == 1) return new AILou(1);
+  if(state.aiAlgorithm == 2) return new AILou(2);
+  if(state.aiAlgorithm == 3) return new AILou(3);
+  if(state.aiAlgorithm == 4) return new AIRandom();
+  throw 'unknown AI type';
 };
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -124,7 +129,7 @@ function initParams(params) {
   state.bonustilepromo2013 = params.bonustilepromo2013;
   state.fireice = params.fireice;
   state.turnorder = params.turnorder;
-  state.louAI = params.louAI;
+  state.aiAlgorithm = params.aiAlgorithm;
   state.fireiceerrata = params.fireiceerrata;
   state.roundtilepromo2015 = params.roundtilepromo2015;
   state.worldMap = params.worldMap;
@@ -168,7 +173,7 @@ function startNewRound() {
     else addLog(logPlayerNameFun(player) + ' chose illegal priest color: ' + getColorName(color));
  */
       }
-    } 
+    }
     player.passed = false;
   }
 
@@ -192,10 +197,10 @@ function initialGameLogMessage() {
   else if(game.finalscoring == 2) addLog('2:  SH-SA distance final scoring');
   else if(game.finalscoring == 3) addLog('3:  building distance final scoring');
   else if(game.finalscoring == 4) addLog('4:  settlements final scoring');
-  if(state.louAI == 0) addLog('0:  AI_Lode enabled');
-  else if(state.louAI == 1) addLog('1:  AI_Lou enabled');
-  else if(state.louAI == 2) addLog('2:  AI_Level2(revision 9) enabled');
-  else if(state.louAI == 3) addLog('3:  AI_Level3(topFactions) enabled');
+  if(state.aiAlgorithm == 0) addLog('0:  AI_Lode enabled');
+  else if(state.aiAlgorithm == 1) addLog('1:  AI_Lou enabled');
+  else if(state.aiAlgorithm == 2) addLog('2:  AI_Level2(revision 9) enabled');
+  else if(state.aiAlgorithm == 3) addLog('3:  AI_Level3(topFactions) enabled');
   if(state.worldMap == 0) addLog('0:  Standard World enabled');
   else if(state.worldMap == 1) addLog('1:  Randomized World enabled');
   else if(state.worldMap == 2) addLog('2:  Randomized Small World enabled');
@@ -207,9 +212,9 @@ function initialGameLogMessage() {
   if(state.towntilepromo2013) addLog('town tiles promo 2013 enabled');
   if(state.bonustilepromo2013) addLog('shipping bonus tile promo 2013 enabled');
   if(state.roundtilepromo2015) addLog('round tile promo 2015 enabled');
-  if(state.turnorder) addLog('variable turn order enabled'); 
-  if(state.fireice) addLog('fire & ice expansion enabled'); 
-  if(state.fireiceerrata) addLog('fire & ice errata enabled'); 
+  if(state.turnorder) addLog('variable turn order enabled');
+  if(state.fireice) addLog('fire & ice expansion enabled');
+  if(state.fireiceerrata) addLog('fire & ice errata enabled');
 
   addLog('round 1 tile: ' + tileToStringLong(game.roundtiles[1], true));
   addLog('round 2 tile: ' + tileToStringLong(game.roundtiles[2], true));
@@ -239,11 +244,11 @@ function initialGameRender() {
 function initWorldForParams(params) {
   if(localStorageSupported() && location && location.search &&
       location.search.indexOf('playtest') >= 0 &&
-      localStorage['karteneditor_world']) {
-    parseWorld(localStorage['karteneditor_world']);
+      localStorage['mapeditor_world']) {
+    parseWorld(localStorage['mapeditor_world']);
+  } else {
+    params.worldGenerator(game);
   }
-
-  params.worldGenerator(game);
 }
 
 function getAIPlayerName(index) {

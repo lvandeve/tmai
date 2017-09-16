@@ -94,7 +94,7 @@ function renderPreScreen(px, py, standardButtonFun, randomButtonFun, beginnerBut
 
   //var louAIcb = makeCheckbox(px + 350, ppy + 72, parent, 'Lou New\'s alternate AI ', 'new AI by Lou New. This AI is  stronger and supports the expansion factions better.');
   //louAIcb.checked = preferences.aiAlgorithm;
-  var aiTypeDropDown = makeLabeledDropDown(px + 350, ppy, 'AI Type', ['AI_Lode(original)', 'AI_Lou(revised)', 'AI_Level2', 'AI_Level3(topFactions)', 'AI_Random'], parent);
+  var aiTypeDropDown = makeLabeledDropDown(px + 350, ppy, 'AI Type', ['AI_Lode(original)', 'AI_Lou(revised)', 'AI_Level2', 'AI_Level3(topFactions)', 'AI_Random_Moves'], parent);
   assignPreferenceToDropdown(aiTypeDropDown, preferences.aiAlgorithm);
 
 

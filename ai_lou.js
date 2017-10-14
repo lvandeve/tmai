@@ -1,4 +1,4 @@
-/*  ailou13.js
+/*  ailou15.js
 TM AI
 
 Copyright (C) 2013-2016 by Lode Vandevenne
@@ -639,27 +639,25 @@ AILou.prototype.updateScoreActionValues_ = function(player, roundnum) {
     s.specific[A_POWER_7C] -= 3;
   }
 
-  //build SH (50%) soon
+  //build SH (50%) soon  LOU15 change priority to temple and cult track
   if(player.faction == F_WITCHES) {
-    if(built_sh(player) == 0) {
-      if(built_d(player) >= 2 && built_tp(player) == 0) s.b_tp = 5;
-      s.b_sh += 5;
-      if(game.finalscoring == 2) {
-        s.b_sh += 4;
-        if(built_d(player) >= 2 && built_tp(player) == 0) s.b_tp += 4;
+    if(roundnum >= 1) makeTemple(1,0,0,0,0);      
+    else if(roundnum >= 3) {
+      if(game.finalscoring == 2 && built_sh(player) == 0) {
+        if(built_d(player) >= 2 && built_tp(player) == 0) s.b_tp += 5;
+        s.b_sh += 5;
       }
-      if(game.finalscoring == 3) {
+      else if(game.finalscoring == 3) {
         s.b_sh += 2;
         if(built_d(player) >= 2 && built_tp(player) == 0) s.b_tp += 2;
       }
-      s.b_te = -5;  //no way, first SH
     }
-    //LOU13 probability of TE too small
-    if(built_sh(player) == 1 && built_te(player) == 0) s.b_te = roundnum+0.5;
+    //LOU13 probability of anolther TE too small
+    if(built_sh(player) == 1 && built_te(player) == 0) s.b_te += roundnum+0.5;
     s.t_tw += 5;  //get extra 5VP for making town
     s.bridge -= 2;  //avoid unneeded bridge from E9-D11 in F&I World
-    if(roundnum > 3) makeTemple(1,0,0,0,0);
-    if(roundnum > 4) makeShipping(1,0,0,0,0);
+    if(roundnum >= 3 && player.bonustile == T_BON_3PW_SHIP) makeShipping(1,0,0,0,0);
+    if(roundnum >= 4 && game.finalcoring != 2) makeTemple(2,0,0,0,0);
   }
 
   //repairs needed; build TE (75%) two TE to get the 5PW; ENG_BRIDGE fix, not ship
@@ -710,7 +708,9 @@ AILou.prototype.updateScoreActionValues_ = function(player, roundnum) {
     s.b_tp -= 1;
     if(built_d(player) > 7) s.b_tp += 2;
     s.c -= 0.05;  //coin surplus in most games
+    s.specific[A_POWER_1P] += 2;
     s.specific[A_POWER_7C] -= 4;
+    if(roundnum >= 3 && built_te(player) == 0) s.b_te += 1.5;
   }
 
   //add tuning for fireice factions:
@@ -1102,9 +1102,9 @@ AILou.prototype.scoreBonusTile_ = function(player, tile, roundnum) {
     [0,3,1,3,3,3,3,0,0,4,2,1,2,3,3, 3,4,1,1,2,-9], // T_BON_SPADE_2C     (BON1)
     [0,0,2,1,2,1,4,0,1,2,1,0,3,3,0, 1,3,2,3,2,5],  // T_BON_CULT_4C      (BON2)
     [0,0,2,2,3,1,1,0,1,3,1,0,1,1,0, 1,2,2,4,1,4],  // T_BON_6C           (BON3)
-    [0,2,3,0,0,1,1,1,1,6,1,5,4,1,0, 1,1,1,2,3,-9], // T_BON_3PW_SHIP     (BON4)
-    [0,3,2,1,1,2,2,4,3,0,1,0,3,3,3, 4,4,1,2,3,0],  // T_BON_3PW_1W       (BON5)
-    [0,0,2,1,5,2,1,1,1,1,2,0,1,1,1, 2,2,2,1,3,2],  // T_BON_PASSDVP_2C   (BON6)
+    [0,2,3,0,0,1,1,1,1,6,1,5,6,1,0, 1,1,1,2,3,-9], // T_BON_3PW_SHIP     (BON4)
+    [0,3,2,1,1,2,2,4,3,0,1,0,4,3,3, 4,4,1,2,3,0],  // T_BON_3PW_1W       (BON5)
+    [0,0,2,1,5,2,1,1,1,1,2,0,2,1,1, 2,2,2,1,3,2],  // T_BON_PASSDVP_2C   (BON6)
     [0,2,1,1,0,1,1,1,1,0,1,0,1,1,2, 1,0,1,1,1,0],  // T_BON_PASSTPVP_1W  (BON7)
     [0,4,5,1,8,1,0,5,2,1,2,0,1,1,1, 3,1,1,4,4,0],  // T_BON_PASSSHSAVP_2W(BON8)
     [0,2,1,3,1,0,2,3,5,1,2,0,1,1,1, 1,0,2,1,1,6],  // T_BON_1P           (BON9)
@@ -1118,8 +1118,8 @@ AILou.prototype.scoreBonusTile_ = function(player, tile, roundnum) {
     [0,2,0,2,3,2,2,0,0,2,2,1,1,2,2, 3,3,0,0,1,-9], // T_BON_SPADE_2C     (BON1)
     [0,2,0,2,2,2,2,0,0,2,1,0,1,2,0, 1,2,1,2,1,2],  // T_BON_CULT_4C      (BON2)
     [0,0,2,1,3,0,0,0,0,0,0,0,0,0,0, 3,1,1,2,0,2],  // T_BON_6C           (BON3)
-    [0,1,1,0,0,0,0,2,0,1,0,2,2,0,0, 1,2,0,1,2,-9], // T_BON_3PW_SHIP     (BON4)
-    [0,1,1,0,1,1,1,2,1,0,0,0,1,1,1, 3,3,0,0,2,1],  // T_BON_3PW_1W       (BON5)
+    [0,1,1,0,0,0,0,2,0,1,0,2,3,0,0, 1,2,0,1,2,-9], // T_BON_3PW_SHIP     (BON4)
+    [0,1,1,0,1,1,1,2,1,0,0,0,2,1,1, 3,3,0,0,2,1],  // T_BON_3PW_1W       (BON5)
     [0,1,1,1,2,2,1,1,2,2,2,0,2,1,1, 2,1,2,2,2,3],  // T_BON_PASSDVP_2C   (BON6)
     [0,1,2,1,2,1,1,3,2,2,4,0,1,1,2, 1,1,1,1,1,0],  // T_BON_PASSTPVP_1W  (BON7)
     [0,1,1,1,2,1,1,2,1,0,1,0,1,1,1, 0,1,0,0,0,1],  // T_BON_PASSSHSAVP_2W(BON8)
@@ -1177,11 +1177,11 @@ function getPlayerFavorPref(xfaction, yfavor) {
     [0,0,0,0,0, 0,0,0,0,0,0,0,0,0,0, 0,0,0,0,0,0],  // T_FAV_3A       (FAV4)
     [0,0,2,0,3, 0,0,2,4,1,1,0,2,0,0, 2,1,0,0,2,4],  // T_FAV_2F_6TW   (FAV5)
     [0,0,1,0,0, 0,3,0,0,2,2,4,0,0,0, 2,2,0,1,0,0],  // T_FAV_2W_CULT  (FAV6)
-    [0,4,0,0,0, 3,2,0,0,0,0,0,0,2,3, 3,2,0,1,0,0],  // T_FAV_2E_1PW1W (FAV7)
-    [0,5,0,2,0, 0,1,0,0,0,0,0,2,3,2, 2,8,0,4,3,0],  // T_FAV_2A_4PW   (FAV8)
+    [0,4,0,0,0, 3,2,0,0,0,0,0,0,4,3, 3,2,0,1,0,0],  // T_FAV_2E_1PW1W (FAV7)
+    [0,5,0,2,0, 0,1,0,0,0,0,0,2,2,2, 2,8,0,4,3,0],  // T_FAV_2A_4PW   (FAV8)
     [0,3,0,2,0, 0,0,0,0,0,0,0,0,0,0, 1,0,0,1,0,0],  // T_FAV_1F_3C    (FAV9)
     [0,3,2,0,3, 0,0,0,0,4,6,0,2,0,1, 4,3,0,3,3,3],  // T_FAV_1W_TPVP  (FAV10)
-    [0,0,3,2,6, 4,0,0,5,5,0,0,4,0,2, 4,1,0,3,5,6],  // T_FAV_1E_DVP   (FAV11)
+    [0,0,3,2,6, 4,0,0,5,5,0,0,4,1,2, 4,1,0,3,5,6],  // T_FAV_1E_DVP   (FAV11)
     [0,0,0,0,0, 0,0,0,0,0,4,0,0,0,0, 0,0,0,0,0,0]   // T_FAV_1A_PASSTPVP (FAV12)
     ];
   var result = 0;
@@ -1432,15 +1432,18 @@ AILou.prototype.scoreTownTile_ = function(player, tile, roundnum) {
   var score = 0;
 
   if(tile == T_TW_2VP_2CULT) {
-    //TODO: calculate if increasing all cults is benificial and give better score based on that
+    //TODO: calculate if increasing all cults is beneficial and give better score based on that
     score = 2;
     score += 4;
     if(player.faction == F_CHAOS) score += 4;
     else if(player.faction == F_GIANTS) score += 3;
     else if(player.faction == F_AUREN) score += 4;
     else if(player.faction == F_CULTISTS) score += 4;
-    else if(player.faction == F_ICEMAIDENS) score += 3;
+    else if(player.faction == F_ICEMAIDENS) score += 4;
     else if(player.faction == F_YETIS) score += 3;
+    else if(player.faction == F_ENGINEERS) score += 6;
+    if(score > 9 && roundnum <= 4) score += 2; 
+
 
     //LOU10 if needpw is less than power increase from cult bonus, this town will be judged injust with forced pass
     //TODO turn extra pw2 into coin before select TW2
@@ -1499,7 +1502,7 @@ if (checkTown(townSelected, tile)) score = 0;
     if (checkTown(townSelected, tile)) score = 0;
   }
   else if(tile == T_TW_8VP_CULT) {
-    //TODO: calculate if increasing all cults is benificial and give better score based on that
+    //TODO: calculate if increasing all cults is beneficial and give better score based on that
     score = 8;
     //when current value from cultSum < 6, subtract score as no cult help
     var sumCult = 0;
@@ -1510,6 +1513,8 @@ if (checkTown(townSelected, tile)) score = 0;
     if(player.faction == F_SHAPESHIFTERS) score += 3;
     else if(player.faction == F_ICEMAIDENS) score += 3;
     else if(player.faction == F_YETIS) score += 3;
+    else if(player.faction == F_ENGINEERS) score += 3;
+
 
     //LOU10 if needpw is less than power increase from cult bonus, this town will be judged injust with forced pass
     var needpw = player.pw0*2 + player.pw1;
@@ -1586,93 +1591,95 @@ AILou.prototype.chooseInitialFavorTile = function(playerIndex, callback) {
   //LOU These are based on published experience and preference for a given world.
   // NOT YET implemented, should be made a constant
   /* parameters used for matrix
-     0 - World used, 0=none, 1=standard, 2=fireicealtered, 3=fireice, 4=loonlakes
+     0 - World used, 0=standard, 3=fireicealtered, 4=fireice, 5=loonlakes
      1 - player.faction+1 number (like 1=F_CHAOS, 2=F_GIANTS, ...)
      2 - score modifier
      3 - first dwelling location [x,y]
      4 - second dwelling location [x,y]
      5 = third dwelling location [x,y]
-     6 - enemy faction number (can block)
-     7 - friend faction number (helpful next)
-     8 - spare
+     6 - enemy faction colot (can block)
+     7 - friend faction color (helpful next)
+     8 - friend faction value
      9 - color
   */
 
   var START_LOCATIONS = [
-    [0, 0,0,[ 0, 0],[ 0, 0],[ 0, 0], 0, 0,0,0],  // comments
-    [1, 1,6,[ 9, 4],[ 0, 0],[ 0, 0], 0, 0,0,R],  // CHAOS
-    [1, 1,3,[ 6, 4],[ 0, 0],[ 0, 0], 0, 0,0,R],  // CHAOS
-    [1, 2,3,[ 6, 4],[ 5, 3],[ 0, 0], 0, 0,0,R],  // GIANTS
-    [1, 2,2,[ 6, 4],[ 7, 6],[ 0, 0], 0, 0,0,R],  // GIANTS
-    [1, 2,1,[ 6, 4],[ 9, 4],[ 0, 0], 0, 0,0,R],  // GIANTS
-    [1, 3,4,[ 3, 4],[ 5, 5],[ 0, 0], 0, 0,0,Y],  // FAKIRS
-    [1, 4,6,[ 3, 4],[ 5, 6],[ 5, 1], 5, 0,0,Y],  // NOMADS
-    [1, 4,4,[ 3, 4],[ 5, 1],[ 6, 2], 0, 0,0,Y],  // NOMADS
-    [1, 4,2,[ 5, 6],[ 3, 4],[ 8, 9], 0, 0,0,Y],  // NOMADS
-    [1, 5,3,[ 4, 2],[ 6, 5],[ 0, 0], 0, 0,0,U],  // HALFLINGS
-    [1, 5,3,[ 8, 9],[10, 6],[ 0, 0], 0, 0,0,U],  // HALFLINGS
-    [1, 6,5,[ 6, 5],[ 4, 2],[ 3, 8], 0, 0,0,U],  // CULTISTS
-    [1, 6,3,[11, 8],[ 8, 9],[10, 6], 0, 0,0,U],  // CULTISTS
-    [1, 7,1,[ 3, 3],[ 5, 2],[ 0, 0], 0, 0,0,K],  // ALCHEMISTS
-    [1, 7,4,[11, 7],[ 8, 8],[ 0, 0], 0, 0,0,K],  // ALCHEMISTS
-    [1, 8,4,[11, 7],[ 8, 8],[ 0, 0], 0, 0,0,K],  // DARKLINGS
-    [1, 8,2,[ 9, 2],[12, 5],[ 0, 0], 0, 0,0,K],  // DARKLINGS
-    [1, 9,5,[ 2, 8],[ 4, 5],[ 0, 0], 0, 0,0,B],  // MERMAIDS
-    [1,10,3,[ 2, 4],[ 2, 8],[ 0, 0], 0, 0,0,B],  // SWARMLINGS
-    [1,10,3,[ 4, 5],[ 2, 8],[ 0, 0], 0, 0,0,B],  // SWARMLINGS
-    [1,11,3,[ 9, 3],[ 8, 7],[ 0, 0], 0, 0,0,G],  // AUREN
-    [1,11,7,[ 7, 3],[ 6, 6],[ 0, 0], 0, 0,0,G],  // AUREN
-    [1,12,5,[ 6, 6],[ 9, 3],[ 0, 0], 0, 0,0,G],  // WITCHES
-    [1,13,3,[11, 3],[11, 6],[ 0, 0], 0, 0,0,S],  // ENGINEERS
-    [1,13,2,[ 7, 5],[ 5, 3],[ 0, 0], 0, 0,0,S],  // ENGINEERS
-    [1,14,4,[ 7, 5],[11, 6],[ 0, 0], 0, 0,0,S],  // DWARVES
-    [1,20,3,[ 9, 4],[11, 4],[ 0, 0], 0, 0,0,R],  // RIVERWALKERS  red
-    [1,20,5,[ 8, 2],[ 8, 5],[ 0, 0], 0, 0,0,Y],  // RIVERWALKERS  yellow
-    [3, 1,7,[ 6, 7],[ 9, 7],[ 6, 5], 0, 0,0,R],   // Fireice CHAOS
-    [3, 2,4,[ 9, 7],[ 6, 7],[ 8, 4], 0, 0,0,R],   // Fireice GIANTS
-    [3, 3,4,[ 5, 1],[10, 2],[ 0, 0], 0, 0,0,Y],   // Fireice FAKIRS
-    [3, 4,5,[ 8, 3],[ 5, 1],[11, 1], 0, 0,0,Y],   // Fireice NOMADS
-    [3, 4,2,[ 3, 7],[ 4, 4],[ 2, 2], 0, 0,0,Y],   // Fireice NOMADS
-    [3, 5,4,[11, 5],[11, 2],[ 0, 0], 0, 0,0,U],   // Fireice HALFLINGS
-    [3, 6,4,[ 5, 8],[ 3, 5],[ 0, 0], 0, 0,0,U],   // Fireice CULTISTS
-    [3, 7,4,[ 4, 8],[ 2, 3],[ 0, 0], 0, 0,0,K],   // Fireice ALCHEMISTS
-    [3, 7,3,[10, 8],[12, 7],[ 0, 0], 0, 0,0,K],   // Fireice ALCHEMISTS
-    [3, 8,5,[10, 8],[12, 7],[12, 5], 0, 0,0,K],   // Fireice DARKLINGS
-    [3, 8,3,[12, 2],[12, 7],[12, 5], 0, 0,0,K],   // Fireice DARKLINGS
-    [3, 9,4,[10, 6],[12, 4],[ 0, 0], 0, 0,0,B],   // Fireice MERMAIDS
-    [3, 9,2,[ 5, 7],[ 2, 8],[ 0, 0], 0, 0,0,B],   // Fireice MERMAIDS
-    [3,10,4,[10, 6],[12, 4],[ 0, 0], 0, 0,0,B],   // Fireice SWARMLINGS
-    [3,10,3,[ 7, 8],[10, 6],[ 9, 9], 0, 0,0,B],   // Fireice SWARMLINGS
-    [3,10,2,[ 5, 7],[ 2, 8],[ 9, 9], 0, 0,0,B],   // Fireice SWARMLINGS
-    [3,11,4,[ 7, 7],[ 7, 3],[ 0, 0], 0, 0,0,G],   // Fireice AUREN
-    [3,12,5,[ 7, 3],[ 8, 5],[ 0, 0], 0, 0,0,G],   // Fireice WITCHES
-    [3,12,3,[ 7, 7],[11, 5],[ 8, 5], 0, 0,0,G],   // Fireice WITCHES
-    [3,13,2,[ 2, 4],[ 4, 7],[ 0, 0], 0, 0,0,S],   // Fireice ENGINEERS
-    [3,13,4,[ 2, 4],[ 1, 7],[ 0, 0], 0, 0,0,S],   // Fireice ENGINEERS
-    [3,13,5,[12, 6],[ 9, 5],[10, 7], 0, 0,0,S],   // Fireice ENGINEERS
-    [3,14,4,[10, 7],[ 6, 8],[ 0, 0], 0, 0,0,S],   // Fireice DWARVES
-    [3,14,3,[ 1, 7],[ 6, 8],[ 0, 0], 0, 0,0,S],   // Fireice DWARVES
-    [3,15,3,[ 5, 8],[ 9, 6],[ 3, 5], 0, 0,0,U],   // Fireice ICEMAIDENS    brown
-    [3,15,1,[11, 5],[ 9, 4],[11, 2], 0, 0,0,U],   // Fireice ICEMAIDENS    brown
-    [3,15,3,[ 5, 7],[ 7, 4],[ 7, 8], 0, 0,0,B],   // Fireice ICEMAIDENS    blue
-    [3,15,3,[ 8, 5],[ 5, 6],[ 7, 7], 0, 0,0,G],   // Fireice ICEMAIDENS    green
-    [3,16,2,[ 6, 3],[ 9, 6],[ 5, 8], 0, 0,0,U],   // Fireice YETIS         brown
-    [3,16,2,[10, 8],[12, 5],[12, 2], 0, 0,0,K],   // Fireice YETIS         black
-    [3,16,2,[ 7, 4],[ 7, 8],[ 5, 7], 0, 0,0,B],   // Fireice YETIS         blue
-    [3,16,2,[ 8, 5],[ 7, 7],[ 5, 6], 0, 0,0,G],   // Fireice YETIS         green
-    [3,17,5,[ 9, 6],[11, 5],[11, 2], 0, 0,0,U],   // Fireice ACOLYTES      brown
-    [3,17,4,[ 7, 4],[ 7, 8],[10, 6], 0, 0,0,B],   // Fireice ACOLYTES      blue
-    [3,17,3,[ 8, 5],[ 7, 7],[11, 4], 0, 0,0,G],   // Fireice ACOLYTES      green
-    [3,18,3,[ 9, 4],[ 6, 3],[11, 5], 0, 0,0,U],   // Fireice DRAGONLORDS   brown
-    [3,18,4,[ 7, 4],[ 7, 8],[10, 6], 0, 0,0,B],   // Fireice DRAGONLORDS   blue
-    [3,18,5,[ 5, 6],[ 7, 7],[ 3, 4], 0, 0,0,G],   // Fireice DRAGONLORDS   green
-    [3,19,1,[ 9, 7],[ 6, 7],[ 0, 0], 0, 0,0,R],   // Fireice SHAPESHIFTERS red
-    [3,19,3,[11, 2],[ 9, 4],[11, 5], 0, 0,0,U],   // Fireice SHAPESHIFTERS brown
-    [3,19,3,[ 8, 5],[11, 4],[ 5, 6], 0, 0,0,G],   // Fireice SHAPESHIFTERS green
-    [3,20,2,[ 3, 5],[ 6, 3],[ 0, 0], 0, 0,0,U],   // Fireice RIVERWALKERS  brown
-    [3,20,4,[ 5, 4],[ 4, 8],[ 2, 3], 0, 0,0,K],   // Fireice RIVERWALKERS  black
-    [3,20,3,[ 4, 4],[ 3, 7],[ 0, 0], 0, 0,0,Y],   // Fireice RIVERWALKERS  yellow
-    [3,20,5,[ 6, 2],[ 6, 5],[ 0, 0], 0, 0,0,R]    // Fireice RIVERWALKERS  red
+    [9, 0,0,[ 0, 0],[ 0, 0],[ 0, 0],0,0,0,0],  // comments
+    [0, 1,6,[ 9, 4],[ 0, 0],[ 0, 0],0,0,0,R],  // CHAOS
+    [0, 1,3,[ 6, 4],[ 0, 0],[ 0, 0],0,0,0,R],  // CHAOS
+    [0, 2,3,[ 6, 4],[ 5, 3],[ 0, 0],0,0,0,R],  // GIANTS
+    [0, 2,2,[ 6, 4],[ 7, 6],[ 0, 0],0,0,0,R],  // GIANTS
+    [0, 2,1,[ 6, 4],[ 9, 4],[ 0, 0],0,0,0,R],  // GIANTS
+    [0, 3,4,[ 3, 4],[ 5, 5],[ 0, 0],0,0,0,Y],  // FAKIRS
+    [0, 4,6,[ 3, 4],[ 5, 6],[ 5, 1],U,0,0,Y],  // NOMADS
+    [0, 4,4,[ 3, 4],[ 5, 1],[ 6, 2],U,0,0,Y],  // NOMADS
+    [0, 4,2,[ 5, 6],[ 3, 4],[ 8, 9],0,0,0,Y],  // NOMADS
+    [0, 5,3,[ 4, 2],[ 6, 5],[ 0, 0],Y,0,0,U],  // HALFLINGS
+    [0, 5,3,[ 8, 9],[10, 6],[ 0, 0],Y,0,0,U],  // HALFLINGS
+    [0, 6,5,[ 6, 5],[ 4, 2],[ 3, 8],0,0,0,U],  // CULTISTS
+    [0, 6,3,[11, 8],[ 8, 9],[10, 6],0,0,0,U],  // CULTISTS
+    [0, 7,1,[ 3, 3],[ 5, 2],[ 0, 0],0,0,0,K],  // ALCHEMISTS
+    [0, 7,4,[11, 7],[ 8, 8],[ 0, 0],0,0,0,K],  // ALCHEMISTS
+    [0, 8,4,[11, 7],[ 8, 8],[ 0, 0],U,S,2,K],  // DARKLINGS
+    [0, 8,2,[ 9, 2],[12, 5],[ 0, 0],U,R,2,K],  // DARKLINGS
+    [0, 9,5,[ 2, 8],[ 4, 5],[ 0, 0],0,0,0,B],  // MERMAIDS
+    [0,10,3,[ 2, 4],[ 2, 8],[ 0, 0],0,0,0,B],  // SWARMLINGS
+    [0,10,3,[ 4, 5],[ 2, 8],[ 0, 0],0,0,0,B],  // SWARMLINGS
+    [0,11,3,[ 9, 3],[ 8, 7],[ 0, 0],0,0,0,G],  // AUREN
+    [0,11,7,[ 7, 3],[ 6, 6],[ 0, 0],0,0,0,G],  // AUREN
+    [0,12,5,[ 6, 6],[ 9, 3],[ 0, 0],S,0,0,G],  // WITCHES
+    [0,13,3,[11, 3],[11, 6],[ 0, 0],0,0,0,S],  // ENGINEERS
+    [0,13,2,[ 7, 5],[ 5, 3],[ 0, 0],0,0,0,S],  // ENGINEERS
+    [0,14,4,[ 7, 5],[11, 6],[ 0, 0],G,B,2,S],  // DWARVES
+    [0,14,2,[ 5, 3],[ 4, 7],[ 0, 0],Y,K,2,S],  // DWARVES
+    [0,20,4,[ 9, 4],[ 6, 4],[ 0, 0],G,Y,1,R],  // RIVERWALKERS  red
+    [0,20,4,[ 9, 3],[ 8, 7],[ 0, 0],0,0,0,G],  // RIVERWALKERS  green
+    [0,20,4,[ 8, 2],[ 8, 5],[ 0, 0],0,0,0,Y],  // RIVERWALKERS  yellow
+    [4, 1,7,[ 6, 7],[ 9, 7],[ 6, 5],0,0,0,R],   // Fireice CHAOS
+    [4, 2,4,[ 9, 7],[ 6, 7],[ 8, 4],0,0,0,R],   // Fireice GIANTS
+    [4, 3,4,[ 5, 1],[10, 2],[ 0, 0],0,0,0,Y],   // Fireice FAKIRS
+    [4, 4,6,[ 5, 1],[ 8, 3],[10, 2],0,0,0,Y],   // Fireice NOMADS
+    [4, 4,3,[ 2, 2],[ 3, 7],[ 5, 1],0,0,0,Y],   // Fireice NOMADS
+    [4, 5,4,[11, 5],[11, 2],[ 0, 0],K,0,0,U],   // Fireice HALFLINGS
+    [4, 6,4,[ 5, 8],[ 3, 5],[ 0, 0],K,0,0,U],   // Fireice CULTISTS
+    [4, 7,4,[ 4, 8],[ 2, 3],[ 0, 0],U,0,0,K],   // Fireice ALCHEMISTS
+    [4, 7,3,[10, 8],[12, 7],[ 0, 0],U,0,0,K],   // Fireice ALCHEMISTS
+    [4, 8,5,[10, 8],[12, 7],[12, 5],U,0,0,K],   // Fireice DARKLINGS
+    [4, 8,3,[12, 2],[12, 7],[12, 5],U,0,0,K],   // Fireice DARKLINGS
+    [4, 9,4,[10, 6],[12, 4],[ 0, 0],0,0,0,B],   // Fireice MERMAIDS
+    [4, 9,2,[ 5, 7],[ 2, 8],[ 0, 0],0,0,0,B],   // Fireice MERMAIDS
+    [4,10,4,[10, 6],[12, 4],[ 0, 0],0,0,0,B],   // Fireice SWARMLINGS
+    [4,10,3,[ 7, 8],[10, 6],[ 9, 9],0,0,0,B],   // Fireice SWARMLINGS
+    [4,10,2,[ 5, 7],[ 2, 8],[ 9, 9],0,0,0,B],   // Fireice SWARMLINGS
+    [4,11,4,[ 7, 7],[ 7, 3],[ 0, 0],S,0,0,G],   // Fireice AUREN
+    [4,12,5,[ 7, 3],[ 8, 5],[ 0, 0],S,0,0,G],   // Fireice WITCHES
+    [4,12,4,[ 7, 7],[11, 5],[ 8, 5],S,0,0,G],   // Fireice WITCHES
+    [4,13,2,[ 2, 4],[ 4, 7],[ 0, 0],G,0,0,S],   // Fireice ENGINEERS
+    [4,13,4,[ 2, 4],[ 1, 7],[ 0, 0],G,Y,4,S],   // Fireice ENGINEERS
+    [4,13,5,[12, 6],[ 9, 5],[10, 7],G,0,0,S],   // Fireice ENGINEERS
+    [4,14,5,[10, 7],[ 6, 8],[ 0, 0],G,0,0,S],   // Fireice DWARVES
+    [4,14,3,[ 4, 7],[ 1, 7],[ 0, 0],G,0,0,S],   // Fireice DWARVES
+    [4,15,3,[ 5, 8],[ 9, 6],[ 3, 5],0,0,0,U],   // Fireice ICEMAIDENS    brown
+    [4,15,1,[11, 5],[ 9, 4],[11, 2],0,0,0,U],   // Fireice ICEMAIDENS    brown
+    [4,15,3,[ 5, 7],[ 7, 4],[ 7, 8],0,0,0,B],   // Fireice ICEMAIDENS    blue
+    [4,15,3,[ 8, 5],[ 5, 6],[ 7, 7],0,0,0,G],   // Fireice ICEMAIDENS    green
+    [4,16,2,[ 6, 3],[ 9, 6],[ 5, 8],0,0,0,U],   // Fireice YETIS         brown
+    [4,16,2,[10, 8],[12, 5],[12, 2],0,0,0,K],   // Fireice YETIS         black
+    [4,16,2,[ 7, 4],[ 7, 8],[ 5, 7],0,0,0,B],   // Fireice YETIS         blue
+    [4,16,2,[ 8, 5],[ 7, 7],[ 5, 6],0,0,0,G],   // Fireice YETIS         green
+    [4,17,5,[ 9, 6],[11, 5],[11, 2],0,0,0,U],   // Fireice ACOLYTES      brown
+    [4,17,4,[ 7, 4],[ 7, 8],[10, 6],0,0,0,B],   // Fireice ACOLYTES      blue
+    [4,17,3,[ 8, 5],[ 7, 7],[11, 4],0,0,0,G],   // Fireice ACOLYTES      green
+    [4,18,3,[ 9, 4],[ 6, 3],[11, 5],0,0,0,U],   // Fireice DRAGONLORDS   brown
+    [4,18,4,[ 7, 4],[ 7, 8],[10, 6],0,0,0,B],   // Fireice DRAGONLORDS   blue
+    [4,18,5,[ 5, 6],[ 7, 7],[ 3, 4],0,0,0,G],   // Fireice DRAGONLORDS   green
+    [4,19,1,[ 9, 7],[ 6, 7],[ 0, 0],0,0,0,R],   // Fireice SHAPESHIFTERS red
+    [4,19,3,[11, 2],[ 9, 4],[11, 5],0,0,0,U],   // Fireice SHAPESHIFTERS brown
+    [4,19,3,[ 8, 5],[11, 4],[ 5, 6],0,0,0,G],   // Fireice SHAPESHIFTERS green
+    [4,20,2,[ 7, 3],[ 7, 7],[ 0, 0],S,0,0,U],   // Fireice RIVERWALKERS  green
+    [4,20,4,[ 5, 4],[ 4, 8],[ 2, 3],0,0,0,K],   // Fireice RIVERWALKERS  black
+    [4,20,3,[ 4, 4],[ 3, 7],[ 0, 0],0,0,0,Y],   // Fireice RIVERWALKERS  yellow
+    [4,20,5,[ 6, 2],[ 6, 5],[ 0, 0],0,0,0,R]    // Fireice RIVERWALKERS  red
     ];
 
 
@@ -1709,18 +1716,26 @@ AILou.prototype.chooseAuxColor = function(playerIndex, callback) {
   var tiles = [];
   var colorTile;
   var color;
-  //select available start color for fireice facions
+  //select available start color for fireice factions
   if(player.color != Z) {
-    var windex = AILou.worldindex();
     for(var i = 0; i < colors.length; i++) {
       score = 0;
       color = colors[i];
       if(auxColorToPlayerMap[wrap(color - 1, R, S + 1)] == undefined) score++;
       if(auxColorToPlayerMap[wrap(color + 1, R, S + 1)] == undefined) score++;
       //LOU add in score from START_LOCATIONS
-      for(var ly = 1; ly < START_LOCATIONS.length; ly++) {
-        if(START_LOCATIONS[ly][0] == windex && (START_LOCATIONS[ly][1]-1) == player.faction
-          && START_LOCATIONS[ly][9] == color) { score += START_LOCATIONS[ly][2];  break; }
+      if(AILou.info) addLog('COLOR LOCATIONS: '+color+' faction: '+player.faction+1);
+      for(var ly = 1; ly < START_LOCATIONS.length; ly++) {  
+        if(START_LOCATIONS[ly][0] == state.worldMap && (START_LOCATIONS[ly][1]-1) == player.faction
+          && START_LOCATIONS[ly][9] == color) {
+          score += START_LOCATIONS[ly][2];
+          if(AILou.ail >= 5)  {
+            var already = getAlreadyChosenColors();
+            if(already[START_LOCATIONS[ly][6]])  score += -4;
+            if(already[START_LOCATIONS[ly][7]])  score += START_LOCATIONS[ly][8];
+          }  
+          break; 
+        }
       }
       scores[i] = score;
     }
@@ -1874,18 +1889,6 @@ AILou.getBuildingTilesAdjacent = function(colorCode, x, y) {
   return countColor;
 };
 
-
-//LOU returns world index.  Poor way to determine world used
-AILou.worldindex = function() {
-  var windex = 0;
-  var xw = game.world;
-  if(xw[1]==S && xw[2]==G && xw[3]==B && xw[4]==Y) windex = 1;  //Standard
-  if(xw[1]==S && xw[2]==G && xw[3]==B && xw[4]==U) windex = 2;  //Fire&Ice Altered
-  if(xw[1]==I && xw[2]==U && xw[3]==K && xw[4]==Y) windex = 3;  //Fire&Ice World
-  if(xw[1]==S && xw[2]==R && xw[3]==G && xw[4]==U) windex = 4;  //Loon Lakes World
-  return windex;
-};
-
 //returns true/false for arrays are equal
 AILou.aeq = function(a, b) {
   if (a.length != b.length) return false;
@@ -1898,7 +1901,6 @@ AILou.aeq = function(a, b) {
 AILou.prototype.chooseInitialDwelling = function(playerIndex, callback) {
   var player = game.players[playerIndex];
   var chosen = undefined;
-  var windex = AILou.worldindex();
   var locxy = [0,0];
 
   var otherDwelling;
@@ -1969,7 +1971,7 @@ AILou.prototype.chooseInitialDwelling = function(playerIndex, callback) {
 
     //add score if primary location is on the preferred list
     for(var ly = 1; ly < START_LOCATIONS.length; ly++) {
-      if(START_LOCATIONS[ly][0] == windex && (START_LOCATIONS[ly][1]-1) == player.faction) {
+      if(START_LOCATIONS[ly][0] == state.worldMap && (START_LOCATIONS[ly][1]-1) == player.faction) {
         locxy = [x+1,y+1];
         if(AILou.aeq(START_LOCATIONS[ly][3], locxy)) score += START_LOCATIONS[ly][2]+2;
         else if(AILou.aeq(START_LOCATIONS[ly][4], locxy)) score += START_LOCATIONS[ly][2];
@@ -1981,7 +1983,7 @@ AILou.prototype.chooseInitialDwelling = function(playerIndex, callback) {
 
     //add score if secondary location is on the preferred list
     for(var ly = 1; ly < START_LOCATIONS.length; ly++) {
-      if(START_LOCATIONS[ly][0] == windex && (START_LOCATIONS[ly][1]-1) == player.faction) {
+      if(START_LOCATIONS[ly][0] == state.worldMap && (START_LOCATIONS[ly][1]-1) == player.faction) {
         locxy = [x+1,y+1];
         if(AILou.aeq(START_LOCATIONS[ly][3], otherDwelling)) {
           if(AILou.aeq(START_LOCATIONS[ly][4], locxy)) score += START_LOCATIONS[ly][2];
@@ -2036,7 +2038,7 @@ AILou.prototype.chooseInitialDwelling = function(playerIndex, callback) {
 
   var i = AILou.pickWithBestScore(positions, scores, false);
   var chosen = positions[i];
-  if(AILou.info) addLog('LOCATE: map '+windex+'  '+ logPlayerNameFun(player)  +'  '
+  if(AILou.info) addLog('LOCATE: map '+state.worldMap+'  '+ logPlayerNameFun(player)  +'  '
     + letters[chosen[1]] + numbers[chosen[0]] +' scores: '+ scores);
 
   var error = callback(playerIndex, chosen);
@@ -2094,43 +2096,78 @@ AILou.prototype.chooseFaction = function(playerIndex, callback) {
 //14. game.bonustiles = [LoonLakesWorld]
 var START_FACTIONS = [
     [ 1,  19, 16, 21, 19, 19, -4,  0,  0,  0,  0,  0,  0,  0],   //  CHAOS
-    [ 2,  19, 21, 21, 20, 20,  0,  0,  0,  0,  2,  0,  0, -2],   //  GIANTS
+    [ 2,  19, 20, 21, 20, 20,  0,  0,  0,  0,  2,  0,  0, -2],   //  GIANTS
     [ 3,  14, 14, 14, 19, 19,  0,  0,  0,  0,  0,  0,  0,  0],   //  FAKIRS
-    [ 4,  30, 32, 26, 25, 23,  0,  0,  0,  0,  2,  0,  0,  2],   //  NOMADS
+    [ 4,  30, 28, 26, 24, 23,  0,  0,  0,  0,  2,  0,  0,  2],   //  NOMADS
     [ 5,  19, 24, 19, 19, 20,  0,  0,  0,  0,  0,  0,  0,  0],   //  HALFLINGS
     [ 6,  20, 22, 21, 23, 19,  0,  0,  0,  0,  0,  0,  0,  0],   //  CULTISTS
     [ 7,  17, 15, 21, 11, 13,  0,  0,  0,  0,  0,  0,  0, -1],   //  ALCHEMISTS
     [ 8,  29, 31, 15, 22, 22,  0,  3,  0,  0,  0,  0,  0,  0],   //  DARKLINGS
     [ 9,  14, 10, 12, 14, 12,  2,  0,  3,  8,  0,  2, -3,  4],   //  MERMAIDS
-    [ 10, 22, 14, 25, 20, 18,  0,  0,  0,  0,  0,  2,  0,  0],   //  SWARMLINGS
+    [ 10, 22, 14, 25, 19, 18,  0,  0,  0,  0,  0,  2,  0,  0],   //  SWARMLINGS
     [ 11, 12, 12, 11, 11, 11,  0,  0,  3,  0,  0,  0,  0,  0],   //  AUREN
-    [ 12, 20, 14, 22, 22, 22,  0,  0,  0,  0,  0,  0,  2, -5],   //  WITCHES
-    [ 13, 17, 17, 17, 16, 12,  0,  0,  0,  0,  0,  0, -2, -3],   //  ENGINEERS
-    [ 14, 21, 19, 18, 23, 23,  2,  0,  0,  0,  0,  0,  0,  0],   //  DWARVES
-    [ 15, 16, 16, 22, 17, 22,  0,  0,  0,  0,  0,  2,  0,  0],   //  ICEMAIDENS
+    [ 12, 20, 14, 20, 20, 16,  0,  0,  4,  0,  0,  0,  0, -5],   //  WITCHES
+    [ 13, 17, 21, 17, 16, 12,  0,  0,  0,  0,  0,  0, -2, -3],   //  ENGINEERS
+    [ 14, 21, 15, 18, 22, 23,  2,  0,  0,  0,  0,  0,  0,  0],   //  DWARVES
+    [ 15, 16, 16, 21, 17, 21,  0,  0,  0,  0,  0,  2,  0,  0],   //  ICEMAIDENS
     [ 16, 15, 12, 21, 15, 20,  2,  0,  0,  0,  0,  0,  0,  3],   //  YETIS
     [ 17, 12, 12, 10, 10, 12,  0,  0,  0,  0,  0,  0,  0,  0],   //  ACOLYTES
     [ 18, 16, 14, 21, 14, 16,  0,  0,  0,  0,  0,  0,  0,  0],   //  DRAGONLORDS
     [ 19, 18, 16, 20, 16, 18,  0,  0,  0,  0,  0,  0, -3, -4],   //  SHAPESHIFTERS
-    [ 20, 24, 12, 22, 34, 34,  0,  4,  0,  0,  0,  0,  0,  0]    //  RIVERWALKERS
+    [ 20, 24, 10, 19, 34, 34,  0,  4,  0,  0,  0,  0,  0,  0]    //  RIVERWALKERS
     ];
 
 //already = object that has true value for each already chosen color
 AILou.prototype.scoreFaction_ = function(player, already, faction) {
   //LOU add revised processing
-  if(AILou.ail == 3) AILou.info = false;  //change to true to get more info for level3
+  if(AILou.ail >= 3) AILou.info = false;  //change to true to get more info for level3+
   else AILou.info = false;
   var score = 0;
-  var color = factionColor(faction);
-  if(AILou.ail >= 2) {
-    if(player.faction == F_RIVERWALKERS) score += 2;
-  }
-  else if(color >= CIRCLE_BEGIN && color <= CIRCLE_END) {
+  var  color = factionColor(faction);
+  if(color >= CIRCLE_BEGIN && color <= CIRCLE_END) {
     if(!already[wrap(color - 1, R, S + 1)]) score++;
     if(!already[wrap(color + 1, R, S + 1)]) score++;
   } else {
     // TODO: better heuristic for expansion colors orange and white
     score++;
+  }
+  //LOU15 check START_LOCATIONS table for friend and enemy colors
+  //below information is repeated from enums for convenience
+  //var N = 0; none (edge of hexmap)
+  //var I = 1; river
+  //var R = 2; solitude (red) 
+  //var Y = 3; desert (yellow) 
+  //var U = 4; plains (brown) 
+  //var K = 5; swamp (black) 
+  //var B = 6; lake (blue) 
+  //var G = 7; forest (green) 
+  //var S = 8; mountain (grey) 
+  //var W = 9; ice (white) 
+  //var O = 10; lava (orange)  
+  //var X = 11; any (shapeshifters)
+  //var Z = 12; many (riverwalkers) 
+
+  if(AILou.ail >= 5) {
+    if(AILou.info) addLog('ENEMY START'+color+' faction: '+faction.index+1);
+    var enemycolor = 0;
+    var enemyvalue = -9;
+    var friendcolor = 0;
+    var friendvalue = 0;
+    for(var ly = 1; ly < START_LOCATIONS.length; ly++) {
+      if(START_LOCATIONS[ly][0] == state.worldMap && (START_LOCATIONS[ly][1]-1) == faction.index) {     
+        startcolor = START_LOCATIONS[ly][9];
+        //only the first color match listing will count for selection
+        if(startcolor == color) {
+          enemycolor = START_LOCATIONS[ly][6]; 
+          friendcolor = START_LOCATIONS[ly][7]; 
+          friendvalue = START_LOCATIONS[ly][8]; 
+          if(already[enemycolor]) score += enemyvalue;
+          if(already[friendcolor]) score += friendvalue;
+          if(AILou.info) addLog('ENEMY END'+enemycolor+' score: '+score);
+          break;
+        }          
+      }  
+    }
   }
 
   // Based on in percentages of http://terra.snellman.net/stats.html (before v4 changes)
@@ -2153,11 +2190,10 @@ AILou.prototype.scoreFaction_ = function(player, already, faction) {
   if (delta != 0 && game.bonustiles[T_BON_PASSSHSAVP_2W]) result += delta;
   delta = START_FACTIONS[xfaction] [11];
   if (delta != 0 && game.bonustiles[T_BON_PASSTPVP_1W]) result += delta;
-  var windex = AILou.worldindex();
   delta = START_FACTIONS[xfaction] [12];
-  if (delta != 0 && windex == 3) result += delta;
+  if (delta != 0 && state.worldMap == 4) result += delta;
   delta = START_FACTIONS[xfaction] [13];
-  if (delta != 0 && windex == 4) result += delta;
+  if (delta != 0 && state.worldMap == 5) result += delta;
 
   if(AILou.ail <= 1) score += (result - 10) / 20;
   else score += (result - 20);
@@ -2612,12 +2648,26 @@ AILou.scoreAction = function(player, actions, values, roundnum) {
         if(action.co[0]==0 && action.co[1]==3) tilelink = 3;
       }
       else if(player.faction == F_ENGINEERS && roundnum >= 3 && game.finalscoring < 3) {
-        if(action.co[0]==0 && action.co[1]==3) tilelink = 1;
+        if(action.co[0]==1 && action.co[1]==7) tilelink = 2;
       }
-      else if(player.faction == F_DWARVES && roundnum >= 3 && game.finalscoring > 1) {
-        if(action.co[2]==0 && action.co[1]==6) tilelink = 3;
+      else if(player.faction == F_NOMADS && roundnum >= 3 && game.finalscoring > 1) {
+        if(action.co[0]==10 && action.co[1]==1) tilelink = 2;
       }
-      else if(game.finalscoring == 1 && roundnum > 4) {
+
+      //LOU15 design progression to get distance and settlements
+      if(player.faction == F_DWARVES && state.worldMap == 4 && game.finalscoring > 2) {
+        if(action.co[0]==6 && action.co[1]==6) tilelink = 3;
+        else if(action.co[0]==12 && action.co[1]==3) tilelink = 1;
+        else if(action.co[0]==1 && action.co[1]==8) tilelink = 1;
+        else if(action.co[0]==3 && action.co[1]==8) tilelink = 2;
+        else if(action.co[0]==4 && action.co[1]==5) tilelink = -5;
+        else if(action.co[0]==7 && action.co[1]==3) tilelink = -5;
+        else if(action.co[0]==11 && action.co[1]==7) tilelink = -3;
+        else if(action.co[0]==3 && action.co[1]==6 && game.finalscoring ==3) tilelink = -2;
+        if(AILou.info) addLog('DWARVES loc: '+action.co[0]+'-'+action.co[1]+ '  tilelink: '+tilelink);
+      }
+
+      if(game.finalscoring == 1 && roundnum > 4) {
         var result2 = [];
         //TODO: replicates calculateNetworkClusters internally
         result2 = getOutpostEndScores();
@@ -2654,12 +2704,14 @@ AILou.scoreAction = function(player, actions, values, roundnum) {
       }
 
       //LOU WITCHES D in FI World- add points for closest green hex to another WITCHES hex
-      if(player.faction == F_WITCHES && roundnum >= 3 && AILou.worldindex == 3) {
-        if(action.co[0]==4 && action.co[1]==5) tilelink += 2;
-        else if(action.co[0]==12 && action.co[1]==1) tilelink += 4;  //turn gray tile
-        else if(action.co[0]==10 && action.co[1]==6) tilelink += 4;  //turn gray tile
-        else if(action.co[0]==6 && action.co[1]==6) tilelink += 2;
-        else if(action.co[0]==7 && action.co[1]==0) tilelink += 1;
+      if(player.faction == F_WITCHES && roundnum >= 3 && state.worldMap == 4) {
+        if(action.co[0]==4 && action.co[1]==5) tilelink += 2;        //green tile center
+        else if(action.co[0]==12 && action.co[1]==1) tilelink += 1;  //turn gray tile right
+        else if(action.co[0]==8 && action.co[1]==4) tilelink += 2;   //turn gray tile to connect D11
+        else if(action.co[0]==7 && action.co[1]==4) tilelink += 3;   //green tile next
+        else if(action.co[0]==6 && action.co[1]==6) tilelink += 2;   //green tile
+        else if(action.co[0]==7 && action.co[1]==0) tilelink += 1;   //green tile top
+        else if(action.co[0]==1 && action.co[1]==5) tilelink += 2;   //red shipping 2 tile left
       }
         //LOU13 WITCHES_D - lose points for green hex far away
         //LOU13 - to use, must have SH already, look for any Green location
@@ -2673,6 +2725,7 @@ AILou.scoreAction = function(player, actions, values, roundnum) {
             for(var t = 0; t < tiles.length; t++) {
               if(action.co[0] == tiles[t][0] && action.co[1] == tiles[t][1]) {
                 tilelink += 4; tileGreen++;
+                //LOU15 tile at World4-F2 may be needed to get that section
               }
             }
             tiles = getFreeTilesReachableByShipping(player, 2);
@@ -2682,12 +2735,7 @@ AILou.scoreAction = function(player, actions, values, roundnum) {
               }
             }
           }
-          if(tileGreen == 0) {
-            var x_Witch = 7;
-            var y_Witch = 4;
-            var dist = hexDist(action.co[0], action.co[1], x_Witch, y_Witch);
-            if(dist > 2) tilelink -= 2*dist;
-          }
+          if(tileGreen == 0) tilelink = -2;
         }
 
       //LOU13 - quit before A_BUILD and wait for A_WITCHES_D

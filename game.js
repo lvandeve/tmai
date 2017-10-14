@@ -1,4 +1,4 @@
-/* game13.js
+/* game15.js
 TM AI
 
 Copyright (C) 2013-2014 by Lode Vandevenne
@@ -99,6 +99,8 @@ var newAI = function() {
   if(state.aiAlgorithm == 2) return new AILou(2);
   if(state.aiAlgorithm == 3) return new AILou(3);
   if(state.aiAlgorithm == 4) return new AIRandom();
+  if(state.aiAlgorithm == 5) return new AILou(5);
+  if(state.aiAlgorithm == 6) return new AILou(6);
   throw 'unknown AI type';
 };
 
@@ -201,6 +203,9 @@ function initialGameLogMessage() {
   else if(state.aiAlgorithm == 1) addLog('1:  AI_Lou enabled');
   else if(state.aiAlgorithm == 2) addLog('2:  AI_Level2(revision 9) enabled');
   else if(state.aiAlgorithm == 3) addLog('3:  AI_Level3(topFactions) enabled');
+  else if(state.aiAlgorithm == 4) addLog('3:  AI_RandomMoves enabled');
+  else if(state.aiAlgorithm == 5) addLog('5:  AI_Level5(revision 15) enabled');
+  else if(state.aiAlgorithm == 6) addLog('6:  AI_Level6(revision 16) enabled');
   if(state.worldMap == 0) addLog('0:  Standard World enabled');
   else if(state.worldMap == 1) addLog('1:  Randomized World enabled');
   else if(state.worldMap == 2) addLog('2:  Randomized Small World enabled');

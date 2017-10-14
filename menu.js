@@ -1,4 +1,4 @@
-/* menu13.js
+/* menu15.js
 TM AI
 
 Copyright (C) 2013-2014 by Lode Vandevenne
@@ -38,7 +38,7 @@ each button fun receives the following object containing the dropdown states:
   bonustilepromo2013
   fireice
   turnorder: variable turn order
-  aiAlgorithm: 0 - Lode AI, 1 - Lou AI, 2 - Level2 AI, 3 - Level3 AI, 4 - random AI
+  aiAlgorithm: 0 - Lode AI, 1 - Lou AI, 2 - Level2 AI, 3 - Level3 AI, 4 - random AI, 5 - Level5 AI, 6 - Level6 AI
   fireiceerrata: shapeshifters and riverwalkers made less powerful
   roundtilepromo2015
 }
@@ -50,7 +50,7 @@ function renderPreScreen(px, py, standardButtonFun, randomButtonFun, beginnerBut
       + 'Programmed by Lode Vandevenne.<br/>'
       + 'AI alternates by Lou New.<br/>'
       + 'Drawings by Giordano Segatta.<br/>'
-      + 'version 20170702<br/>'
+      + 'version 20170822<br/>'
       + 'Links:<br/>'
       + 'TM on BGG: <a href="http://boardgamegeek.com/boardgame/120677/terra-mystica">http://boardgamegeek.com/boardgame/120677/terra-mystica</a><br/>'
       + 'Snellman (multiplayer): <a href="http://terra.snellman.net/">http://terra.snellman.net/</a><br/>'
@@ -94,7 +94,7 @@ function renderPreScreen(px, py, standardButtonFun, randomButtonFun, beginnerBut
 
   //var louAIcb = makeCheckbox(px + 350, ppy + 72, parent, 'Lou New\'s alternate AI ', 'new AI by Lou New. This AI is  stronger and supports the expansion factions better.');
   //louAIcb.checked = preferences.aiAlgorithm;
-  var aiTypeDropDown = makeLabeledDropDown(px + 350, ppy, 'AI Type', ['AI_Lode(original)', 'AI_Lou(revised)', 'AI_Level2', 'AI_Level3(topFactions)', 'AI_Random_Moves'], parent);
+  var aiTypeDropDown = makeLabeledDropDown(px + 350, ppy, 'AI Type', ['AI_Lode(original)', 'AI_Lou(revised)', 'AI_Level2(ver9)', 'AI_Level3(topFactions)', 'AI_Random_Moves', 'AI_Level5(ver15)', 'AI_Level6(future)'], parent);
   assignPreferenceToDropdown(aiTypeDropDown, preferences.aiAlgorithm);
 
 
@@ -237,7 +237,9 @@ function renderPreScreen(px, py, standardButtonFun, randomButtonFun, beginnerBut
 
   makeText(px, py + 480 + 17, '<h3>Documentation:</h3>' +
     '<h4>Updates</h4>' +
-    '<p>20170702: Added AI_Random, which makes random moves out of the possible ones. Expect oddly placed bridges and the occasional town by pure chance.<p/>' +
+     '<p>20171014: Updated loon lake to final version (1.6), and added fjords map beta (being designed in bgg thread). <p/>' +
+     '<p>20170822: AI_Level5 processing improvements.  Default to AI_Level5. <p/>' +
+     '<p>20170702: Added AI_Random, which makes random moves out of the possible ones. Expect oddly placed bridges and the occasional town by pure chance.<p/>' +
     '<p>20170612: AI_Level3 processing improvements.  Default to AI_Level3. <p/>' +
     '<p>20160930: AI_Level2 processing improvements.  <p/>' +
     '<p>20160909: Make Fire&Ice World the default map along with Fire&Ice options and Variable Turn Order.  Added new AI option choice with Lou AI default.  <p/>' +
@@ -369,7 +371,7 @@ var preferences = {
   bonustilepromo2013: true,
   fireice: true,
   turnorder: true,
-  aiAlgorithm: 3,
+  aiAlgorithm: 5,
   fireiceerrata: true,
   roundtilepromo2015: true,
 };
@@ -436,3 +438,4 @@ function getLocalStorage() {
 
 window.onbeforeunload = setLocalStorage;
 getLocalStorage();
+

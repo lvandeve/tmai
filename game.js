@@ -1,7 +1,7 @@
-/* game15.js
+/*
 TM AI
 
-Copyright (C) 2013-2014 by Lode Vandevenne
+Copyright (C) 2013-2018 by Lode Vandevenne
 
 This software is provided 'as-is', without any express or implied
 warranty. In no event will the authors be held liable for any damages
@@ -281,11 +281,15 @@ function initPlayers(params) {
     game.players[i].index = i;
   }
 
+  state.currentPlayerStack = [];
+
   var startplayer = params.startplayer;
   if(startplayer == -1) startplayer = randomInt(game.players.length);
   startplayer = wrapPlayer(startplayer)
   state.startPlayer = startplayer;
   state.currentPlayer = startplayer;
+  state.showResourcesPlayer = startplayer;
+  state.prevPlayer = startplayer;
 }
 
 // Start the default game

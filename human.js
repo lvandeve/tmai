@@ -369,7 +369,7 @@ Human.prototype.chooseFaction = function(playerIndex, callback) {
     if(error != '') setHelp('invalid faction: ' + error + ' - Please try again');
   };
 
-  var bg = makeSizedDiv(300, 100, 200, 350, popupElement);
+  var bg = makeSizedDiv(ACTIONPANELX, ACTIONPANELY, ACTIONPANELW, ACTIONPANELH, popupElement);
   //bg.style.backgroundColor = 'rgba(255,255,255,0.85)'; //alpha does not work in IE
   bg.style.backgroundColor = '#FFFFFF';
   bg.innerHTML = 'choose faction';
@@ -377,8 +377,15 @@ Human.prototype.chooseFaction = function(playerIndex, callback) {
 
   var factions = getPossibleFactionChoices();
 
+  var xpos = ACTIONPANELX + 5;
+  var ypos = ACTIONPANELY + 16;
   for(var i = 0; i <= factions.length; i++) {
-    var el = makeLinkButton(305, 100 + (i + 1) * 16, getFactionName(factions[i]), popupElement);
+    var el = makeLinkButton(xpos, ypos, getFactionName(factions[i]), popupElement);
+    ypos += 16;
+    if(ypos > (ACTIONPANELY + ACTIONPANELH - 16)) {
+      xpos += 120;
+      ypos = ACTIONPANELY + 15;
+    }
     el.onclick = bind(buttonClickFun, factions[i]);
   }
 };
@@ -403,7 +410,7 @@ Human.chooseColorDialog = function(playerIndex, callback) {
     if(ispriestcolor && !player.colors[i - R]) colors.push(i);
   }
 
-  bg = makeSizedDiv(300, 100, 200, 300, popupElement);
+  bg = makeSizedDiv(ACTIONPANELX, ACTIONPANELY, ACTIONPANELW, ACTIONPANELH, popupElement);
   bg.style.backgroundColor = '#FFFFFF';
   bg.innerHTML = ispriestcolor ? Texts.priestUnlockText : 'choose color';
   bg.style.border = '1px solid black';
@@ -604,7 +611,7 @@ Human.chooseShapeshiftersConversionDialog = function(playerIndex, callback) {
     callback(playerIndex, yes);
   };
 
-  bg = makeSizedDiv(300, 100, 200, 300, popupElement);
+  bg = makeSizedDiv(ACTIONPANELX, ACTIONPANELY, ACTIONPANELW, ACTIONPANELH, popupElement);
   bg.style.backgroundColor = '#FFFFFF';
   bg.innerHTML = 'convert 1vp to power token?';
   bg.style.border = '1px solid black';

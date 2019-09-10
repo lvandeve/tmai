@@ -50,7 +50,7 @@ function renderPreScreen(px, py, standardButtonFun, randomButtonFun, beginnerBut
       + 'Programmed by Lode Vandevenne.<br/>'
       + 'AI alternates by Lou New.<br/>'
       + 'Drawings by Giordano Segatta.<br/>'
-      + 'version 20170822<br/>'
+      + 'version 20190910<br/>'
       + 'Links:<br/>'
       + 'TM on BGG: <a href="http://boardgamegeek.com/boardgame/120677/terra-mystica">http://boardgamegeek.com/boardgame/120677/terra-mystica</a><br/>'
       + 'Snellman (multiplayer): <a href="http://terra.snellman.net/">http://terra.snellman.net/</a><br/>'
@@ -237,7 +237,7 @@ function renderPreScreen(px, py, standardButtonFun, randomButtonFun, beginnerBut
 
   makeText(px, py + 480 + 17, '<h3>Documentation:</h3>' +
     '<h4>Updates</h4>' +
-     '<p>20190910: Updated fjords to final version (2.1). <p/>' +
+     '<p>20190910: Updated fjords to final version (2.1), and moved some dialogs to action panel instead of obscuring the map. <p/>' +
      '<p>20171014: Updated loon lake to final version (1.6), and added fjords map beta (being designed in bgg thread). <p/>' +
      '<p>20170822: AI_Level5 processing improvements.  Default to AI_Level5. <p/>' +
      '<p>20170702: Added AI_Random, which makes random moves out of the possible ones. Expect oddly placed bridges and the occasional town by pure chance.<p/>' +

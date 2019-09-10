@@ -80,7 +80,7 @@ function renderPreScreen(px, py, standardButtonFun, randomButtonFun, beginnerBut
     preferences.worldmapdropdown = worldMapEl.selectedIndex; //this one is stored immediately so you can also use this dropdown to choose snellman game type
   };
 
-  var newcultistcb = makeCheckbox(px, ppy + 55, parent, 'New cultists rule', 'The official new rule where cultists receive 1 power if everyone refuses to take power');
+  var newcultistcb = makeCheckbox(px, ppy + 55, parent, 'New cultists rule', 'The official new rule (2013) where cultists receive 1 power if everyone refuses to take power');
   newcultistcb.checked = preferences.newcultistsrule;
   var towntilepromo2013cb = makeCheckbox(px + 160, ppy + 55, parent, 'Town tile promo 2013', 'Enable the new town tiles from the official 2013 mini expansion');
   towntilepromo2013cb.checked = preferences.towntilepromo2013;
@@ -98,7 +98,7 @@ function renderPreScreen(px, py, standardButtonFun, randomButtonFun, beginnerBut
   assignPreferenceToDropdown(aiTypeDropDown, preferences.aiAlgorithm);
 
 
-  var fireiceerratacb = makeCheckbox(px, ppy + 89, parent, 'Fire&Ice Errata', 'The official rule change of 2015, making shapeshifters and riverwalkers less powerful.');
+  var fireiceerratacb = makeCheckbox(px, ppy + 89, parent, 'Fire&Ice Rule 2015', 'The official rule change of 2015, making shapeshifters and riverwalkers less powerful.');
   fireiceerratacb.checked = preferences.fireiceerrata;
 
   var roundtilepromo2015cb = makeCheckbox(px + 160, ppy + 89, parent, 'Round tile promo 2015', 'Enable the new round tile (4VP for temple, 2C per cult priest) from the official 2015 mini expansion');
@@ -237,6 +237,7 @@ function renderPreScreen(px, py, standardButtonFun, randomButtonFun, beginnerBut
 
   makeText(px, py + 480 + 17, '<h3>Documentation:</h3>' +
     '<h4>Updates</h4>' +
+     '<p>20190910: Updated fjords to final version (2.1). <p/>' +
      '<p>20171014: Updated loon lake to final version (1.6), and added fjords map beta (being designed in bgg thread). <p/>' +
      '<p>20170822: AI_Level5 processing improvements.  Default to AI_Level5. <p/>' +
      '<p>20170702: Added AI_Random, which makes random moves out of the possible ones. Expect oddly placed bridges and the occasional town by pure chance.<p/>' +
@@ -251,10 +252,11 @@ function renderPreScreen(px, py, standardButtonFun, randomButtonFun, beginnerBut
     '<p>20141021: The alternate Fire & Ice world also added.<p/>' +
     '<p>20141019: Fire & Ice expansion: 4 of the 6 new factions added, new map and new final scorings. It is still somewhat beta (may contain bugs).<p/>' +
     '<p>20140406: When taking a power action, it will now auto-burn power if needed. Some game setup dropdowns now remember their state.<p/>' +
-    '<p>20131208:You can now also load games from terra.snellman.net. For this, select and copy all the text on the site of a game (ctrl+a, ctrl+c), then paste it in the load game dialog. ' +
+    '<p>20131208: You can now also load games from terra.snellman.net. For this, select and copy all the text on the site of a game (ctrl+a, ctrl+c), then paste it in the load game dialog. ' +
         'It will then execute the actions of the game log line by line, until it reaches the same state as on terra.snellman.net. May break on some edge cases.<p/>' +
-    '<p>20131130:Multistep undo/redo system added. New promo bonus tile.  New more futureproof savegame format. Mermaids town with bridge bugfix.<p/>' +
+    '<p>20131130: Multistep undo/redo system added. New promo bonus tile.  New more futureproof savegame format. Mermaids town with bridge bugfix.<p/>' +
     '<p>20131029: The new Essen 2013 promo town tiles have been added.<p/>' +
+    '<p>20130426: Initial release.<p/>' +
     '<h4>About</h4>' +
     '<p>In this boardgame computer implementation, you will be pitted against AI opponents in TM. This allows for a very quick game to try out strategies with any faction. Multiplayer is not possible.<p/>' +
     '<p>This is on the internet, but works offline (there is no game server, everything is calculated in JavaScript). Closing the window will lose the game forever. This is for quick play only.<p/>' +

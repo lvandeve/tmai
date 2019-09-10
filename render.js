@@ -1580,6 +1580,25 @@ function drawHud() {
   drawHud2(game.players, mainTileClick);
 }
 
+function newGameWarning() {
+  if(state.type == S_PRE) return;
+  var el = makeSizedDiv(50, 50, 400, 150, document.body);
+  el.style.backgroundColor = 'white';
+  el.style.border = '1px solid black';
+
+  //makeText(5, 5, 'Really remove current game and start a new one?', el);
+  makeCenteredText('Really lose all progress and start a new game?', 400, 50 + (350 / 2), 70, el);
+
+  var button2 = makeButton(70, 60, 'Yes', el, function() {
+    document.body.removeChild(el);
+    resetAndBeginNewGame();
+  }, 'Yes');
+
+  var button3 = makeButton(220, 60, 'No', el, function() {
+    document.body.removeChild(el);
+  }, 'No');
+}
+
 function drawSaveLoadUI(onlyload) {
   var parent = uiElement;
   var button;
@@ -1598,8 +1617,14 @@ function drawSaveLoadUI(onlyload) {
     return [el, area];
   }
 
+  button = makeLinkButton(0, 0, 'home', parent);
+  button.onclick = function() {
+    newGameWarning();
+  }
+  button.title = 'Go to the main page (if not already there) and start a new game';
+
   if(!onlyload) {
-    button = makeLinkButton(0, 0, 'save', parent);
+    button = makeLinkButton(50, 0, 'save', parent);
     button.onclick = function() {
       if(state.type == S_PRE) return;
       var els = makePopupUpTextArea();
@@ -1618,7 +1643,7 @@ function drawSaveLoadUI(onlyload) {
     }
   }
 
-  button = makeLinkButton(onlyload ? 0 : 50, 0, 'load', parent);
+  button = makeLinkButton(onlyload ? 50 : 100, 0, 'load', parent);
   button.onclick = function() {
     var els = makePopupUpTextArea();
     var el = els[0];
@@ -1645,29 +1670,13 @@ function drawSaveLoadUI(onlyload) {
   }
 
   if(!onlyload) {
-    button = makeLinkButton(100, 0, 'new', parent);
+    button = makeLinkButton(150, 0, 'new', parent);
     button.onclick = function() {
-      if(state.type == S_PRE) return;
-      var el = makeSizedDiv(50, 50, 400, 150, document.body);
-      el.style.backgroundColor = 'white';
-      el.style.border = '1px solid black';
-
-      //makeText(5, 5, 'Really remove current game and start a new one?', el);
-      makeCenteredText('Really remove current game and start a new one?', 400, 50 + (350 / 2), 70, el);
-
-      var button2 = makeButton(70, 60, 'Yes', el, function() {
-        document.body.removeChild(el);
-        resetAndBeginNewGame();
-      }, 'Yes');
-
-      var button3 = makeButton(220, 60, 'No', el, function() {
-        document.body.removeChild(el);
-      }, 'No');
-
+      newGameWarning();
     }
     button.title = 'Start a new game';
 
-    button = makeLinkButton(150, 0, 'undo', parent);
+    button = makeLinkButton(200, 0, 'undo', parent);
     button.onclick = function() {
       if(undoIndex < 0 || undoIndex >= undoGameStates.length) return;
       if(undoIndex + 1 == undoGameStates.length) undoGameStates.push(saveGameState(game, state, logText));
@@ -1679,7 +1688,7 @@ function drawSaveLoadUI(onlyload) {
     };
     button.title = 'Undo last action';
 
-    button = makeLinkButton(200, 0, 'redo', parent);
+    button = makeLinkButton(250, 0, 'redo', parent);
     button.onclick = function() {
       if(undoIndex < -2 || undoIndex + 2 >= undoGameStates.length) return;
       var undoGameState = undoGameStates[undoIndex + 2];
@@ -1690,7 +1699,7 @@ function drawSaveLoadUI(onlyload) {
     };
     button.title = 'Redo undone action';
 
-   button = makeLinkButton(250, 0, 'help', parent);
+   button = makeLinkButton(300, 0, 'help', parent);
     button.onclick = function() {
       var el = makeSizedDiv(50, 50, 400, 235, document.body);
       el.style.backgroundColor = 'white';

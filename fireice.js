@@ -419,25 +419,7 @@ registerFaction(new Riverwalkers());
 ////////////////////////////////////////////////////////////////////////////////
 ////////////////////////////////////////////////////////////////////////////////
 
-var fireIceAltered = [U,S,G,B,U,R,U,K,R,B,G,R,K,
-                       Y,I,I,Y,K,I,I,Y,G,I,I,Y,N,
-                      I,I,K,I,S,I,G,I,K,I,R,I,I,
-                       G,B,Y,I,I,R,B,I,R,I,S,U,N,
-                      K,U,R,B,Y,U,G,Y,I,I,G,K,R,
-                       S,G,I,I,K,S,I,I,I,U,S,Y,N,
-                      I,I,I,S,I,R,I,G,I,Y,K,B,U,
-                       Y,B,U,I,I,I,B,K,I,S,U,R,N,
-                      B,K,S,B,R,G,Y,U,S,I,B,G,S,];
-
-// This is the fire-ice-altered version of the original game board
-registerWorld('Fire & Ice Altered', 'fire_ice_altered', function(game) {
-  game.bw = 13;
-  game.bh = 9;
-  game.btoggle = false;
-  game.world = clone(fireIceAltered);
-});
-
-registerWorld('Fire & Ice World', 'fire_ice', initFireIceWorld);
+registerWorld('Fire & Ice', 'fire_ice', initFireIceWorld);
 
 var fireIceWorld = [ U,I,U,K,Y,I,S,G,R,B,Y,B,N,
                     R,Y,I,B,S,R,I,I,I,Y,U,K,S,
@@ -456,6 +438,24 @@ function initFireIceWorld(game) {
   game.btoggle = true;
   game.world = clone(fireIceWorld);
 }
+
+var fireIceAltered = [U,S,G,B,U,R,U,K,R,B,G,R,K,
+                       Y,I,I,Y,K,I,I,Y,G,I,I,Y,N,
+                      I,I,K,I,S,I,G,I,K,I,R,I,I,
+                       G,B,Y,I,I,R,B,I,R,I,S,U,N,
+                      K,U,R,B,Y,U,G,Y,I,I,G,K,R,
+                       S,G,I,I,K,S,I,I,I,U,S,Y,N,
+                      I,I,I,S,I,R,I,G,I,Y,K,B,U,
+                       Y,B,U,I,I,I,B,K,I,S,U,R,N,
+                      B,K,S,B,R,G,Y,U,S,I,B,G,S,];
+
+// This is the fire-ice-altered version of the original game board
+registerWorld('Fire & Ice Alternate Standard', 'fire_ice_altered', function(game) {
+  game.bw = 13;
+  game.bh = 9;
+  game.btoggle = false;
+  game.world = clone(fireIceAltered);
+});
 
 
 /*
@@ -493,7 +493,7 @@ var loonLakeWorld = [ S,B,R,U,Y,B,Y,R,I,I,G,B,N,
                       K,U,I,G,I,I,I,G,R,U,Y,K,N];
 
 
-registerWorld('Loon Lakes World', 'loon_lake', function(game) {
+registerWorld('Loon Lakes', 'loon_lake', function(game) {
   game.bw = 13;
   game.bh = 9;
   game.btoggle = true;
@@ -504,8 +504,27 @@ registerWorld('Loon Lakes World', 'loon_lake', function(game) {
 /////////// Fjords //////////////////////////////////////////
 // https://boardgamegeek.com/thread/1750509/fjords-live-snellman-playtesters-appreciated
 
+var fjordsWorld = [ G,K,I,U,Y,S,K,S,Y,R,K,B,Y,
+                     B,U,I,B,G,R,I,I,I,I,I,U,N,
+                    S,G,R,I,I,U,I,K,S,U,Y,I,S,
+                     I,I,I,S,I,I,G,R,B,G,R,I,N,
+                    R,S,Y,I,B,R,I,U,Y,S,U,I,K,
+                     K,U,I,G,Y,G,I,S,B,G,I,S,N,
+                    Y,B,I,K,S,K,B,I,U,K,I,G,R,
+                     G,I,U,R,U,Y,R,I,I,I,R,B,N,
+                    K,I,I,G,B,S,B,I,G,Y,K,U,Y];
 
-var fjordsWorld = [ G,K,I,U,Y,S,K,G,Y,R,B,R,Y,
+
+registerWorld('Fjords', 'fjords', function(game) {
+  game.bw = 13;
+  game.bh = 9;
+  game.btoggle = false;
+  game.world = clone(fjordsWorld);
+});
+
+
+
+/*var fjordsWorldbeta = [ G,K,I,U,Y,S,K,G,Y,R,B,R,Y,
                      B,U,I,B,G,R,I,I,I,I,I,U,N,
                     S,G,R,I,I,U,I,K,S,U,Y,I,S,
                      I,I,I,S,I,I,G,R,K,B,G,I,N,
@@ -516,12 +535,12 @@ var fjordsWorld = [ G,K,I,U,Y,S,K,G,Y,R,B,R,Y,
                     K,I,I,G,B,S,B,I,S,Y,U,K,Y];
 
 
-registerWorld('Fjords (beta)', 'fjords', function(game) {
+registerWorld('Fjords (old beta)', 'fjords', function(game) {
   game.bw = 13;
   game.bh = 9;
   game.btoggle = false;
   game.world = clone(fjordsWorld);
-});
+});*/
 
 ////////////////////////////////////////////////////////////////////////////////
 

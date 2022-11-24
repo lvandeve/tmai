@@ -1,5 +1,5 @@
 /*  ailou16.js
-TM AI Ver 16 2022 October Corrections to RW locations and Orange factions
+TM AI Ver 16 2022 October Corrections to RiverWalker locations and Orange factions
 
 Copyright (C) 2013-2016 by Lode Vandevenne
 
@@ -1905,7 +1905,6 @@ AILou.prototype.chooseInitialDwelling = function(playerIndex, callback) {
   var player = game.players[playerIndex];
   var chosen = undefined;
   var locxy = [0,0];
-
   //AI16 The other dwelling is misplaced for Riverwalker as it must be shipping
   var otherDwelling;
   if(player.b_d < 8) {
@@ -1957,7 +1956,7 @@ AILou.prototype.chooseInitialDwelling = function(playerIndex, callback) {
     //AI16  too high for the starting value of the tile, change from -10 to -99
     if(colorCode == Z)  {
       if(adjacentCount[0] >= 6) score = -99;
-      if(adjacentCount[1] >= 6) score = -99;
+      //
       else if(adjacentCount[0] == adjacentCount[1]) score = -10;
       else if(adjacentCount[1] < 6) score = -5;
       else if(adjacentCount[0] > 3) score = 6-adjacentCount[0];
@@ -2001,7 +2000,8 @@ AILou.prototype.chooseInitialDwelling = function(playerIndex, callback) {
           //AI16 Skip other dwelling if surrounded
         }
       }
-
+    }  
+  
       //LOU replaced! if(h >= 4 && h <= 6) score += 5;
       //LOU add more complexity to distance scoring
       switch(h) {
@@ -2028,10 +2028,8 @@ AILou.prototype.chooseInitialDwelling = function(playerIndex, callback) {
       //LOU discourage really far away for fireice
       //AI16 this distance is 7 or more
       default: score -= 1;
-               if (state.fireice && player.faction != F_NOMADS) score -= 4;
-              
-      }
-    
+               if (state.fireice && player.faction != F_NOMADS) score -= 4;           
+      }  
       //LOU Notice that build used is first in y direction.  Others are ignored (Nomads only)
       //AI16 this section is for the third starting position for the NOMADS
       var done = getInitialDwellingsDone(player);
@@ -2043,10 +2041,9 @@ AILou.prototype.chooseInitialDwelling = function(playerIndex, callback) {
       }
 
       //LOU CHEAT certain combination in fireice world cause problems
-      //AI16 this is not needed and has been deleted
-      //if(state.fireice && otherDwelling[1] == y) {
-      //  if (hexDist(otherDwelling[0], otherDwelling[1], x, y) >= 5) score = 0;
-      //}
+      if(state.fireice && otherDwelling[1] == y) {
+        if (hexDist(otherDwelling[0], otherDwelling[1], x, y) >= 5) score = 0;
+      }
     }
     scores.push(score);
   }
@@ -2450,14 +2447,12 @@ values has the following type:
   shift: value for SHAPESHIFTERS using 3pw/5pw to change color
   shift2: value for SHAPESHIFTERS using 3/5 tokens to change color
   specific: object containing extra score for specific actions (by type), e.g. {A_BURN, A_POWER_7C}
-
   TODO: score for:
   -get closer to forming town:
   --making cluster of amount 2, 3, 4
   --making cluster of power 4, 5, 6
   --making an existing town bigger (can have negative value to discourage such useless move)
   --making a new cluster (a new dwelling in a remote location)
-
 }
 To avoid an escalation of value magnitudes, always try to use "VP" as unit for each value. How much VP do you think that action during that round will cause at the end of the game?
 The AI should set these based on the round. E.g. in round 6, a coin is worth pretty much 0.33 VP due to
@@ -2516,6 +2511,8 @@ AILou.scoreAction = function(player, actions, values, roundnum) {
   if(roundnum >= 4) { defer1 = -1.0; defer2 = -0.8; }
 
   //all the bonus/favor/town tiles bonus applied to all actions
+  //AI16 PROBLEM here the for loop does not have a correct terminator to match
+  //AI16 matching right brace is at #2853
   for(var i = 0; i < actions.length; i++) {
     var action = actions[i];
     var type = action.type;
@@ -2617,7 +2614,7 @@ AILou.scoreAction = function(player, actions, values, roundnum) {
         addLog('NEWD: AI New Dwelling: '+logPlayerNameFun(player)+' newtown: '+newtown
             +' location: '+letters[action.co[1]]+numbers[action.co[0]]);
       }
-
+    
       //CONNECT evaluation. rounds 2+
       //give value for expanding network connectivity (move into new function)
       // 1. examine network size, default shipping from 0 to 1
@@ -2854,7 +2851,7 @@ AILou.scoreAction = function(player, actions, values, roundnum) {
       player.b_sh = 1;
       player.shipping = xshipping;
       if(roundnum > 4) shtosacon = Math.min(scoreSHSA, distanceSHSA*values.shtosacon);
-     }
+     }  //matching right brace addded for one at 2464
     } else if(type == A_UPGRADE_SA) {
       subtractIncome(res, player.getFaction().getBuildingCost(B_SA, false));
       b_sa++;
@@ -2905,7 +2902,7 @@ AILou.scoreAction = function(player, actions, values, roundnum) {
       player.b_sa = 1;
       player.shipping = xshipping;
       if(roundnum > 4) shtosacon = Math.min(scoreSHSA, distanceSHSA*values.shtosacon);
-     }
+      }
 
     //==== CULT actions ====
     } else if(type == A_CULT_PRIEST3) {
@@ -3164,7 +3161,7 @@ AILou.scoreAction = function(player, actions, values, roundnum) {
   if(conbridge > 0 && roundnum < 5) result = 0;
 
   return result;
-};
+};  //AIlou16 This is the end of loop in version 15
 
 //how close are neighbor tiles to the given color, up to distance 3.
 //occupied tiles don't count

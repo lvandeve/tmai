@@ -50,7 +50,7 @@ function renderPreScreen(px, py, standardButtonFun, randomButtonFun, beginnerBut
       + 'Programmed by Lode Vandevenne.<br/>'
       + 'AI alternates by Lou New.<br/>'
       + 'Drawings by Giordano Segatta.<br/>'
-      + 'version 20190910<br/>'
+      + 'version 20221109<br/>'
       + 'Links:<br/>'
       + 'TM on BGG: <a href="http://boardgamegeek.com/boardgame/120677/terra-mystica">http://boardgamegeek.com/boardgame/120677/terra-mystica</a><br/>'
       + 'Snellman (multiplayer): <a href="http://terra.snellman.net/">http://terra.snellman.net/</a><br/>'

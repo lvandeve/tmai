@@ -1,5 +1,5 @@
-/*  ailou15.js
-TM AI
+/*  ailou16.js
+TM AI Ver 16 2022 October Corrections to RiverWalker locations and Orange factions
 
 Copyright (C) 2013-2016 by Lode Vandevenne
 
@@ -1741,6 +1741,7 @@ AILou.prototype.chooseAuxColor = function(playerIndex, callback) {
     }
   }
   //select starting color for riverwalkers
+  //AI16 Z is riverwalkers, and this is where RED gets the preference
   else if (player.color == Z && !ispriestcolor) {
     for(var i = 0; i < colors.length; i++) {
       score = 0;
@@ -1759,6 +1760,7 @@ AILou.prototype.chooseAuxColor = function(playerIndex, callback) {
   // check available colors, score both var adjacentCount = AILou.getColorTilesAdjacent
   // and one away by shipping tiles for next color choice
   // color order-R is 0,1,2,3,4,5,6 for R, Y, U, K, B, G, S
+  //AI16 U=Brown, K=Black, S=Siler/Gray
   else if (player.color == Z && ispriestcolor) {
     colorScores = [0,0,1,1,0,1,0,1,1,0,0,0];
     tiles = getFreeTilesReachableByShipping(player, 0);
@@ -1786,6 +1788,7 @@ AILou.prototype.chooseAuxColor = function(playerIndex, callback) {
   if(AILou.info) addLog('COLOR: AI finding RW priest: '+ colors + ' ---- ' + colorScores);
   }
     //LOU if !(player.color == Z && ispriestcolor && used)
+    //AI16 again this is for Z=Riverwalkers
     iscore = AILou.pickWithBestScore(colors, scores, false);
     chosen = colors[iscore];
     //fireice update, must have 1 or 2 coins to pick the color, otherwise it is a priest
@@ -1902,7 +1905,7 @@ AILou.prototype.chooseInitialDwelling = function(playerIndex, callback) {
   var player = game.players[playerIndex];
   var chosen = undefined;
   var locxy = [0,0];
-
+  //AI16 The other dwelling is misplaced for Riverwalker as it must be shipping
   var otherDwelling;
   if(player.b_d < 8) {
     for(var y = 0; y < game.bh; y++)
@@ -1917,6 +1920,7 @@ AILou.prototype.chooseInitialDwelling = function(playerIndex, callback) {
   }
 
   var positions = [];
+  //AI16 look for other tiles and skip tiles of wrong color or place
   for(var y = 0; y < game.bh; y++)
   for(var x = 0; x < game.bw; x++)
   {
@@ -1930,6 +1934,7 @@ AILou.prototype.chooseInitialDwelling = function(playerIndex, callback) {
     var x = positions[i][0];
     var y = positions[i][1];
     var score = 0;
+    //AI16 This test is not used for Riverwalkers
     if (player.faction != F_RIVERWALKERS)  {
       score += AILou.scoreTileDigEnvironment(player, x, y, player.getMainDigColor(), false); }
     score += AILou.scoreTileEnemyEnvironment(x, y, player.getMainDigColor(), false);
@@ -1947,12 +1952,16 @@ AILou.prototype.chooseInitialDwelling = function(playerIndex, callback) {
     if(adjacentCount[0] >= 6 && player.auxcolor == R) score = 0;
     //LOU degrade placing tiles on the edge except for Yellow,Black,Silver
     //LOU allow edge tiles if final scoring is OUTPOST
+    //AI16 This is where Riverwalkers get into trouble since scoring can be
+    //AI16  too high for the starting value of the tile, change from -10 to -99
     if(colorCode == Z)  {
-      if(adjacentCount[0] >= 6) score = -10;
+      if(adjacentCount[0] >= 6) score = -99;
+      //
       else if(adjacentCount[0] == adjacentCount[1]) score = -10;
       else if(adjacentCount[1] < 6) score = -5;
       else if(adjacentCount[0] > 3) score = 6-adjacentCount[0];
     }
+    //AI16 avoid this if final scoring is NOT OUTPOST
     else if(game.finalscoring != 1) {
       if(adjacentCount[1] < 6 && (colorCode != Y && colorCode != K && colorCode != S)) score = 0;
       if(adjacentCount[0] < 4 && colorCode == B) score -= 4;
@@ -1981,17 +1990,18 @@ AILou.prototype.chooseInitialDwelling = function(playerIndex, callback) {
     if(otherDwelling) {
       var h = hexDist(otherDwelling[0], otherDwelling[1], x, y);
 
-    //add score if secondary location is on the preferred list
-    for(var ly = 1; ly < START_LOCATIONS.length; ly++) {
-      if(START_LOCATIONS[ly][0] == state.worldMap && (START_LOCATIONS[ly][1]-1) == player.faction) {
+      //add score if secondary location is on the preferred list
+      for(var ly = 1; ly < START_LOCATIONS.length; ly++) {
+        if(START_LOCATIONS[ly][0] == state.worldMap && (START_LOCATIONS[ly][1]-1) == player.faction) {
         locxy = [x+1,y+1];
         if(AILou.aeq(START_LOCATIONS[ly][3], otherDwelling)) {
           if(AILou.aeq(START_LOCATIONS[ly][4], locxy)) score += START_LOCATIONS[ly][2];
           else if(AILou.aeq(START_LOCATIONS[ly][5], locxy) && otherDwelling) score += START_LOCATIONS[ly][2]-1;
+          //AI16 Skip other dwelling if surrounded
         }
       }
-    }
-
+    }  
+  
       //LOU replaced! if(h >= 4 && h <= 6) score += 5;
       //LOU add more complexity to distance scoring
       switch(h) {
@@ -2000,7 +2010,7 @@ AILou.prototype.chooseInitialDwelling = function(playerIndex, callback) {
       case 1: score = 0;
               break;
       //discourage being extremely close
-      case 2: if(player.faction != F_ENGINEERS) score /= 2;
+      case 2: if(player.faction != F_ENGINEERS && score > 0 ) score /= 2;
               break;
       case 3: score += 2;
               break;
@@ -2012,19 +2022,21 @@ AILou.prototype.chooseInitialDwelling = function(playerIndex, callback) {
               break;
       //LOU fireice places premium on network, too far
       case 6: if (!state.fireice) score += 2;
-              if (state.fireice) score = 1;
+              //AI16 This was an error as score was fixed as 1
+              if (state.fireice) score += 1;
               break;
       //LOU discourage really far away for fireice
-      default: score = 1;
-               if (state.fireice && player.faction != F_NOMADS) score = -5;
-      }
-      //LOU Notice that build used is first in y direction.  Others are ignored (Nomads)
+      //AI16 this distance is 7 or more
+      default: score -= 1;
+               if (state.fireice && player.faction != F_NOMADS) score -= 4;           
+      }  
+      //LOU Notice that build used is first in y direction.  Others are ignored (Nomads only)
+      //AI16 this section is for the third starting position for the NOMADS
       var done = getInitialDwellingsDone(player);
-      if(player.faction == F_NOMADS && done == 2) {
+      if (player.faction == F_NOMADS && done == 2) {
         if (adjacentCount[0] <= 3 && game.finalscoring == 1) score -= 4;
         else if (x == 1 && y == 1 && game.finalscoring == 1) score += 8;
         else if (x == 3 && y == 3 && game.finalscoring == 2) score += 4;
-        else if (h >= 6) score -= 10;
         else if (h > 3 && game.finalscoring != 1) score -= 2;
       }
 
@@ -2435,14 +2447,12 @@ values has the following type:
   shift: value for SHAPESHIFTERS using 3pw/5pw to change color
   shift2: value for SHAPESHIFTERS using 3/5 tokens to change color
   specific: object containing extra score for specific actions (by type), e.g. {A_BURN, A_POWER_7C}
-
   TODO: score for:
   -get closer to forming town:
   --making cluster of amount 2, 3, 4
   --making cluster of power 4, 5, 6
   --making an existing town bigger (can have negative value to discourage such useless move)
   --making a new cluster (a new dwelling in a remote location)
-
 }
 To avoid an escalation of value magnitudes, always try to use "VP" as unit for each value. How much VP do you think that action during that round will cause at the end of the game?
 The AI should set these based on the round. E.g. in round 6, a coin is worth pretty much 0.33 VP due to
@@ -2501,6 +2511,8 @@ AILou.scoreAction = function(player, actions, values, roundnum) {
   if(roundnum >= 4) { defer1 = -1.0; defer2 = -0.8; }
 
   //all the bonus/favor/town tiles bonus applied to all actions
+  //AI16 PROBLEM here the for loop does not have a correct terminator to match
+  //AI16 matching right brace is at #2853
   for(var i = 0; i < actions.length; i++) {
     var action = actions[i];
     var type = action.type;
@@ -2602,7 +2614,7 @@ AILou.scoreAction = function(player, actions, values, roundnum) {
         addLog('NEWD: AI New Dwelling: '+logPlayerNameFun(player)+' newtown: '+newtown
             +' location: '+letters[action.co[1]]+numbers[action.co[0]]);
       }
-
+    
       //CONNECT evaluation. rounds 2+
       //give value for expanding network connectivity (move into new function)
       // 1. examine network size, default shipping from 0 to 1
@@ -2839,7 +2851,7 @@ AILou.scoreAction = function(player, actions, values, roundnum) {
       player.b_sh = 1;
       player.shipping = xshipping;
       if(roundnum > 4) shtosacon = Math.min(scoreSHSA, distanceSHSA*values.shtosacon);
-     }
+     }  //matching right brace addded for one at 2464
     } else if(type == A_UPGRADE_SA) {
       subtractIncome(res, player.getFaction().getBuildingCost(B_SA, false));
       b_sa++;
@@ -2890,7 +2902,7 @@ AILou.scoreAction = function(player, actions, values, roundnum) {
       player.b_sa = 1;
       player.shipping = xshipping;
       if(roundnum > 4) shtosacon = Math.min(scoreSHSA, distanceSHSA*values.shtosacon);
-     }
+      }
 
     //==== CULT actions ====
     } else if(type == A_CULT_PRIEST3) {
@@ -3149,7 +3161,7 @@ AILou.scoreAction = function(player, actions, values, roundnum) {
   if(conbridge > 0 && roundnum < 5) result = 0;
 
   return result;
-};
+};  //AIlou16 This is the end of loop in version 15
 
 //how close are neighbor tiles to the given color, up to distance 3.
 //occupied tiles don't count
